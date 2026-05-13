@@ -1,0 +1,25 @@
+# Test artefacts
+coverage.out
+*.test
+
+# Built binaries (examples are buildable but not committed)
+/bin
+
+# Misc
+.DS_Store
+
+# Local env files
+.env*.local
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Compiled example binaries
+examples/*/basic
+examples/*/buyer
+examples/*/checkout
+examples/*/webhook

@@ -1,0 +1,98 @@
+name: CI / CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ["1.22.x", "1.23.x", "1.24.x"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Lint
+        if: matrix.go-version == '1.24.x'
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout 5m
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with coverage
+        run: |
+          # Exclude examples/ — demo programs are not SDK code (parallels sdk-ts excluding src/index.ts).
+          go list ./... | grep -v '/examples/' | xargs go test -race -coverprofile=coverage.out -covermode=atomic
+
+      - name: Coverage gate
+        if: matrix.go-version == '1.24.x'
+        run: |
+          total=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | tr -d '%')
+          echo "Total coverage: ${total}%"
+          awk -v t="$total" 'BEGIN { exit (t+0 >= 85.0) ? 0 : 1 }' || {
+            echo "Coverage ${total}% is below 85% threshold"; exit 1; }
+
+      - name: Build
+        run: go build ./...
+
+      - name: Verify examples build
+        run: |
+          for dir in examples/*/; do
+            echo "Building $dir"
+            (cd "$dir" && go build .)
+          done
+
+  publish:
+    needs: ci
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: true
+
+      - name: Trigger pkg.go.dev indexing
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          curl -fsSL "https://proxy.golang.org/github.com/waffo-com/waffo-pancake-sdk-go/@v/${TAG}.info" \
+            || echo "proxy.golang.org indexing kicked off (may already be cached)"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          if gh release view "$TAG" --json id >/dev/null 2>&1; then
+            echo "Release $TAG already exists — skipping create."
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "See [CHANGELOG.md](./CHANGELOG.md) for details." \
+              --verify-tag
+          fi
