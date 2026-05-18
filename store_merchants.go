@@ -20,11 +20,12 @@ func (r *StoreMerchantsResource) Add(ctx context.Context, p AddMerchantParams) (
 	if err := validateMerchantRole(p.Role); err != nil {
 		return nil, err
 	}
-	var out AddMerchantResult
-	if err := r.http.post(ctx, "/v1/actions/store-merchant/add-merchant", p, nil, &out); err != nil {
+	out, warnings, err := postAction[AddMerchantResult](r.http, ctx, "/v1/actions/store-merchant/add-merchant", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Remove removes a merchant from a store.
@@ -35,11 +36,12 @@ func (r *StoreMerchantsResource) Remove(ctx context.Context, p RemoveMerchantPar
 	if err := validateShortID("merchantId", p.MerchantID, "MER"); err != nil {
 		return nil, err
 	}
-	var out RemoveMerchantResult
-	if err := r.http.post(ctx, "/v1/actions/store-merchant/remove-merchant", p, nil, &out); err != nil {
+	out, warnings, err := postAction[RemoveMerchantResult](r.http, ctx, "/v1/actions/store-merchant/remove-merchant", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // UpdateRole changes a merchant's role within a store.
@@ -53,11 +55,12 @@ func (r *StoreMerchantsResource) UpdateRole(ctx context.Context, p UpdateRolePar
 	if err := validateMerchantRole(p.Role); err != nil {
 		return nil, err
 	}
-	var out UpdateRoleResult
-	if err := r.http.post(ctx, "/v1/actions/store-merchant/update-role", p, nil, &out); err != nil {
+	out, warnings, err := postAction[UpdateRoleResult](r.http, ctx, "/v1/actions/store-merchant/update-role", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 func validateMerchantRole(role string) error {

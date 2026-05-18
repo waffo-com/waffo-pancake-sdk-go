@@ -34,9 +34,10 @@ func (r *AuthResource) IssueSessionToken(ctx context.Context, p IssueSessionToke
 	if err := validateRequired("buyerIdentity", p.BuyerIdentity); err != nil {
 		return nil, err
 	}
-	var out SessionToken
-	if err := r.http.post(ctx, "/v1/actions/auth/issue-session-token", p, nil, &out); err != nil {
+	out, warnings, err := postAction[SessionToken](r.http, ctx, "/v1/actions/auth/issue-session-token", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }

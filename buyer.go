@@ -27,11 +27,12 @@ func (s *BuyerSession) CancelSubscription(ctx context.Context, p CancelSubscript
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	var out CancelSubscriptionResult
-	if err := s.http.post(ctx, "/v1/actions/subscription-order/cancel-order", p, &out); err != nil {
+	out, warnings, err := buyerPostAction[CancelSubscriptionResult](s.http, ctx, "/v1/actions/subscription-order/cancel-order", p)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // CancelOnetimeOrder cancels a one-time order whose payment is still pending.
@@ -39,11 +40,12 @@ func (s *BuyerSession) CancelOnetimeOrder(ctx context.Context, p CancelOnetimeOr
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	var out CancelOnetimeOrderResult
-	if err := s.http.post(ctx, "/v1/actions/onetime-order/cancel-order", p, &out); err != nil {
+	out, warnings, err := buyerPostAction[CancelOnetimeOrderResult](s.http, ctx, "/v1/actions/onetime-order/cancel-order", p)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // ReactivateSubscription reactivates a subscription currently in the
@@ -52,11 +54,12 @@ func (s *BuyerSession) ReactivateSubscription(ctx context.Context, p ReactivateS
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	var out ReactivateSubscriptionResult
-	if err := s.http.post(ctx, "/v1/actions/subscription-order/reactivate-order", p, &out); err != nil {
+	out, warnings, err := buyerPostAction[ReactivateSubscriptionResult](s.http, ctx, "/v1/actions/subscription-order/reactivate-order", p)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // CreateRefundTicket submits a refund request for a payment.
@@ -73,11 +76,12 @@ func (s *BuyerSession) CreateRefundTicket(ctx context.Context, p CreateRefundTic
 	if err := validateCurrencyCode("requestedAmount.currency", p.RequestedAmount.Currency); err != nil {
 		return nil, err
 	}
-	var out RefundTicketResult
-	if err := s.http.post(ctx, "/v1/actions/refund-ticket/create-ticket", p, &out); err != nil {
+	out, warnings, err := buyerPostAction[RefundTicketResult](s.http, ctx, "/v1/actions/refund-ticket/create-ticket", p)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // ResubmitRefundTicket resubmits a previously rejected refund ticket with
@@ -98,11 +102,12 @@ func (s *BuyerSession) ResubmitRefundTicket(ctx context.Context, p ResubmitRefun
 	if err := validateCurrencyCode("requestedAmount.currency", p.RequestedAmount.Currency); err != nil {
 		return nil, err
 	}
-	var out RefundTicketResult
-	if err := s.http.post(ctx, "/v1/actions/refund-ticket/resubmit-ticket", p, &out); err != nil {
+	out, warnings, err := buyerPostAction[RefundTicketResult](s.http, ctx, "/v1/actions/refund-ticket/resubmit-ticket", p)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // BuyerGraphQLResource runs buyer-scoped GraphQL queries.
@@ -115,9 +120,9 @@ func (r *BuyerGraphQLResource) Query(ctx context.Context, p GraphQLParams) (*Gra
 	if err := validateRequired("query", p.Query); err != nil {
 		return nil, err
 	}
-	var out GraphQLResponse
-	if err := r.http.post(ctx, "/v1/graphql", p, &out); err != nil {
+	_, env, err := r.http.post(ctx, "/v1/graphql", p)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return &GraphQLResponse{Data: env.Data, Errors: env.Errors, Warnings: env.Warnings}, nil
 }

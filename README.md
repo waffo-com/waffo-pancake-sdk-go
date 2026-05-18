@@ -240,6 +240,33 @@ fmt.Println(typed.Data.Stores[0].Name)
 For buyer-scoped queries, use `buyer.GraphQL.Query` or
 `pancake.BuyerGraphQLQuery[T]`.
 
+## Warnings (Migration Notices)
+
+Every successful REST action and GraphQL query may carry a `Warnings` slice alongside the data. Warnings describe non-fatal advisories the server wants you to act on — typically deprecated parameters, fields scheduled for removal, or new APIs you should switch to. Each `Notice` carries `Message` (human-readable), `Layer` (which service produced it), and `AIHint` (a structured migration instruction aimed at LLM consumers).
+
+```go
+// REST action — warnings sit on the typed Result struct
+res, err := client.Stores.Update(ctx, pancake.UpdateStoreParams{
+    ID: "STO_xxx",
+    // ... may carry deprecated fields the server warns about
+})
+if err != nil { /* handle */ }
+for _, w := range res.Warnings {
+    log.Printf("[%s] %s — %s", w.Layer, w.Message, w.AIHint)
+    // e.g. Layer=store, AIHint="Switch to client.Webhooks.Add / Update / Remove"
+}
+
+// GraphQL — warnings sit on the envelope alongside Data and Errors
+resp, _ := client.GraphQL.Query(ctx, pancake.GraphQLParams{
+    Query: `query { stores { id } }`,
+})
+for _, w := range resp.Warnings {
+    log.Printf("%s — %s", w.Message, w.AIHint)
+}
+```
+
+**LLM/agent consumers**: always inspect `AIHint` on every warning — it is the canonical migration instruction (Go module path, version, method name, endpoint path) the platform team intends for you to follow when the underlying API evolves.
+
 ## Programmatic Store, Product, and Webhook Management
 
 ```go

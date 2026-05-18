@@ -22,9 +22,10 @@ func (r *OrdersResource) CancelSubscription(ctx context.Context, p CancelSubscri
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	var out CancelSubscriptionResult
-	if err := r.http.post(ctx, "/v1/actions/subscription-order/cancel-order", p, nil, &out); err != nil {
+	out, warnings, err := postAction[CancelSubscriptionResult](r.http, ctx, "/v1/actions/subscription-order/cancel-order", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }

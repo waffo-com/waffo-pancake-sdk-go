@@ -2,12 +2,24 @@ package pancake
 
 import "fmt"
 
-// APIError is a single entry of the call-stack-ordered errors array returned
-// by the API. The deepest layer is at index 0; outermost at the last index.
-type APIError struct {
+// Notice is a single entry of the call-stack-ordered errors / warnings arrays
+// returned by the API. The deepest layer is at index 0; outermost at the last
+// index. Same shape across REST and GraphQL — GraphQL-specific fields
+// (Locations, Path) are populated only by graphql-js resolver errors.
+type Notice struct {
 	Message string     `json:"message"`
-	Layer   ErrorLayer `json:"layer"`
+	Layer   ErrorLayer `json:"layer,omitempty"`
+	AIHint  string     `json:"aiHint,omitempty"`
+	// GraphQL-only fields. omitempty so REST callers don't see them in output.
+	Locations []GraphQLErrorLocation `json:"locations,omitempty"`
+	Path      []string               `json:"path,omitempty"`
 }
+
+// APIError is the legacy name for {@link Notice}. Kept as a type alias for
+// backwards compatibility with existing imports.
+//
+// Deprecated: use Notice.
+type APIError = Notice
 
 // Error is thrown when the API returns a non-success response, and is also the
 // error type produced by client-side validation failures (status 400 with

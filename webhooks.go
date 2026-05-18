@@ -45,7 +45,8 @@ dwIDAQAB
 
 // AddWebhookResult wraps the response of Webhooks.Add / Update / Remove.
 type AddWebhookResult struct {
-	Webhook StoreWebhook `json:"webhook"`
+	Webhook  StoreWebhook `json:"webhook"`
+	Warnings []Notice     `json:"warnings,omitempty"`
 }
 
 // UpdateWebhookResult mirrors AddWebhookResult.
@@ -83,11 +84,12 @@ func (r *WebhooksResource) Add(ctx context.Context, p AddWebhookParams) (*AddWeb
 	if err := validateRequired("url", p.URL); err != nil {
 		return nil, err
 	}
-	var out AddWebhookResult
-	if err := r.http.post(ctx, "/v1/actions/store/add-webhook", p, nil, &out); err != nil {
+	out, warnings, err := postAction[AddWebhookResult](r.http, ctx, "/v1/actions/store/add-webhook", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Update updates a webhook's mutable fields (URL, events, secret). Channel
@@ -96,11 +98,12 @@ func (r *WebhooksResource) Update(ctx context.Context, p UpdateWebhookParams) (*
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	var out UpdateWebhookResult
-	if err := r.http.post(ctx, "/v1/actions/store/update-webhook", p, nil, &out); err != nil {
+	out, warnings, err := postAction[UpdateWebhookResult](r.http, ctx, "/v1/actions/store/update-webhook", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Remove hard-deletes a webhook. Historical delivery records are retained
@@ -109,11 +112,12 @@ func (r *WebhooksResource) Remove(ctx context.Context, p RemoveWebhookParams) (*
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	var out RemoveWebhookResult
-	if err := r.http.post(ctx, "/v1/actions/store/remove-webhook", p, nil, &out); err != nil {
+	out, warnings, err := postAction[RemoveWebhookResult](r.http, ctx, "/v1/actions/store/remove-webhook", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Verify validates the X-Waffo-Signature header against payload using the

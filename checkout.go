@@ -39,12 +39,12 @@ func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSe
 	if err := validateCheckoutCommon(&p); err != nil {
 		return nil, err
 	}
-	var out CheckoutSessionResult
-	opts := &postOptions{IdempotencyWindow: 60}
-	if err := r.http.post(ctx, "/v1/actions/checkout/create-session", p, opts, &out); err != nil {
+	out, warnings, err := postAction[CheckoutSessionResult](r.http, ctx, "/v1/actions/checkout/create-session", p, &postOptions{IdempotencyWindow: 60})
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // CheckoutAnonymousResource creates checkout sessions without a buyer
@@ -66,12 +66,12 @@ func (r *CheckoutAnonymousResource) Create(ctx context.Context, p AnonymousCheck
 	if err := validateCheckoutCommon(&p); err != nil {
 		return nil, err
 	}
-	var out CheckoutSessionResult
-	opts := &postOptions{IdempotencyWindow: 60}
-	if err := r.http.post(ctx, "/v1/actions/checkout/create-session", p, opts, &out); err != nil {
+	out, warnings, err := postAction[CheckoutSessionResult](r.http, ctx, "/v1/actions/checkout/create-session", p, &postOptions{IdempotencyWindow: 60})
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // CheckoutAuthenticatedResource creates checkout sessions with a merchant-
@@ -115,22 +115,24 @@ func (r *CheckoutAuthenticatedResource) Create(ctx context.Context, p Authentica
 	}
 
 	var (
-		tok     SessionToken
-		session CheckoutSessionResult
-		errTok  error
-		errSess error
-		wg      sync.WaitGroup
+		tok          *SessionToken
+		session      *CheckoutSessionResult
+		tokWarnings  []Notice
+		sessWarnings []Notice
+		errTok       error
+		errSess      error
+		wg           sync.WaitGroup
 	)
 
 	wg.Add(2)
 	opts := &postOptions{IdempotencyWindow: 60}
 	go func() {
 		defer wg.Done()
-		errTok = r.http.post(ctx, "/v1/actions/auth/issue-session-token", tokenBody, opts, &tok)
+		tok, tokWarnings, errTok = postAction[SessionToken](r.http, ctx, "/v1/actions/auth/issue-session-token", tokenBody, opts)
 	}()
 	go func() {
 		defer wg.Done()
-		errSess = r.http.post(ctx, "/v1/actions/checkout/create-session", p.CreateCheckoutSessionParams, opts, &session)
+		session, sessWarnings, errSess = postAction[CheckoutSessionResult](r.http, ctx, "/v1/actions/checkout/create-session", p.CreateCheckoutSessionParams, opts)
 	}()
 	wg.Wait()
 
@@ -141,11 +143,13 @@ func (r *CheckoutAuthenticatedResource) Create(ctx context.Context, p Authentica
 		return nil, errSess
 	}
 
+	warnings := append(append([]Notice(nil), tokWarnings...), sessWarnings...)
 	return &AuthenticatedCheckoutResult{
 		SessionID:      session.SessionID,
 		CheckoutURL:    session.CheckoutURL + "#token=" + tok.Token,
 		ExpiresAt:      session.ExpiresAt,
 		Token:          tok.Token,
 		TokenExpiresAt: tok.ExpiresAt,
+		Warnings:       warnings,
 	}, nil
 }

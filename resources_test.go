@@ -293,17 +293,6 @@ func TestResources_HappyPaths(t *testing.T) {
 			},
 		},
 
-		// ---- GraphQL ----
-		{
-			name:     "GraphQL.Query",
-			path:     "/v1/graphql",
-			response: map[string]any{"data": map[string]any{"stores": []any{}}},
-			call: func(c *Client) error {
-				_, err := c.GraphQL.Query(ctx, GraphQLParams{Query: "query { stores { id } }"})
-				return err
-			},
-		},
-
 		// ---- Webhooks management ----
 		{
 			name:     "Webhooks.Add",
@@ -506,14 +495,17 @@ func TestResources_ValidationFailures(t *testing.T) {
 }
 
 // TestGraphQLQuery_Typed checks the top-level generic helper.
+//
+// Wire is the standard single-wrap GraphQL envelope. The typed helper
+// `GraphQLQuery[T]` unmarshals the inner data block into T.
 func TestGraphQLQuery_Typed(t *testing.T) {
 	client, _, server := newSignedTestClient(t)
 	server.respond = func(_ recordedRequest) (int, any) {
-		return 200, map[string]any{"data": map[string]any{
+		return 200, map[string]any{
 			"data": map[string]any{
 				"stores": []map[string]string{{"id": "STO_a", "name": "X"}},
 			},
-		}}
+		}
 	}
 	type Result struct {
 		Stores []struct {

@@ -17,11 +17,12 @@ func (r *StoresResource) Create(ctx context.Context, p CreateStoreParams) (*Crea
 	if err := validateRequired("name", p.Name); err != nil {
 		return nil, err
 	}
-	var out CreateStoreResult
-	if err := r.http.post(ctx, "/v1/actions/store/create-store", p, nil, &out); err != nil {
+	out, warnings, err := postAction[CreateStoreResult](r.http, ctx, "/v1/actions/store/create-store", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Update updates an existing store's settings. Only provided fields are
@@ -39,11 +40,12 @@ func (r *StoresResource) Update(ctx context.Context, p UpdateStoreParams) (*Upda
 	if err := validateShortID("id", p.ID, "STO"); err != nil {
 		return nil, err
 	}
-	var out UpdateStoreResult
-	if err := r.http.post(ctx, "/v1/actions/store/update-store", p, nil, &out); err != nil {
+	out, warnings, err := postAction[UpdateStoreResult](r.http, ctx, "/v1/actions/store/update-store", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Delete soft-deletes a store. Only the store owner can delete.
@@ -55,9 +57,10 @@ func (r *StoresResource) Delete(ctx context.Context, p DeleteStoreParams) (*Dele
 	if err := validateShortID("id", p.ID, "STO"); err != nil {
 		return nil, err
 	}
-	var out DeleteStoreResult
-	if err := r.http.post(ctx, "/v1/actions/store/delete-store", p, nil, &out); err != nil {
+	out, warnings, err := postAction[DeleteStoreResult](r.http, ctx, "/v1/actions/store/delete-store", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }

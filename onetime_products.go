@@ -18,11 +18,12 @@ func (r *OnetimeProductsResource) Create(ctx context.Context, p CreateOnetimePro
 	if err := validatePrices("prices", p.Prices); err != nil {
 		return nil, err
 	}
-	var out OnetimeProductResult
-	if err := r.http.post(ctx, "/v1/actions/onetime-product/create-product", p, nil, &out); err != nil {
+	out, warnings, err := postAction[OnetimeProductResult](r.http, ctx, "/v1/actions/onetime-product/create-product", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Update creates a new immutable version of the product and skips when the
@@ -41,11 +42,12 @@ func (r *OnetimeProductsResource) Update(ctx context.Context, p UpdateOnetimePro
 			return nil, err
 		}
 	}
-	var out OnetimeProductResult
-	if err := r.http.post(ctx, "/v1/actions/onetime-product/update-product", p, nil, &out); err != nil {
+	out, warnings, err := postAction[OnetimeProductResult](r.http, ctx, "/v1/actions/onetime-product/update-product", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Publish promotes a one-time product's test version to production.
@@ -53,11 +55,12 @@ func (r *OnetimeProductsResource) Publish(ctx context.Context, p PublishOnetimeP
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
-	var out OnetimeProductResult
-	if err := r.http.post(ctx, "/v1/actions/onetime-product/publish-product", p, nil, &out); err != nil {
+	out, warnings, err := postAction[OnetimeProductResult](r.http, ctx, "/v1/actions/onetime-product/publish-product", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // UpdateStatus flips a one-time product between active and inactive.
@@ -68,11 +71,12 @@ func (r *OnetimeProductsResource) UpdateStatus(ctx context.Context, p UpdateOnet
 	if err := validateProductStatus(p.Status); err != nil {
 		return nil, err
 	}
-	var out OnetimeProductResult
-	if err := r.http.post(ctx, "/v1/actions/onetime-product/update-status", p, nil, &out); err != nil {
+	out, warnings, err := postAction[OnetimeProductResult](r.http, ctx, "/v1/actions/onetime-product/update-status", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 func validateProductStatus(s ProductVersionStatus) error {
