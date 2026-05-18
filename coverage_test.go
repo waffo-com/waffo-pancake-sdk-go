@@ -400,7 +400,7 @@ func TestGraphQLQuery_TypedNullDataReturnsZero(t *testing.T) {
 func TestResources_HappyPathWithWarnings(t *testing.T) {
 	ctx := context.Background()
 	client, _, server := newSignedTestClient(t)
-	server.respond = func(req recordedRequest) (int, any) {
+	server.respond = func(_ recordedRequest) (int, any) {
 		return 200, map[string]any{
 			"data":     map[string]any{"store": map[string]any{"id": "STO_AbCdEfGhIjKlMnOpQrStUv", "name": "X", "status": "active"}},
 			"warnings": []map[string]any{{"message": "deprecated field", "layer": "store", "aiHint": "Switch to client.webhooks.*"}},

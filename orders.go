@@ -22,7 +22,7 @@ func (r *OrdersResource) CancelSubscription(ctx context.Context, p CancelSubscri
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[CancelSubscriptionResult](r.http, ctx, "/v1/actions/subscription-order/cancel-order", p, nil)
+	out, warnings, err := postAction[CancelSubscriptionResult](ctx, r.http, "/v1/actions/subscription-order/cancel-order", p, nil)
 	if err != nil {
 		return nil, err
 	}

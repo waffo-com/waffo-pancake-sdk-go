@@ -84,7 +84,7 @@ func (r *WebhooksResource) Add(ctx context.Context, p AddWebhookParams) (*AddWeb
 	if err := validateRequired("url", p.URL); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[AddWebhookResult](r.http, ctx, "/v1/actions/store/add-webhook", p, nil)
+	out, warnings, err := postAction[AddWebhookResult](ctx, r.http, "/v1/actions/store/add-webhook", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (r *WebhooksResource) Update(ctx context.Context, p UpdateWebhookParams) (*
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[UpdateWebhookResult](r.http, ctx, "/v1/actions/store/update-webhook", p, nil)
+	out, warnings, err := postAction[UpdateWebhookResult](ctx, r.http, "/v1/actions/store/update-webhook", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (r *WebhooksResource) Remove(ctx context.Context, p RemoveWebhookParams) (*
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[RemoveWebhookResult](r.http, ctx, "/v1/actions/store/remove-webhook", p, nil)
+	out, warnings, err := postAction[RemoveWebhookResult](ctx, r.http, "/v1/actions/store/remove-webhook", p, nil)
 	if err != nil {
 		return nil, err
 	}

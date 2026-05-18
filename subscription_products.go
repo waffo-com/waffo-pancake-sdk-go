@@ -21,7 +21,7 @@ func (r *SubscriptionProductsResource) Create(ctx context.Context, p CreateSubsc
 	if err := validatePrices("prices", p.Prices); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductResult](r.http, ctx, "/v1/actions/subscription-product/create-product", p, nil)
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/create-product", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (r *SubscriptionProductsResource) Update(ctx context.Context, p UpdateSubsc
 			return nil, err
 		}
 	}
-	out, warnings, err := postAction[SubscriptionProductResult](r.http, ctx, "/v1/actions/subscription-product/update-product", p, nil)
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/update-product", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (r *SubscriptionProductsResource) Publish(ctx context.Context, p PublishSub
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductResult](r.http, ctx, "/v1/actions/subscription-product/publish-product", p, nil)
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/publish-product", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (r *SubscriptionProductsResource) UpdateStatus(ctx context.Context, p Updat
 	if err := validateProductStatus(p.Status); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductResult](r.http, ctx, "/v1/actions/subscription-product/update-status", p, nil)
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/update-status", p, nil)
 	if err != nil {
 		return nil, err
 	}

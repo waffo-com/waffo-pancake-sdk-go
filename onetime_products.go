@@ -18,7 +18,7 @@ func (r *OnetimeProductsResource) Create(ctx context.Context, p CreateOnetimePro
 	if err := validatePrices("prices", p.Prices); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[OnetimeProductResult](r.http, ctx, "/v1/actions/onetime-product/create-product", p, nil)
+	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/create-product", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (r *OnetimeProductsResource) Update(ctx context.Context, p UpdateOnetimePro
 			return nil, err
 		}
 	}
-	out, warnings, err := postAction[OnetimeProductResult](r.http, ctx, "/v1/actions/onetime-product/update-product", p, nil)
+	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/update-product", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (r *OnetimeProductsResource) Publish(ctx context.Context, p PublishOnetimeP
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[OnetimeProductResult](r.http, ctx, "/v1/actions/onetime-product/publish-product", p, nil)
+	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/publish-product", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (r *OnetimeProductsResource) UpdateStatus(ctx context.Context, p UpdateOnet
 	if err := validateProductStatus(p.Status); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[OnetimeProductResult](r.http, ctx, "/v1/actions/onetime-product/update-status", p, nil)
+	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/update-status", p, nil)
 	if err != nil {
 		return nil, err
 	}

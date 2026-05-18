@@ -27,7 +27,7 @@ func (s *BuyerSession) CancelSubscription(ctx context.Context, p CancelSubscript
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := buyerPostAction[CancelSubscriptionResult](s.http, ctx, "/v1/actions/subscription-order/cancel-order", p)
+	out, warnings, err := buyerPostAction[CancelSubscriptionResult](ctx, s.http, "/v1/actions/subscription-order/cancel-order", p)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (s *BuyerSession) CancelOnetimeOrder(ctx context.Context, p CancelOnetimeOr
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := buyerPostAction[CancelOnetimeOrderResult](s.http, ctx, "/v1/actions/onetime-order/cancel-order", p)
+	out, warnings, err := buyerPostAction[CancelOnetimeOrderResult](ctx, s.http, "/v1/actions/onetime-order/cancel-order", p)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (s *BuyerSession) ReactivateSubscription(ctx context.Context, p ReactivateS
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := buyerPostAction[ReactivateSubscriptionResult](s.http, ctx, "/v1/actions/subscription-order/reactivate-order", p)
+	out, warnings, err := buyerPostAction[ReactivateSubscriptionResult](ctx, s.http, "/v1/actions/subscription-order/reactivate-order", p)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (s *BuyerSession) CreateRefundTicket(ctx context.Context, p CreateRefundTic
 	if err := validateCurrencyCode("requestedAmount.currency", p.RequestedAmount.Currency); err != nil {
 		return nil, err
 	}
-	out, warnings, err := buyerPostAction[RefundTicketResult](s.http, ctx, "/v1/actions/refund-ticket/create-ticket", p)
+	out, warnings, err := buyerPostAction[RefundTicketResult](ctx, s.http, "/v1/actions/refund-ticket/create-ticket", p)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (s *BuyerSession) ResubmitRefundTicket(ctx context.Context, p ResubmitRefun
 	if err := validateCurrencyCode("requestedAmount.currency", p.RequestedAmount.Currency); err != nil {
 		return nil, err
 	}
-	out, warnings, err := buyerPostAction[RefundTicketResult](s.http, ctx, "/v1/actions/refund-ticket/resubmit-ticket", p)
+	out, warnings, err := buyerPostAction[RefundTicketResult](ctx, s.http, "/v1/actions/refund-ticket/resubmit-ticket", p)
 	if err != nil {
 		return nil, err
 	}

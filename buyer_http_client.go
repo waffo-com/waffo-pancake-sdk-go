@@ -68,4 +68,3 @@ func (c *buyerHTTPClient) post(ctx context.Context, path string, body any) (int,
 	}
 	return resp.StatusCode, &env, nil
 }
-

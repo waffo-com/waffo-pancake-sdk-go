@@ -17,7 +17,7 @@ func (r *StoresResource) Create(ctx context.Context, p CreateStoreParams) (*Crea
 	if err := validateRequired("name", p.Name); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[CreateStoreResult](r.http, ctx, "/v1/actions/store/create-store", p, nil)
+	out, warnings, err := postAction[CreateStoreResult](ctx, r.http, "/v1/actions/store/create-store", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (r *StoresResource) Update(ctx context.Context, p UpdateStoreParams) (*Upda
 	if err := validateShortID("id", p.ID, "STO"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[UpdateStoreResult](r.http, ctx, "/v1/actions/store/update-store", p, nil)
+	out, warnings, err := postAction[UpdateStoreResult](ctx, r.http, "/v1/actions/store/update-store", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (r *StoresResource) Delete(ctx context.Context, p DeleteStoreParams) (*Dele
 	if err := validateShortID("id", p.ID, "STO"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[DeleteStoreResult](r.http, ctx, "/v1/actions/store/delete-store", p, nil)
+	out, warnings, err := postAction[DeleteStoreResult](ctx, r.http, "/v1/actions/store/delete-store", p, nil)
 	if err != nil {
 		return nil, err
 	}

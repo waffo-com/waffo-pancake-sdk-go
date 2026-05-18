@@ -16,7 +16,7 @@ func (r *SubscriptionProductGroupsResource) Create(ctx context.Context, p Create
 	if err := validateRequired("name", p.Name); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductGroupResult](r.http, ctx, "/v1/actions/subscription-product-group/create-group", p, nil)
+	out, warnings, err := postAction[SubscriptionProductGroupResult](ctx, r.http, "/v1/actions/subscription-product-group/create-group", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (r *SubscriptionProductGroupsResource) Update(ctx context.Context, p Update
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductGroupResult](r.http, ctx, "/v1/actions/subscription-product-group/update-group", p, nil)
+	out, warnings, err := postAction[SubscriptionProductGroupResult](ctx, r.http, "/v1/actions/subscription-product-group/update-group", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (r *SubscriptionProductGroupsResource) Delete(ctx context.Context, p Delete
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductGroupResult](r.http, ctx, "/v1/actions/subscription-product-group/delete-group", p, nil)
+	out, warnings, err := postAction[SubscriptionProductGroupResult](ctx, r.http, "/v1/actions/subscription-product-group/delete-group", p, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (r *SubscriptionProductGroupsResource) Publish(ctx context.Context, p Publi
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductGroupResult](r.http, ctx, "/v1/actions/subscription-product-group/publish-group", p, nil)
+	out, warnings, err := postAction[SubscriptionProductGroupResult](ctx, r.http, "/v1/actions/subscription-product-group/publish-group", p, nil)
 	if err != nil {
 		return nil, err
 	}
