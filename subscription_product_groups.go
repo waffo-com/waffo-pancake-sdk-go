@@ -16,11 +16,12 @@ func (r *SubscriptionProductGroupsResource) Create(ctx context.Context, p Create
 	if err := validateRequired("name", p.Name); err != nil {
 		return nil, err
 	}
-	var out SubscriptionProductGroupResult
-	if err := r.http.post(ctx, "/v1/actions/subscription-product-group/create-group", p, nil, &out); err != nil {
+	out, warnings, err := postAction[SubscriptionProductGroupResult](ctx, r.http, "/v1/actions/subscription-product-group/create-group", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Update updates a subscription product group. ProductIDs is a full
@@ -29,11 +30,12 @@ func (r *SubscriptionProductGroupsResource) Update(ctx context.Context, p Update
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	var out SubscriptionProductGroupResult
-	if err := r.http.post(ctx, "/v1/actions/subscription-product-group/update-group", p, nil, &out); err != nil {
+	out, warnings, err := postAction[SubscriptionProductGroupResult](ctx, r.http, "/v1/actions/subscription-product-group/update-group", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Delete hard-deletes a subscription product group.
@@ -41,11 +43,12 @@ func (r *SubscriptionProductGroupsResource) Delete(ctx context.Context, p Delete
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	var out SubscriptionProductGroupResult
-	if err := r.http.post(ctx, "/v1/actions/subscription-product-group/delete-group", p, nil, &out); err != nil {
+	out, warnings, err := postAction[SubscriptionProductGroupResult](ctx, r.http, "/v1/actions/subscription-product-group/delete-group", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Publish promotes a test-environment group to production (upsert).
@@ -53,9 +56,10 @@ func (r *SubscriptionProductGroupsResource) Publish(ctx context.Context, p Publi
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	var out SubscriptionProductGroupResult
-	if err := r.http.post(ctx, "/v1/actions/subscription-product-group/publish-group", p, nil, &out); err != nil {
+	out, warnings, err := postAction[SubscriptionProductGroupResult](ctx, r.http, "/v1/actions/subscription-product-group/publish-group", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }

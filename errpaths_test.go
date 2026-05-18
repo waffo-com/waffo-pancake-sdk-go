@@ -2,7 +2,13 @@ package pancake
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -183,27 +189,31 @@ func TestResources_ErrorPropagation(t *testing.T) {
 		})
 	}
 
-	// GraphQL gets a 500 to make sure error wrapping still uses APIError-style.
-	t.Run("GraphQL.Query (500)", func(t *testing.T) {
+	// GraphQL returns the envelope on non-2xx status — caller inspects resp.Errors.
+	// (Single-wrap GraphQL envelope is preserved across all status codes; the SDK
+	// does not throw on errors[].)
+	t.Run("GraphQL.Query (500) returns envelope", func(t *testing.T) {
 		client, _, server := newSignedTestClient(t)
 		server.respond = stubGraphQL
-		_, err := client.GraphQL.Query(ctx, GraphQLParams{Query: "{ x }"})
-		if err == nil {
-			t.Fatal("expected error")
+		resp, err := client.GraphQL.Query(ctx, GraphQLParams{Query: "{ x }"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-		var perr *Error
-		if !errors.As(err, &perr) || perr.Status != 500 {
-			t.Errorf("unexpected error: %+v", err)
+		if len(resp.Errors) != 1 || resp.Errors[0].Message != "internal" {
+			t.Errorf("unexpected envelope errors: %+v", resp.Errors)
 		}
 	})
 
-	// And generic helper GraphQLQuery[T] propagates.
-	t.Run("GraphQLQuery[T] propagates server error", func(t *testing.T) {
+	// And generic helper GraphQLQuery[T] surfaces the same envelope.
+	t.Run("GraphQLQuery[T] surfaces envelope errors", func(t *testing.T) {
 		client, _, server := newSignedTestClient(t)
 		server.respond = stubGraphQL
-		_, err := GraphQLQuery[map[string]any](ctx, client, GraphQLParams{Query: "{ x }"})
-		if err == nil {
-			t.Fatal("expected error")
+		resp, err := GraphQLQuery[map[string]any](ctx, client, GraphQLParams{Query: "{ x }"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(resp.Errors) != 1 || resp.Errors[0].Message != "internal" {
+			t.Errorf("unexpected envelope errors: %+v", resp.Errors)
 		}
 	})
 }
@@ -246,10 +256,6 @@ func TestBuyer_ErrorPropagation(t *testing.T) {
 				TicketID: "TKT_AbCdEfGhIjKlMnOpQrStUv", PaymentID: "PAY_AbCdEfGhIjKlMnOpQrStUv",
 				Reason: "r", RequestedAmount: RequestedAmount{Amount: "1", Currency: "USD"},
 			})
-			return err
-		}},
-		{"BuyerGraphQL.Query", func() error {
-			_, err := buyer.GraphQL.Query(ctx, GraphQLParams{Query: "{ x }"})
 			return err
 		}},
 	}
@@ -346,26 +352,38 @@ func TestWebhookPublicKeys_IsZero(t *testing.T) {
 	}
 }
 
-// TestDecodeEnvelope_EmptyAndNullBody covers the early-return branches.
-func TestDecodeEnvelope_EmptyAndNullBody(t *testing.T) {
-	// Empty body, status 500 → returns *Error{Status: 500} with no Errors.
-	err := decodeEnvelope(500, []byte(""), nil)
+// TestPost_EmptyBodyOn5xxReturnsError covers the early-return branch inside
+// httpClient.post: status >= 400 with empty body surfaces *Error{Status}.
+func TestPost_EmptyBodyOn5xxReturnsError(t *testing.T) {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("rsa: %v", err)
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		t.Fatalf("marshal pkcs8: %v", err)
+	}
+	privPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(500)
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := New(Config{
+		MerchantID: "MER_AbCdEfGhIjKlMnOpQrStUv",
+		PrivateKey: privPEM,
+		BaseURL:    srv.URL,
+	})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	_, err = c.Stores.Create(context.Background(), CreateStoreParams{Name: "x"})
 	if err == nil {
-		t.Fatal("expected error for 500 with empty body")
+		t.Fatal("expected error for empty 500 body")
 	}
 	var perr *Error
 	if !errors.As(err, &perr) || perr.Status != 500 {
 		t.Errorf("unexpected error: %+v", err)
-	}
-
-	// Empty body, status 200 → returns nil.
-	if err := decodeEnvelope(200, []byte(""), nil); err != nil {
-		t.Errorf("empty 200 body should succeed: %v", err)
-	}
-
-	// data: null → no unmarshal into out, no error.
-	var out struct{ X string }
-	if err := decodeEnvelope(200, []byte(`{"data":null}`), &out); err != nil {
-		t.Errorf("null data: %v", err)
 	}
 }

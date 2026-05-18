@@ -6,10 +6,15 @@ import "encoding/json"
 // Internal HTTP options
 // -----------------------------------------------------------------------------
 
-// postOptions tunes a single signed POST request. Currently exposes the
-// idempotency-window rotation used by checkout session creation.
+// postOptions tunes a single signed POST request.
 type postOptions struct {
+	// IdempotencyWindow rotates the deterministic idempotency key by time
+	// window (in seconds). Used by checkout session creation.
 	IdempotencyWindow int
+	// NoIdempotency omits the X-Idempotency-Key header entirely. Set for
+	// read-only queries (e.g. GraphQL) so the gateway's 24h idempotency
+	// cache does not serve stale data on identical repeat queries.
+	NoIdempotency bool
 }
 
 // -----------------------------------------------------------------------------
@@ -31,8 +36,9 @@ type IssueSessionTokenParams struct {
 
 // SessionToken is the issued JWT plus its absolute expiration timestamp.
 type SessionToken struct {
-	Token     string `json:"token"`
-	ExpiresAt string `json:"expiresAt"`
+	Token     string   `json:"token"`
+	ExpiresAt string   `json:"expiresAt"`
+	Warnings  []Notice `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -150,7 +156,8 @@ type DeleteStoreParams struct {
 
 // CreateStoreResult wraps the response of Stores.Create / Update / Delete.
 type CreateStoreResult struct {
-	Store Store `json:"store"`
+	Store    Store    `json:"store"`
+	Warnings []Notice `json:"warnings,omitempty"`
 }
 
 // UpdateStoreResult mirrors CreateStoreResult; aliased for ergonomics.
@@ -172,12 +179,13 @@ type AddMerchantParams struct {
 
 // AddMerchantResult is the response of StoreMerchants.Add.
 type AddMerchantResult struct {
-	StoreID    string `json:"storeId"`
-	MerchantID string `json:"merchantId"`
-	Email      string `json:"email"`
-	Role       string `json:"role"`
-	Status     string `json:"status"`
-	AddedAt    string `json:"addedAt"`
+	StoreID    string   `json:"storeId"`
+	MerchantID string   `json:"merchantId"`
+	Email      string   `json:"email"`
+	Role       string   `json:"role"`
+	Status     string   `json:"status"`
+	AddedAt    string   `json:"addedAt"`
+	Warnings   []Notice `json:"warnings,omitempty"`
 }
 
 // RemoveMerchantParams is the input to StoreMerchants.Remove.
@@ -188,8 +196,9 @@ type RemoveMerchantParams struct {
 
 // RemoveMerchantResult is the response of StoreMerchants.Remove.
 type RemoveMerchantResult struct {
-	Message   string `json:"message"`
-	RemovedAt string `json:"removedAt"`
+	Message   string   `json:"message"`
+	RemovedAt string   `json:"removedAt"`
+	Warnings  []Notice `json:"warnings,omitempty"`
 }
 
 // UpdateRoleParams is the input to StoreMerchants.UpdateRole.
@@ -201,10 +210,11 @@ type UpdateRoleParams struct {
 
 // UpdateRoleResult is the response of StoreMerchants.UpdateRole.
 type UpdateRoleResult struct {
-	StoreID    string `json:"storeId"`
-	MerchantID string `json:"merchantId"`
-	Role       string `json:"role"`
-	UpdatedAt  string `json:"updatedAt"`
+	StoreID    string   `json:"storeId"`
+	MerchantID string   `json:"merchantId"`
+	Role       string   `json:"role"`
+	UpdatedAt  string   `json:"updatedAt"`
+	Warnings   []Notice `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -284,7 +294,8 @@ type UpdateOnetimeStatusParams struct {
 
 // OnetimeProductResult wraps the response of one-time product endpoints.
 type OnetimeProductResult struct {
-	Product OnetimeProductDetail `json:"product"`
+	Product  OnetimeProductDetail `json:"product"`
+	Warnings []Notice             `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -344,7 +355,8 @@ type UpdateSubscriptionStatusParams struct {
 
 // SubscriptionProductResult wraps the response of subscription endpoints.
 type SubscriptionProductResult struct {
-	Product SubscriptionProductDetail `json:"product"`
+	Product  SubscriptionProductDetail `json:"product"`
+	Warnings []Notice                  `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -403,7 +415,8 @@ type PublishSubscriptionProductGroupParams struct {
 
 // SubscriptionProductGroupResult wraps the response of group endpoints.
 type SubscriptionProductGroupResult struct {
-	Group SubscriptionProductGroup `json:"group"`
+	Group    SubscriptionProductGroup `json:"group"`
+	Warnings []Notice                 `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -418,8 +431,9 @@ type CancelSubscriptionParams struct {
 
 // CancelSubscriptionResult is the response of CancelSubscription.
 type CancelSubscriptionResult struct {
-	OrderID string                  `json:"orderId"`
-	Status  SubscriptionOrderStatus `json:"status"`
+	OrderID  string                  `json:"orderId"`
+	Status   SubscriptionOrderStatus `json:"status"`
+	Warnings []Notice                `json:"warnings,omitempty"`
 }
 
 // BillingDetail captures buyer billing information for checkout.
@@ -449,9 +463,10 @@ type CreateCheckoutSessionParams struct {
 // CheckoutSessionResult is the response of Checkout.CreateSession and
 // Checkout.Anonymous.Create.
 type CheckoutSessionResult struct {
-	SessionID   string `json:"sessionId"`
-	CheckoutURL string `json:"checkoutUrl"`
-	ExpiresAt   string `json:"expiresAt"`
+	SessionID   string   `json:"sessionId"`
+	CheckoutURL string   `json:"checkoutUrl"`
+	ExpiresAt   string   `json:"expiresAt"`
+	Warnings    []Notice `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -465,8 +480,9 @@ type CancelOnetimeOrderParams struct {
 
 // CancelOnetimeOrderResult is the response of CancelOnetimeOrder.
 type CancelOnetimeOrderResult struct {
-	OrderID string `json:"orderId"`
-	Status  string `json:"status"`
+	OrderID  string   `json:"orderId"`
+	Status   string   `json:"status"`
+	Warnings []Notice `json:"warnings,omitempty"`
 }
 
 // ReactivateSubscriptionParams is the input to
@@ -477,8 +493,9 @@ type ReactivateSubscriptionParams struct {
 
 // ReactivateSubscriptionResult is the response of ReactivateSubscription.
 type ReactivateSubscriptionResult struct {
-	OrderID string `json:"orderId"`
-	Status  string `json:"status"`
+	OrderID  string   `json:"orderId"`
+	Status   string   `json:"status"`
+	Warnings []Notice `json:"warnings,omitempty"`
 }
 
 // RequestedAmount specifies the amount and currency for a refund request.
@@ -532,7 +549,8 @@ type RefundTicket struct {
 
 // RefundTicketResult wraps the refund ticket response envelope.
 type RefundTicketResult struct {
-	Ticket RefundTicket `json:"ticket"`
+	Ticket   RefundTicket `json:"ticket"`
+	Warnings []Notice     `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -558,11 +576,12 @@ type AuthenticatedCheckoutParams struct {
 // AuthenticatedCheckoutResult is the response of Checkout.Authenticated.Create
 // — session and token data merged into one struct.
 type AuthenticatedCheckoutResult struct {
-	SessionID      string `json:"sessionId"`
-	CheckoutURL    string `json:"checkoutUrl"`
-	ExpiresAt      string `json:"expiresAt"`
-	Token          string `json:"token"`
-	TokenExpiresAt string `json:"tokenExpiresAt"`
+	SessionID      string   `json:"sessionId"`
+	CheckoutURL    string   `json:"checkoutUrl"`
+	ExpiresAt      string   `json:"expiresAt"`
+	Token          string   `json:"token"`
+	TokenExpiresAt string   `json:"tokenExpiresAt"`
+	Warnings       []Notice `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -581,27 +600,32 @@ type GraphQLErrorLocation struct {
 	Column int `json:"column"`
 }
 
-// GraphQLError is a single error entry in a GraphQL response.
-type GraphQLError struct {
-	Message   string                 `json:"message"`
-	Locations []GraphQLErrorLocation `json:"locations,omitempty"`
-	Path      []string               `json:"path,omitempty"`
-	AIHint    *string                `json:"aiHint,omitempty"`
-}
+// GraphQLError is the legacy name for {@link Notice}. Same shape (the unified
+// Notice already includes Locations / Path for graphql-js errors). Kept as a
+// type alias for backwards compatibility with existing imports.
+//
+// Deprecated: use Notice.
+type GraphQLError = Notice
 
-// GraphQLWarning is a non-fatal advisory in a GraphQL response.
-type GraphQLWarning struct {
-	Message string  `json:"message"`
-	Layer   string  `json:"layer"`
-	AIHint  *string `json:"aiHint,omitempty"`
-}
+// GraphQLWarning is the legacy name for {@link Notice}. Kept as a type alias.
+//
+// Deprecated: use Notice.
+type GraphQLWarning = Notice
 
 // GraphQLResponse is the untyped GraphQL response — Data is left as raw bytes
 // so callers can unmarshal into whichever struct they prefer.
 type GraphQLResponse struct {
-	Data     json.RawMessage  `json:"data"`
-	Errors   []GraphQLError   `json:"errors,omitempty"`
-	Warnings []GraphQLWarning `json:"warnings,omitempty"`
+	Data     json.RawMessage `json:"data"`
+	Errors   []Notice        `json:"errors,omitempty"`
+	Warnings []Notice        `json:"warnings,omitempty"`
+}
+
+// envelope is the standard wire envelope { data, errors?, warnings? } produced
+// by both REST writes and GraphQL queries (see handbook command-layer.md).
+type envelope struct {
+	Data     json.RawMessage `json:"data"`
+	Errors   []Notice        `json:"errors,omitempty"`
+	Warnings []Notice        `json:"warnings,omitempty"`
 }
 
 // TypedGraphQLResponse is the typed GraphQL response produced by

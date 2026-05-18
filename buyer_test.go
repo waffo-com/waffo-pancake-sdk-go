@@ -179,15 +179,6 @@ func TestBuyer_Methods_HappyPaths(t *testing.T) {
 				return err
 			},
 		},
-		{
-			"GraphQL.Query",
-			"/v1/graphql",
-			map[string]any{"data": map[string]any{"orders": []any{}}},
-			func() error {
-				_, err := buyer.GraphQL.Query(ctx, GraphQLParams{Query: "{ orders { id } }"})
-				return err
-			},
-		},
 	}
 
 	for _, tc := range cases {
@@ -278,12 +269,14 @@ func TestBuyer_ValidationFailures(t *testing.T) {
 }
 
 // TestBuyerGraphQLQuery_Typed covers the top-level generic helper.
+//
+// Wire is the standard single-wrap GraphQL envelope.
 func TestBuyerGraphQLQuery_Typed(t *testing.T) {
 	_, buyer, srv := newBuyerTestClient(t)
 	srv.respond = func(_ recordedRequest) (int, any) {
-		return 200, map[string]any{"data": map[string]any{
+		return 200, map[string]any{
 			"data": map[string]any{"orders": []map[string]string{{"id": "ORD_a"}}},
-		}}
+		}
 	}
 	type R struct {
 		Orders []struct {

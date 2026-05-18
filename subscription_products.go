@@ -21,11 +21,12 @@ func (r *SubscriptionProductsResource) Create(ctx context.Context, p CreateSubsc
 	if err := validatePrices("prices", p.Prices); err != nil {
 		return nil, err
 	}
-	var out SubscriptionProductResult
-	if err := r.http.post(ctx, "/v1/actions/subscription-product/create-product", p, nil, &out); err != nil {
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/create-product", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Update creates a new immutable subscription product version.
@@ -48,11 +49,12 @@ func (r *SubscriptionProductsResource) Update(ctx context.Context, p UpdateSubsc
 			return nil, err
 		}
 	}
-	var out SubscriptionProductResult
-	if err := r.http.post(ctx, "/v1/actions/subscription-product/update-product", p, nil, &out); err != nil {
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/update-product", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // Publish promotes a subscription product's test version to production.
@@ -60,11 +62,12 @@ func (r *SubscriptionProductsResource) Publish(ctx context.Context, p PublishSub
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
-	var out SubscriptionProductResult
-	if err := r.http.post(ctx, "/v1/actions/subscription-product/publish-product", p, nil, &out); err != nil {
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/publish-product", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 // UpdateStatus flips a subscription product between active and inactive.
@@ -75,11 +78,12 @@ func (r *SubscriptionProductsResource) UpdateStatus(ctx context.Context, p Updat
 	if err := validateProductStatus(p.Status); err != nil {
 		return nil, err
 	}
-	var out SubscriptionProductResult
-	if err := r.http.post(ctx, "/v1/actions/subscription-product/update-status", p, nil, &out); err != nil {
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/update-status", p, nil)
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out.Warnings = warnings
+	return out, nil
 }
 
 func validateBillingPeriod(bp BillingPeriod) error {

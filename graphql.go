@@ -27,11 +27,11 @@ func (r *GraphQLResource) Query(ctx context.Context, p GraphQLParams) (*GraphQLR
 	if err := validateRequired("query", p.Query); err != nil {
 		return nil, err
 	}
-	var out GraphQLResponse
-	if err := r.http.post(ctx, "/v1/graphql", p, nil, &out); err != nil {
+	_, env, err := r.http.post(ctx, "/v1/graphql", p, &postOptions{NoIdempotency: true})
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return &GraphQLResponse{Data: env.Data, Errors: env.Errors, Warnings: env.Warnings}, nil
 }
 
 // GraphQLQuery executes a merchant-scoped GraphQL query and unmarshals the
