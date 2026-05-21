@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-05-21
+
+Brings feature parity with `@waffo/pancake-ts@0.9.0`: flat dual-key external-id
+fields across write inputs, response entities, and webhook payload. The same
+field name now appears at every layer (REST request body / response / webhook
+payload / GraphQL types).
+
+### Added
+
+- `CreateCheckoutSessionParams.OrderMerchantExternalID` — order business
+  identifier (optional, max 128 chars). Propagates to order/payment records
+  and surfaces in webhook payload (`data.orderMerchantExternalId`) and
+  GraphQL (`Order.orderMerchantExternalId` / `Payment.orderMerchantExternalId`
+  / `Refund.orderMerchantExternalId`).
+- `CreateRefundTicketParams.RefundTicketMerchantExternalID` — refund-ticket
+  business identifier. Propagates to the executed refund record on PSP
+  success and surfaces in webhook payload
+  (`data.refundTicketMerchantExternalId`) and GraphQL
+  (`RefundTicket.refundTicketMerchantExternalId` /
+  `Refund.refundTicketMerchantExternalId`).
+- `RefundTicket.RefundTicketMerchantExternalID` — read-side response field
+  (immutable across resubmits).
+- `WebhookEventData.OrderMerchantExternalID` and
+  `WebhookEventData.RefundTicketMerchantExternalID` — both coexist on
+  `refund.*` events; order/payment events carry only the order key.
+
+### Notes
+
+Non-breaking; all four new fields are pointer types with `omitempty`. JSON
+tags use camelCase keys aligned with `@waffo/pancake-ts` and the webhook
+envelope. Visitor / store-slug checkout flows silently drop
+`OrderMerchantExternalID` (accepted on the wire, not persisted) because
+merchant business identifiers are not meant to be supplied client-side.
+
 ## [0.2.0] — 2026-05-17
 
 Brings feature parity with `@waffo/pancake-ts@0.8.0`: unified envelope handling

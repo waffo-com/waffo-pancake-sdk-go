@@ -76,6 +76,9 @@ func (s *BuyerSession) CreateRefundTicket(ctx context.Context, p CreateRefundTic
 	if err := validateCurrencyCode("requestedAmount.currency", p.RequestedAmount.Currency); err != nil {
 		return nil, err
 	}
+	if err := validateMaxLength("refundTicketMerchantExternalId", p.RefundTicketMerchantExternalID, 128); err != nil {
+		return nil, err
+	}
 	out, warnings, err := buyerPostAction[RefundTicketResult](ctx, s.http, "/v1/actions/refund-ticket/create-ticket", p)
 	if err != nil {
 		return nil, err

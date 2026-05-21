@@ -86,6 +86,14 @@ func validatePositiveInt(field string, v int) error {
 	return nil
 }
 
+// validateMaxLength checks that an optional string does not exceed max characters.
+func validateMaxLength(field string, v *string, max int) error {
+	if v != nil && len(*v) > max {
+		return newSDKError("%s must be at most %d characters, got %d", field, max, len(*v))
+	}
+	return nil
+}
+
 // validatePrices checks Prices entries — each currency key and price amount.
 func validatePrices(field string, prices Prices) error {
 	if len(prices) == 0 {
@@ -136,6 +144,9 @@ func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 		if err := validatePositiveInt("expiresInSeconds", *p.ExpiresInSeconds); err != nil {
 			return err
 		}
+	}
+	if err := validateMaxLength("orderMerchantExternalId", p.OrderMerchantExternalID, 128); err != nil {
+		return err
 	}
 	return nil
 }

@@ -1,6 +1,9 @@
 package pancake
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidateShortID(t *testing.T) {
 	cases := []struct {
@@ -53,6 +56,23 @@ func TestValidateCountryCode(t *testing.T) {
 	}
 	if err := validateCountryCode("country", "USA"); err == nil {
 		t.Errorf("USA should fail")
+	}
+}
+
+func TestValidateMaxLength(t *testing.T) {
+	// nil pointer (optional field omitted) — accept
+	if err := validateMaxLength("orderMerchantExternalId", nil, 128); err != nil {
+		t.Errorf("nil should pass: %v", err)
+	}
+	// boundary — accept
+	boundary := strings.Repeat("x", 128)
+	if err := validateMaxLength("orderMerchantExternalId", &boundary, 128); err != nil {
+		t.Errorf("128 chars should pass: %v", err)
+	}
+	// over boundary — reject
+	over := strings.Repeat("x", 129)
+	if err := validateMaxLength("orderMerchantExternalId", &over, 128); err == nil {
+		t.Errorf("129 chars should fail")
 	}
 }
 
