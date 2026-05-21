@@ -98,6 +98,7 @@ res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheck
             Amount:      "19.99",
             TaxCategory: pancake.TaxCategoryDigitalGoods,
         },
+        OrderMerchantExternalID: pancake.Ptr("ORDER-2026-00891"), // optional, see Business-Side Identifiers below
     },
     BuyerIdentity: "user-123",
 })
@@ -151,6 +152,8 @@ event, err := pancake.VerifyWebhookTyped[pancake.WebhookEventData](
     &pancake.VerifyWebhookOptions{Environment: pancake.EnvironmentProd},
 )
 // event.Data is pancake.WebhookEventData (struct, not raw bytes)
+// refund.* events carry both event.Data.OrderMerchantExternalID and
+// event.Data.RefundTicketMerchantExternalID — see Business-Side Identifiers below.
 ```
 
 ### Client-instance method
@@ -205,11 +208,23 @@ refund, err := buyer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams{
         Amount:   "29.00",
         Currency: "USD",
     },
+    RefundTicketMerchantExternalID: pancake.Ptr("REF-2026-00012"), // optional, see Business-Side Identifiers below
 })
 ```
 
 The token is scoped to the issuing store and buyer identity. TTL is 5
 minutes and auto-refreshes on each call.
+
+## Business-Side Identifiers
+
+Attach your own internal references to a checkout or a refund ticket so cross-system reconciliation does not require Waffo IDs. Two flat keys, both optional (max 128 chars):
+
+| Field | Attach at | Inherited by |
+|-------|-----------|--------------|
+| `OrderMerchantExternalID` | `Checkout.{Authenticated,Anonymous}.Create` | `Order`, `Payment` (incl. subscription renewals), `Refund` |
+| `RefundTicketMerchantExternalID` | `Buyer.CreateRefundTicket` | `RefundTicket`, `Refund` |
+
+The JSON key (`orderMerchantExternalId` / `refundTicketMerchantExternalId`) is the same at every layer it surfaces: REST request body, response entity, webhook payload (`data.orderMerchantExternalId` / `data.refundTicketMerchantExternalId`), and every GraphQL type that carries the value. A `refund.*` webhook event carries **both** keys (order key inherited from the originating order). Query by either key via GraphQL filters — see the [GraphQL Guide](docs/graphql-guide.md).
 
 ## GraphQL
 
@@ -239,6 +254,26 @@ fmt.Println(typed.Data.Stores[0].Name)
 
 For buyer-scoped queries, use `buyer.GraphQL.Query` or
 `pancake.BuyerGraphQLQuery[T]`.
+
+```go
+// Look up by your business-side identifier (see Business-Side Identifiers above)
+type PaymentsByRef struct {
+    Payments []struct {
+        ID                      string  `json:"id"`
+        OrderID                 string  `json:"orderId"`
+        Status                  string  `json:"status"`
+        OrderMerchantExternalID *string `json:"orderMerchantExternalId"`
+    } `json:"payments"`
+}
+res, _ := pancake.GraphQLQuery[PaymentsByRef](ctx, client, pancake.GraphQLParams{
+    Query: `query ($ref: String!) {
+        payments(filter: { orderMerchantExternalId: { eq: $ref } }) {
+            id orderId status orderMerchantExternalId
+        }
+    }`,
+    Variables: map[string]any{"ref": "ORDER-2026-00891"},
+})
+```
 
 ## Warnings (Migration Notices)
 

@@ -458,6 +458,7 @@ type CreateCheckoutSessionParams struct {
 	ExpiresInSeconds *int              `json:"expiresInSeconds,omitempty"`
 	DarkMode         *bool             `json:"darkMode,omitempty"`
 	Metadata         map[string]string `json:"metadata,omitempty"`
+	OrderMerchantExternalId *string `json:"orderMerchantExternalId,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and
@@ -516,6 +517,8 @@ type CreateRefundTicketParams struct {
 	Reason          string          `json:"reason"`
 	RequestedAmount RequestedAmount `json:"requestedAmount"`
 	Metadata        map[string]any  `json:"metadata,omitempty"`
+	// RefundTicketMerchantExternalID is the refund-ticket business identifier (max 128 chars); inherited by the executed refund on PSP success.
+	RefundTicketMerchantExternalID *string `json:"refundTicketMerchantExternalId,omitempty"`
 }
 
 // ResubmitRefundTicketParams is the input to BuyerSession.ResubmitRefundTicket.
@@ -543,8 +546,10 @@ type RefundTicket struct {
 	Metadata         map[string]any           `json:"metadata"`
 	VersionNumber    *int                     `json:"versionNumber"`
 	VersionData      *RefundTicketVersionData `json:"versionData"`
-	CreatedAt        string                   `json:"createdAt"`
-	UpdatedAt        string                   `json:"updatedAt"`
+	// RefundTicketMerchantExternalID is the refund-ticket business identifier (max 128 chars, immutable across resubmits).
+	RefundTicketMerchantExternalID *string `json:"refundTicketMerchantExternalId"`
+	CreatedAt                      string  `json:"createdAt"`
+	UpdatedAt                      string  `json:"updatedAt"`
 }
 
 // RefundTicketResult wraps the refund ticket response envelope.
@@ -644,13 +649,17 @@ type TypedGraphQLResponse[T any] struct {
 // fields are conditional on the event type — for example refund.* events
 // populate the refund.* fields while leaving the subscription.* fields nil.
 type WebhookEventData struct {
-	OrderID                       string            `json:"orderId"`
-	OrderStatus                   *string           `json:"orderStatus,omitempty"`
-	BuyerEmail                    string            `json:"buyerEmail"`
-	MerchantProvidedBuyerIdentity *string           `json:"merchantProvidedBuyerIdentity,omitempty"`
-	Currency                      string            `json:"currency"`
-	BillingDetail                 map[string]any    `json:"billingDetail,omitempty"`
-	OrderMetadata                 map[string]string `json:"orderMetadata,omitempty"`
+	OrderID                       string  `json:"orderId"`
+	OrderStatus                   *string `json:"orderStatus,omitempty"`
+	BuyerEmail                    string  `json:"buyerEmail"`
+	MerchantProvidedBuyerIdentity *string `json:"merchantProvidedBuyerIdentity,omitempty"`
+	// OrderMerchantExternalID is the order business identifier; present on order/payment + refund events (inherited from order).
+	OrderMerchantExternalID *string `json:"orderMerchantExternalId,omitempty"`
+	// RefundTicketMerchantExternalID is the refund-ticket business identifier; only on refund.* events.
+	RefundTicketMerchantExternalID *string           `json:"refundTicketMerchantExternalId,omitempty"`
+	Currency                       string            `json:"currency"`
+	BillingDetail                  map[string]any    `json:"billingDetail,omitempty"`
+	OrderMetadata                  map[string]string `json:"orderMetadata,omitempty"`
 
 	Amount    string   `json:"amount"`
 	TaxAmount string   `json:"taxAmount"`
