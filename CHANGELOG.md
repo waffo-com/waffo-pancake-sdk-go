@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] — 2026-05-21
+
+### Fixed
+
+- `CreateCheckoutSessionParams.OrderMerchantExternalID` was published as
+  `OrderMerchantExternalId` (lowercase `d`) in v0.3.0, breaking the build for
+  any caller that referenced the canonical Go-style `ID` suffix used by every
+  other identifier in this package. v0.3.1 restores the correct `ID` casing.
+  Wire-level JSON tag is unchanged (`orderMerchantExternalId`).
+
+### Notes
+
+- v0.3.0 is retracted via `go.mod` so the Go toolchain skips it automatically.
+  Upgrade directly to v0.3.1.
+
 ## [0.3.0] — 2026-05-21
 
 Brings feature parity with `@waffo/pancake-ts@0.9.0`: flat dual-key external-id
