@@ -458,7 +458,8 @@ type CreateCheckoutSessionParams struct {
 	ExpiresInSeconds *int              `json:"expiresInSeconds,omitempty"`
 	DarkMode         *bool             `json:"darkMode,omitempty"`
 	Metadata         map[string]string `json:"metadata,omitempty"`
-	OrderMerchantExternalId *string `json:"orderMerchantExternalId,omitempty"`
+	// OrderMerchantExternalID is the order-side business identifier (max 128 chars); inherited by orders, payments, refunds.
+	OrderMerchantExternalID *string `json:"orderMerchantExternalId,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and

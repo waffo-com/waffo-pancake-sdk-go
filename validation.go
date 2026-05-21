@@ -86,10 +86,10 @@ func validatePositiveInt(field string, v int) error {
 	return nil
 }
 
-// validateMaxLength checks that an optional string does not exceed max characters.
-func validateMaxLength(field string, v *string, max int) error {
-	if v != nil && len(*v) > max {
-		return newSDKError("%s must be at most %d characters, got %d", field, max, len(*v))
+// validateMaxLength checks that an optional string does not exceed limit characters.
+func validateMaxLength(field string, v *string, limit int) error {
+	if v != nil && len(*v) > limit {
+		return newSDKError("%s must be at most %d characters, got %d", field, limit, len(*v))
 	}
 	return nil
 }
