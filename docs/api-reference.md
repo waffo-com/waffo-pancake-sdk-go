@@ -81,15 +81,14 @@ res, err := client.Stores.Update(ctx, pancake.UpdateStoreParams{
     ID:           "STO_xxx",
     Name:         pancake.Ptr("Updated Name"),
     SupportEmail: pancake.NullValuePtr("help@example.com"),
+    // Only Notify* toggles are merchant-writable; Email* toggles are platform-managed
+    // and silently dropped server-side if included.
     NotificationSettings: pancake.NullValuePtr(pancake.NotificationSettings{
-        EmailOrderConfirmation:        pancake.Ptr(true),
-        EmailSubscriptionConfirmation: pancake.Ptr(true),
-        EmailSubscriptionCycled:       pancake.Ptr(true),
-        EmailSubscriptionCanceled:     pancake.Ptr(true),
-        EmailSubscriptionRevoked:      pancake.Ptr(true),
-        EmailSubscriptionPastDue:      pancake.Ptr(true),
-        NotifyNewOrders:               pancake.Ptr(true),
-        NotifyNewSubscriptions:        pancake.Ptr(true),
+        NotifyNewOrders:            pancake.Ptr(true),
+        NotifyNewSubscriptions:     pancake.Ptr(false),
+        NotifySubscriptionCanceled: pancake.Ptr(true),
+        NotifyChargeback:           pancake.Ptr(true),
+        NotifyPayoutFailed:         pancake.Ptr(true),
     }),
     CheckoutSettings: pancake.NullValuePtr(pancake.CheckoutSettings{
         Light: pancake.CheckoutThemeSettings{

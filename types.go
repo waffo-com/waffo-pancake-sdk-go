@@ -85,6 +85,10 @@ type RemoveWebhookParams struct {
 // NotificationSettings holds the merchant's email and dashboard notification
 // preferences. All fields are optional on input (omit to keep server-side
 // value); the response always carries the full set.
+//
+// Email* toggles (Email…) are managed by the PANCAKE platform (admin-only via
+// DB) and are silently dropped if passed to the merchant update-store endpoint.
+// Only Notify* toggles are merchant-writable.
 type NotificationSettings struct {
 	EmailOrderConfirmation        *bool `json:"emailOrderConfirmation,omitempty"`
 	EmailSubscriptionConfirmation *bool `json:"emailSubscriptionConfirmation,omitempty"`
@@ -92,8 +96,19 @@ type NotificationSettings struct {
 	EmailSubscriptionCanceled     *bool `json:"emailSubscriptionCanceled,omitempty"`
 	EmailSubscriptionRevoked      *bool `json:"emailSubscriptionRevoked,omitempty"`
 	EmailSubscriptionPastDue      *bool `json:"emailSubscriptionPastDue,omitempty"`
+	EmailTrialStarted             *bool `json:"emailTrialStarted,omitempty"`
+	EmailTrialEnding              *bool `json:"emailTrialEnding,omitempty"`
 	NotifyNewOrders               *bool `json:"notifyNewOrders,omitempty"`
 	NotifyNewSubscriptions        *bool `json:"notifyNewSubscriptions,omitempty"`
+	NotifySubscriptionCanceled    *bool `json:"notifySubscriptionCanceled,omitempty"`
+	NotifySubscriptionEnded       *bool `json:"notifySubscriptionEnded,omitempty"`
+	NotifySubscriptionPastDue     *bool `json:"notifySubscriptionPastDue,omitempty"`
+	NotifySubscriptionRenewed     *bool `json:"notifySubscriptionRenewed,omitempty"`
+	NotifySubscriptionUncanceled  *bool `json:"notifySubscriptionUncanceled,omitempty"`
+	NotifySubscriptionUpdated     *bool `json:"notifySubscriptionUpdated,omitempty"`
+	NotifyChargeback              *bool `json:"notifyChargeback,omitempty"`
+	NotifyPayoutCompleted         *bool `json:"notifyPayoutCompleted,omitempty"`
+	NotifyPayoutFailed            *bool `json:"notifyPayoutFailed,omitempty"`
 }
 
 // CheckoutThemeSettings holds checkout page styling for a single theme.
