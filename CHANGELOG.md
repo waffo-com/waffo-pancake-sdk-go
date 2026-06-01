@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-06-01
+
+Brings feature parity with `@waffo/pancake-ts@0.10.0`: the full 19-field
+`NotificationSettings` schema (8 consumer-email + 11 merchant-notify toggles).
+
+### Added
+
+- `NotificationSettings` gains 11 fields aligning with the platform schema:
+  - Consumer email (platform-managed, silently dropped if included):
+    `EmailTrialStarted`, `EmailTrialEnding`
+  - Merchant notify (merchant-writable): `NotifySubscriptionCanceled`,
+    `NotifySubscriptionEnded`, `NotifySubscriptionPastDue`,
+    `NotifySubscriptionRenewed`, `NotifySubscriptionUncanceled`,
+    `NotifySubscriptionUpdated`, `NotifyChargeback`, `NotifyPayoutCompleted`,
+    `NotifyPayoutFailed`
+
+### Notes
+
+Non-breaking and purely additive — all new fields are `*bool` and `omitempty`.
+Unlike `@waffo/pancake-ts@0.10.0`, this SDK does **not** introduce a separate
+`MerchantWritableNotificationSettings` type because Go cannot express
+compile-time field-set narrowing on a single struct. The `Email*` toggles
+remain present on `NotificationSettings` for response decoding (the server
+returns all 19 fields) but are documented as silently dropped on update.
+
 ## [0.3.1] — 2026-05-21
 
 ### Fixed
