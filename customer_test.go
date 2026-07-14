@@ -301,7 +301,8 @@ func TestDeprecatedBuyerAliases(t *testing.T) {
 		return 200, map[string]any{"data": map[string]any{"orderId": "ORD_AbCdEfGhIjKlMnOpQrStUv", "status": "canceled"}}
 	}
 
-	var session *BuyerSession = c.Buyer("JWT_CUSTOMER_TOKEN")
+	session := c.Buyer("JWT_CUSTOMER_TOKEN")
+	var _ *BuyerSession = session
 	var _ *BuyerGraphQLResource = session.GraphQL
 
 	res, err := session.CancelOnetimeOrder(context.Background(), CancelOnetimeOrderParams{
