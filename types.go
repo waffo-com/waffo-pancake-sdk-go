@@ -21,12 +21,12 @@ type postOptions struct {
 // Auth
 // -----------------------------------------------------------------------------
 
-// IssueSessionTokenParams names the buyer for whom a session token should be
-// minted. Provide either StoreID or ProductID — when only ProductID is given
-// the server derives the store from the product.
+// IssueSessionTokenParams names the customer for whom a session token should
+// be minted. Provide either StoreID or ProductID — when only ProductID is
+// given the server derives the store from the product.
 type IssueSessionTokenParams struct {
-	// BuyerIdentity is encoded into the JWT payload for merchant-side buyer
-	// identification. Accepts an email or any merchant-provided identifier
+	// BuyerIdentity is encoded into the JWT payload for merchant-side
+	// customer identification. Accepts an email or any merchant-provided identifier
 	// string. To pre-fill the checkout page's email input use BuyerEmail on
 	// Checkout.Authenticated.Create instead.
 	BuyerIdentity string  `json:"buyerIdentity"`
@@ -439,7 +439,7 @@ type SubscriptionProductGroupResult struct {
 // -----------------------------------------------------------------------------
 
 // CancelSubscriptionParams is the input to Orders.CancelSubscription and to
-// BuyerSession.CancelSubscription.
+// CustomerSession.CancelSubscription.
 type CancelSubscriptionParams struct {
 	OrderID string `json:"orderId"`
 }
@@ -451,7 +451,7 @@ type CancelSubscriptionResult struct {
 	Warnings []Notice                `json:"warnings,omitempty"`
 }
 
-// BillingDetail captures buyer billing information for checkout.
+// BillingDetail captures customer billing information for checkout.
 type BillingDetail struct {
 	Country      string  `json:"country"`
 	IsBusiness   bool    `json:"isBusiness"`
@@ -487,10 +487,10 @@ type CheckoutSessionResult struct {
 }
 
 // -----------------------------------------------------------------------------
-// Buyer self-service
+// Customer self-service
 // -----------------------------------------------------------------------------
 
-// CancelOnetimeOrderParams is the input to BuyerSession.CancelOnetimeOrder.
+// CancelOnetimeOrderParams is the input to CustomerSession.CancelOnetimeOrder.
 type CancelOnetimeOrderParams struct {
 	OrderID string `json:"orderId"`
 }
@@ -503,7 +503,7 @@ type CancelOnetimeOrderResult struct {
 }
 
 // ReactivateSubscriptionParams is the input to
-// BuyerSession.ReactivateSubscription.
+// CustomerSession.ReactivateSubscription.
 type ReactivateSubscriptionParams struct {
 	OrderID string `json:"orderId"`
 }
@@ -527,7 +527,7 @@ type RefundTicketVersionData struct {
 	RequestedAmount *RequestedAmount `json:"requestedAmount"`
 }
 
-// CreateRefundTicketParams is the input to BuyerSession.CreateRefundTicket.
+// CreateRefundTicketParams is the input to CustomerSession.CreateRefundTicket.
 type CreateRefundTicketParams struct {
 	PaymentID       string          `json:"paymentId"`
 	Reason          string          `json:"reason"`
@@ -537,7 +537,8 @@ type CreateRefundTicketParams struct {
 	RefundTicketMerchantExternalID *string `json:"refundTicketMerchantExternalId,omitempty"`
 }
 
-// ResubmitRefundTicketParams is the input to BuyerSession.ResubmitRefundTicket.
+// ResubmitRefundTicketParams is the input to
+// CustomerSession.ResubmitRefundTicket.
 type ResubmitRefundTicketParams struct {
 	TicketID        string          `json:"ticketId"`
 	PaymentID       string          `json:"paymentId"`
@@ -588,7 +589,7 @@ type AnonymousCheckoutParams = CreateCheckoutSessionParams
 // create-session endpoint.
 type AuthenticatedCheckoutParams struct {
 	CreateCheckoutSessionParams
-	// BuyerIdentity is encoded into the JWT for merchant-side buyer
+	// BuyerIdentity is encoded into the JWT for merchant-side customer
 	// identification. Use BuyerEmail to pre-fill the checkout form's email
 	// input; the two fields are independent.
 	BuyerIdentity string `json:"-"`
@@ -650,7 +651,7 @@ type envelope struct {
 }
 
 // TypedGraphQLResponse is the typed GraphQL response produced by
-// [GraphQLQuery] / [BuyerGraphQLQuery].
+// [GraphQLQuery] / [CustomerGraphQLQuery].
 type TypedGraphQLResponse[T any] struct {
 	Data     T                `json:"data"`
 	Errors   []GraphQLError   `json:"errors,omitempty"`

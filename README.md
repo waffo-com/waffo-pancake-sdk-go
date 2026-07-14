@@ -20,7 +20,7 @@ Requires Go 1.22 or newer.
 
 > Most merchants create stores and products in the
 > [Dashboard](https://pancake.waffo.ai/dashboard). The SDK is primarily used
-> for checkout integration — redirecting buyers from your site to the Waffo
+> for checkout integration — redirecting customers from your site to the Waffo
 > checkout page.
 
 ```go
@@ -59,7 +59,7 @@ func main() {
         log.Fatal(err)
     }
 
-    // Redirect the buyer to result.CheckoutURL (includes #token=...).
+    // Redirect the customer to result.CheckoutURL (includes #token=...).
     fmt.Println(result.CheckoutURL)
 }
 ```
@@ -81,14 +81,14 @@ literal `\n` from env vars, Windows line endings, and raw base64.
 
 Two flows, mirroring the TypeScript SDK:
 
-| Mode          | Method                                | Buyer identity     | Form state | Use case                                 |
+| Mode          | Method                                | Customer identity     | Form state | Use case                                 |
 | ------------- | ------------------------------------- | ------------------ | ---------- | ---------------------------------------- |
 | Authenticated | `Checkout.Authenticated.Create(...)`  | Merchant-provided  | Pre-filled | Sites with user accounts (recommended)   |
 | Anonymous     | `Checkout.Anonymous.Create(...)`      | None               | Empty      | Template stores, one-time purchase links |
 
 ```go
 // Authenticated (recommended): identity binds the order to a stable
-// merchant-controlled ID even if the buyer changes the email on the form.
+// merchant-controlled ID even if the customer changes the email on the form.
 res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheckoutParams{
     CreateCheckoutSessionParams: pancake.CreateCheckoutSessionParams{
         ProductID:  "PROD_...",
@@ -103,14 +103,14 @@ res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheck
     BuyerIdentity: "user-123",
 })
 
-// Anonymous: buyer fills the form themselves.
+// Anonymous: customer fills the form themselves.
 res, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParams{
     ProductID: "PROD_...",
     Currency:  "USD",
 })
 ```
 
-Opening the URL in a new tab is recommended so buyers can return to your site
+Opening the URL in a new tab is recommended so customers can return to your site
 without losing page state.
 
 ## Webhook Verification
@@ -183,7 +183,7 @@ For each environment, public keys are resolved in priority order:
 Replay protection: timestamps outside a 5-minute window are rejected. Set
 `VerifyWebhookOptions.ToleranceMS` to a negative value to disable.
 
-## Buyer Self-Service
+## Customer Self-Service
 
 ```go
 // Issue a session token on your backend.
@@ -192,16 +192,16 @@ tok, err := client.Auth.IssueSessionToken(ctx, pancake.IssueSessionTokenParams{
     BuyerIdentity: "user-123",
 })
 
-// Hand off to the buyer session.
-buyer := client.Buyer(tok.Token)
+// Hand off to the customer session.
+customer := client.Customer(tok.Token)
 
 // Cancel a subscription.
-res, err := buyer.CancelSubscription(ctx, pancake.CancelSubscriptionParams{
+res, err := customer.CancelSubscription(ctx, pancake.CancelSubscriptionParams{
     OrderID: "ORD_...",
 })
 
 // Submit a refund request.
-refund, err := buyer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams{
+refund, err := customer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams{
     PaymentID: "PAY_...",
     Reason:    "Product not as described",
     RequestedAmount: pancake.RequestedAmount{
@@ -212,7 +212,7 @@ refund, err := buyer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams{
 })
 ```
 
-The token is scoped to the issuing store and buyer identity. TTL is 5
+The token is scoped to the issuing store and customer identity. TTL is 5
 minutes and auto-refreshes on each call.
 
 ## Business-Side Identifiers
@@ -222,7 +222,7 @@ Attach your own internal references to a checkout or a refund ticket so cross-sy
 | Field | Attach at | Inherited by |
 |-------|-----------|--------------|
 | `OrderMerchantExternalID` | `Checkout.{Authenticated,Anonymous}.Create` | `Order`, `Payment` (incl. subscription renewals), `Refund` |
-| `RefundTicketMerchantExternalID` | `Buyer.CreateRefundTicket` | `RefundTicket`, `Refund` |
+| `RefundTicketMerchantExternalID` | `Customer.CreateRefundTicket` | `RefundTicket`, `Refund` |
 
 The JSON key (`orderMerchantExternalId` / `refundTicketMerchantExternalId`) is the same at every layer it surfaces: REST request body, response entity, webhook payload (`data.orderMerchantExternalId` / `data.refundTicketMerchantExternalId`), and every GraphQL type that carries the value. A `refund.*` webhook event carries **both** keys (order key inherited from the originating order). Query by either key via GraphQL filters — see the [GraphQL Guide](docs/graphql-guide.md).
 
@@ -252,8 +252,8 @@ typed, err := pancake.GraphQLQuery[StoresQuery](ctx, client, pancake.GraphQLPara
 fmt.Println(typed.Data.Stores[0].Name)
 ```
 
-For buyer-scoped queries, use `buyer.GraphQL.Query` or
-`pancake.BuyerGraphQLQuery[T]`.
+For customer-scoped queries, use `customer.GraphQL.Query` or
+`pancake.CustomerGraphQLQuery[T]`.
 
 ```go
 // Look up by your business-side identifier (see Business-Side Identifiers above)
@@ -373,7 +373,7 @@ distinguished from server-returned errors.
 | `client.Checkout`                    | `CreateSession`, `Anonymous.Create`, `Authenticated.Create`                                                                              |
 | `client.GraphQL`                     | `Query` (also `pancake.GraphQLQuery[T]`)                                                                                                 |
 | `client.Webhooks`                    | `Add`, `Update`, `Remove`, `Verify` (also `pancake.VerifyWebhook` / `pancake.VerifyWebhookTyped[T]`)                                     |
-| `client.Buyer(token)`                | `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, `GraphQL.Query`      |
+| `client.Customer(token)`                | `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, `GraphQL.Query`      |
 
 ## Optional fields
 

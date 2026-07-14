@@ -226,12 +226,12 @@ func TestGraphQL_NonJSONBodyReturnsError(t *testing.T) {
 	}
 }
 
-// TestBuyerGraphQL_WireShapes mirrors the merchant suite for the Bearer-auth path.
-func TestBuyerGraphQL_WireShapes(t *testing.T) {
+// TestCustomerGraphQL_WireShapes mirrors the merchant suite for the Bearer-auth path.
+func TestCustomerGraphQL_WireShapes(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success returns data verbatim", func(t *testing.T) {
-		_, buyer, srv := newBuyerTestClient(t)
+		_, customer, srv := newCustomerTestClient(t)
 		srv.respond = func(_ recordedRequest) (int, any) {
 			return 200, map[string]any{
 				"data": map[string]any{
@@ -239,7 +239,7 @@ func TestBuyerGraphQL_WireShapes(t *testing.T) {
 				},
 			}
 		}
-		resp, err := buyer.GraphQL.Query(ctx, GraphQLParams{Query: "{ orders { id status } }"})
+		resp, err := customer.GraphQL.Query(ctx, GraphQLParams{Query: "{ orders { id status } }"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -255,14 +255,14 @@ func TestBuyerGraphQL_WireShapes(t *testing.T) {
 	})
 
 	t.Run("HTTP 403 returns envelope instead of throwing", func(t *testing.T) {
-		_, buyer, srv := newBuyerTestClient(t)
+		_, customer, srv := newCustomerTestClient(t)
 		srv.respond = func(_ recordedRequest) (int, any) {
 			return 403, map[string]any{
 				"data":   nil,
 				"errors": []map[string]any{{"message": "session expired", "layer": "gateway"}},
 			}
 		}
-		resp, err := buyer.GraphQL.Query(ctx, GraphQLParams{Query: "{ orders { id } }"})
+		resp, err := customer.GraphQL.Query(ctx, GraphQLParams{Query: "{ orders { id } }"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

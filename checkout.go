@@ -8,9 +8,9 @@ import (
 // CheckoutResource creates checkout sessions and offers two convenience
 // sub-resources (Anonymous and Authenticated) for the most common flows.
 type CheckoutResource struct {
-	// Anonymous creates checkout sessions without a buyer identity.
+	// Anonymous creates checkout sessions without a customer identity.
 	Anonymous *CheckoutAnonymousResource
-	// Authenticated creates checkout sessions that include a buyer-session
+	// Authenticated creates checkout sessions that include a customer-session
 	// token for post-purchase self-service.
 	Authenticated *CheckoutAuthenticatedResource
 
@@ -34,7 +34,7 @@ func newCheckoutResource(h *httpClient) *CheckoutResource {
 //	    ProductID: "PROD_...",
 //	    Currency:  "USD",
 //	})
-//	// Redirect the buyer to session.CheckoutURL.
+//	// Redirect the customer to session.CheckoutURL.
 func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSessionParams) (*CheckoutSessionResult, error) {
 	if err := validateCheckoutCommon(&p); err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSe
 	return out, nil
 }
 
-// CheckoutAnonymousResource creates checkout sessions without a buyer
+// CheckoutAnonymousResource creates checkout sessions without a customer
 // identity. The form on the checkout page is left blank unless BuyerEmail or
 // BillingDetail are supplied.
 type CheckoutAnonymousResource struct {
@@ -75,13 +75,13 @@ func (r *CheckoutAnonymousResource) Create(ctx context.Context, p AnonymousCheck
 }
 
 // CheckoutAuthenticatedResource creates checkout sessions with a merchant-
-// provided buyer identity. It issues a session token in parallel with the
+// provided customer identity. It issues a session token in parallel with the
 // session creation and appends "#token=..." to the returned URL.
 type CheckoutAuthenticatedResource struct {
 	http *httpClient
 }
 
-// Create issues a buyer session token and creates a checkout session
+// Create issues a customer session token and creates a checkout session
 // concurrently, then returns a unified result whose CheckoutURL carries the
 // token as a URL fragment.
 //

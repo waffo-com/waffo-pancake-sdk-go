@@ -10,16 +10,17 @@ import (
 	"strings"
 )
 
-// buyerHTTPClient performs Bearer-authenticated POST requests for buyer
-// self-service operations. Not exported — consumers go through BuyerSession.
-type buyerHTTPClient struct {
+// customerHTTPClient performs Bearer-authenticated POST requests for customer
+// self-service operations. Not exported — consumers go through
+// CustomerSession.
+type customerHTTPClient struct {
 	token   string
 	baseURL string
 	client  *http.Client
 }
 
-func newBuyerHTTPClient(token, baseURL string, h *http.Client) *buyerHTTPClient {
-	return &buyerHTTPClient{
+func newCustomerHTTPClient(token, baseURL string, h *http.Client) *customerHTTPClient {
+	return &customerHTTPClient{
 		token:   token,
 		baseURL: strings.TrimRight(baseURL, "/"),
 		client:  h,
@@ -28,7 +29,7 @@ func newBuyerHTTPClient(token, baseURL string, h *http.Client) *buyerHTTPClient 
 
 // post sends a Bearer-authenticated POST and returns the full envelope plus
 // HTTP status. Does not throw on errors[] — caller inspects the envelope.
-func (c *buyerHTTPClient) post(ctx context.Context, path string, body any) (int, *envelope, error) {
+func (c *customerHTTPClient) post(ctx context.Context, path string, body any) (int, *envelope, error) {
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return 0, nil, fmt.Errorf("marshal request body: %w", err)

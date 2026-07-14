@@ -139,10 +139,10 @@ func TestCreateCheckoutSession_RejectsOrderMerchantExternalIDOver128(t *testing.
 	}
 }
 
-func TestBuyerCreateRefundTicket_RejectsRefundTicketMerchantExternalIDOver128(t *testing.T) {
+func TestCustomerCreateRefundTicket_RejectsRefundTicketMerchantExternalIDOver128(t *testing.T) {
 	client, _, _ := newSignedTestClient(t)
 	long := strings.Repeat("x", 129)
-	if _, err := client.Buyer("token").CreateRefundTicket(context.Background(), CreateRefundTicketParams{
+	if _, err := client.Customer("token").CreateRefundTicket(context.Background(), CreateRefundTicketParams{
 		PaymentID:                      "PAY_AbCdEfGhIjKlMnOpQrStUv",
 		Reason:                         "defective",
 		RequestedAmount:                RequestedAmount{Amount: "29.00", Currency: "USD"},

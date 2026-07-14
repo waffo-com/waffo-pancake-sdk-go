@@ -2,12 +2,12 @@ package pancake
 
 import "context"
 
-// AuthResource issues session tokens for buyers.
+// AuthResource issues session tokens for customers.
 type AuthResource struct {
 	http *httpClient
 }
 
-// IssueSessionToken mints a buyer session JWT. Provide either StoreID or
+// IssueSessionToken mints a customer session JWT. Provide either StoreID or
 // ProductID — when only ProductID is given the server derives the store from
 // the product.
 //

@@ -20,16 +20,16 @@ import (
 	"time"
 )
 
-// buyerTestServer accepts Bearer-authenticated requests and records each one.
-type buyerTestServer struct {
+// customerTestServer accepts Bearer-authenticated requests and records each one.
+type customerTestServer struct {
 	srv     *httptest.Server
 	mu      sync.Mutex
 	reqs    []recordedRequest
 	respond func(req recordedRequest) (status int, body any)
 }
 
-func newBuyerTestServer() *buyerTestServer {
-	s := &buyerTestServer{
+func newCustomerTestServer() *customerTestServer {
+	s := &customerTestServer{
 		respond: func(_ recordedRequest) (int, any) {
 			return 200, map[string]any{"data": map[string]any{}}
 		},
@@ -54,7 +54,7 @@ func newBuyerTestServer() *buyerTestServer {
 	return s
 }
 
-func (s *buyerTestServer) requests() []recordedRequest {
+func (s *customerTestServer) requests() []recordedRequest {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := make([]recordedRequest, len(s.reqs))
@@ -62,7 +62,7 @@ func (s *buyerTestServer) requests() []recordedRequest {
 	return out
 }
 
-func newBuyerTestClient(t *testing.T) (*Client, *BuyerSession, *buyerTestServer) {
+func newCustomerTestClient(t *testing.T) (*Client, *CustomerSession, *customerTestServer) {
 	t.Helper()
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -74,7 +74,7 @@ func newBuyerTestClient(t *testing.T) (*Client, *BuyerSession, *buyerTestServer)
 	}
 	privPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
 
-	srv := newBuyerTestServer()
+	srv := newCustomerTestServer()
 	t.Cleanup(func() { srv.srv.Close() })
 
 	c, err := New(Config{
@@ -85,17 +85,17 @@ func newBuyerTestClient(t *testing.T) (*Client, *BuyerSession, *buyerTestServer)
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
-	buyer := c.Buyer("JWT_BUYER_TOKEN")
-	return c, buyer, srv
+	customer := c.Customer("JWT_CUSTOMER_TOKEN")
+	return c, customer, srv
 }
 
-func TestBuyer_AttachesBearer(t *testing.T) {
-	_, buyer, srv := newBuyerTestClient(t)
+func TestCustomer_AttachesBearer(t *testing.T) {
+	_, customer, srv := newCustomerTestClient(t)
 	srv.respond = func(_ recordedRequest) (int, any) {
 		return 200, map[string]any{"data": map[string]any{"orderId": "ORD_AbCdEfGhIjKlMnOpQrStUv", "status": "canceled"}}
 	}
 
-	if _, err := buyer.CancelOnetimeOrder(context.Background(), CancelOnetimeOrderParams{
+	if _, err := customer.CancelOnetimeOrder(context.Background(), CancelOnetimeOrderParams{
 		OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv",
 	}); err != nil {
 		t.Fatalf("cancel: %v", err)
@@ -104,14 +104,14 @@ func TestBuyer_AttachesBearer(t *testing.T) {
 	if len(reqs) != 1 {
 		t.Fatalf("expected 1 req, got %d", len(reqs))
 	}
-	if got, want := reqs[0].Headers.Get("Authorization"), "Bearer JWT_BUYER_TOKEN"; got != want {
+	if got, want := reqs[0].Headers.Get("Authorization"), "Bearer JWT_CUSTOMER_TOKEN"; got != want {
 		t.Errorf("Authorization header = %q, want %q", got, want)
 	}
 }
 
-func TestBuyer_Methods_HappyPaths(t *testing.T) {
+func TestCustomer_Methods_HappyPaths(t *testing.T) {
 	ctx := context.Background()
-	_, buyer, srv := newBuyerTestClient(t)
+	_, customer, srv := newCustomerTestClient(t)
 
 	cases := []struct {
 		name     string
@@ -124,7 +124,7 @@ func TestBuyer_Methods_HappyPaths(t *testing.T) {
 			"/v1/actions/subscription-order/cancel-order",
 			map[string]any{"orderId": "ORD_AbCdEfGhIjKlMnOpQrStUv", "status": "canceling"},
 			func() error {
-				_, err := buyer.CancelSubscription(ctx, CancelSubscriptionParams{
+				_, err := customer.CancelSubscription(ctx, CancelSubscriptionParams{
 					OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv",
 				})
 				return err
@@ -135,7 +135,7 @@ func TestBuyer_Methods_HappyPaths(t *testing.T) {
 			"/v1/actions/onetime-order/cancel-order",
 			map[string]any{"orderId": "ORD_AbCdEfGhIjKlMnOpQrStUv", "status": "canceled"},
 			func() error {
-				_, err := buyer.CancelOnetimeOrder(ctx, CancelOnetimeOrderParams{
+				_, err := customer.CancelOnetimeOrder(ctx, CancelOnetimeOrderParams{
 					OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv",
 				})
 				return err
@@ -146,7 +146,7 @@ func TestBuyer_Methods_HappyPaths(t *testing.T) {
 			"/v1/actions/subscription-order/reactivate-order",
 			map[string]any{"orderId": "ORD_AbCdEfGhIjKlMnOpQrStUv", "status": "active"},
 			func() error {
-				_, err := buyer.ReactivateSubscription(ctx, ReactivateSubscriptionParams{
+				_, err := customer.ReactivateSubscription(ctx, ReactivateSubscriptionParams{
 					OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv",
 				})
 				return err
@@ -157,7 +157,7 @@ func TestBuyer_Methods_HappyPaths(t *testing.T) {
 			"/v1/actions/refund-ticket/create-ticket",
 			map[string]any{"ticket": map[string]any{"id": "TKT_AbCdEfGhIjKlMnOpQrStUv", "type": "refund", "status": "pending", "subjectId": "PAY_x", "submitterId": "x", "submitterType": "customer", "metadata": map[string]any{}, "createdAt": "z", "updatedAt": "z"}},
 			func() error {
-				_, err := buyer.CreateRefundTicket(ctx, CreateRefundTicketParams{
+				_, err := customer.CreateRefundTicket(ctx, CreateRefundTicketParams{
 					PaymentID:       "PAY_AbCdEfGhIjKlMnOpQrStUv",
 					Reason:          "did not work",
 					RequestedAmount: RequestedAmount{Amount: "29.00", Currency: "USD"},
@@ -170,7 +170,7 @@ func TestBuyer_Methods_HappyPaths(t *testing.T) {
 			"/v1/actions/refund-ticket/resubmit-ticket",
 			map[string]any{"ticket": map[string]any{"id": "TKT_AbCdEfGhIjKlMnOpQrStUv", "type": "refund", "status": "under_review", "subjectId": "PAY_x", "submitterId": "x", "submitterType": "customer", "metadata": map[string]any{}, "createdAt": "z", "updatedAt": "z"}},
 			func() error {
-				_, err := buyer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
+				_, err := customer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
 					TicketID:        "TKT_AbCdEfGhIjKlMnOpQrStUv",
 					PaymentID:       "PAY_AbCdEfGhIjKlMnOpQrStUv",
 					Reason:          "more detail",
@@ -201,28 +201,28 @@ func TestBuyer_Methods_HappyPaths(t *testing.T) {
 	}
 }
 
-func TestBuyer_ValidationFailures(t *testing.T) {
+func TestCustomer_ValidationFailures(t *testing.T) {
 	ctx := context.Background()
-	_, buyer, _ := newBuyerTestClient(t)
+	_, customer, _ := newCustomerTestClient(t)
 
 	cases := []struct {
 		name string
 		call func() error
 	}{
 		{"CancelSubscription bad id", func() error {
-			_, err := buyer.CancelSubscription(ctx, CancelSubscriptionParams{OrderID: "bad"})
+			_, err := customer.CancelSubscription(ctx, CancelSubscriptionParams{OrderID: "bad"})
 			return err
 		}},
 		{"CancelOnetimeOrder bad id", func() error {
-			_, err := buyer.CancelOnetimeOrder(ctx, CancelOnetimeOrderParams{OrderID: "bad"})
+			_, err := customer.CancelOnetimeOrder(ctx, CancelOnetimeOrderParams{OrderID: "bad"})
 			return err
 		}},
 		{"ReactivateSubscription bad id", func() error {
-			_, err := buyer.ReactivateSubscription(ctx, ReactivateSubscriptionParams{OrderID: "bad"})
+			_, err := customer.ReactivateSubscription(ctx, ReactivateSubscriptionParams{OrderID: "bad"})
 			return err
 		}},
 		{"CreateRefundTicket bad payment id", func() error {
-			_, err := buyer.CreateRefundTicket(ctx, CreateRefundTicketParams{
+			_, err := customer.CreateRefundTicket(ctx, CreateRefundTicketParams{
 				PaymentID:       "bad",
 				Reason:          "r",
 				RequestedAmount: RequestedAmount{Amount: "1", Currency: "USD"},
@@ -230,7 +230,7 @@ func TestBuyer_ValidationFailures(t *testing.T) {
 			return err
 		}},
 		{"CreateRefundTicket bad currency", func() error {
-			_, err := buyer.CreateRefundTicket(ctx, CreateRefundTicketParams{
+			_, err := customer.CreateRefundTicket(ctx, CreateRefundTicketParams{
 				PaymentID:       "PAY_AbCdEfGhIjKlMnOpQrStUv",
 				Reason:          "r",
 				RequestedAmount: RequestedAmount{Amount: "1", Currency: "usd"},
@@ -238,7 +238,7 @@ func TestBuyer_ValidationFailures(t *testing.T) {
 			return err
 		}},
 		{"ResubmitRefundTicket bad ticket id", func() error {
-			_, err := buyer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
+			_, err := customer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
 				TicketID:        "bad",
 				PaymentID:       "PAY_AbCdEfGhIjKlMnOpQrStUv",
 				Reason:          "r",
@@ -247,7 +247,7 @@ func TestBuyer_ValidationFailures(t *testing.T) {
 			return err
 		}},
 		{"GraphQL.Query empty", func() error {
-			_, err := buyer.GraphQL.Query(ctx, GraphQLParams{})
+			_, err := customer.GraphQL.Query(ctx, GraphQLParams{})
 			return err
 		}},
 	}
@@ -268,11 +268,11 @@ func TestBuyer_ValidationFailures(t *testing.T) {
 	}
 }
 
-// TestBuyerGraphQLQuery_Typed covers the top-level generic helper.
+// TestCustomerGraphQLQuery_Typed covers the top-level generic helper.
 //
 // Wire is the standard single-wrap GraphQL envelope.
-func TestBuyerGraphQLQuery_Typed(t *testing.T) {
-	_, buyer, srv := newBuyerTestClient(t)
+func TestCustomerGraphQLQuery_Typed(t *testing.T) {
+	_, customer, srv := newCustomerTestClient(t)
 	srv.respond = func(_ recordedRequest) (int, any) {
 		return 200, map[string]any{
 			"data": map[string]any{"orders": []map[string]string{{"id": "ORD_a"}}},
@@ -283,9 +283,54 @@ func TestBuyerGraphQLQuery_Typed(t *testing.T) {
 			ID string `json:"id"`
 		} `json:"orders"`
 	}
-	resp, err := BuyerGraphQLQuery[R](context.Background(), buyer, GraphQLParams{Query: "{ orders { id } }"})
+	resp, err := CustomerGraphQLQuery[R](context.Background(), customer, GraphQLParams{Query: "{ orders { id } }"})
 	if err != nil {
 		t.Fatalf("typed: %v", err)
+	}
+	if len(resp.Data.Orders) != 1 || resp.Data.Orders[0].ID != "ORD_a" {
+		t.Fatalf("typed data not deserialized: %+v", resp.Data)
+	}
+}
+
+// TestDeprecatedBuyerAliases ensures the deprecated buyer-named API surface
+// still compiles and works: Client.Buyer, the BuyerSession /
+// BuyerGraphQLResource type aliases, and the BuyerGraphQLQuery wrapper.
+func TestDeprecatedBuyerAliases(t *testing.T) {
+	c, _, srv := newCustomerTestClient(t)
+	srv.respond = func(_ recordedRequest) (int, any) {
+		return 200, map[string]any{"data": map[string]any{"orderId": "ORD_AbCdEfGhIjKlMnOpQrStUv", "status": "canceled"}}
+	}
+
+	var session *BuyerSession = c.Buyer("JWT_CUSTOMER_TOKEN")
+	var _ *BuyerGraphQLResource = session.GraphQL
+
+	res, err := session.CancelOnetimeOrder(context.Background(), CancelOnetimeOrderParams{
+		OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv",
+	})
+	if err != nil {
+		t.Fatalf("cancel via deprecated Buyer session: %v", err)
+	}
+	if res.Status != "canceled" {
+		t.Errorf("status = %q, want %q", res.Status, "canceled")
+	}
+	reqs := srv.requests()
+	if got, want := reqs[len(reqs)-1].Headers.Get("Authorization"), "Bearer JWT_CUSTOMER_TOKEN"; got != want {
+		t.Errorf("Authorization header = %q, want %q", got, want)
+	}
+
+	srv.respond = func(_ recordedRequest) (int, any) {
+		return 200, map[string]any{
+			"data": map[string]any{"orders": []map[string]string{{"id": "ORD_a"}}},
+		}
+	}
+	type R struct {
+		Orders []struct {
+			ID string `json:"id"`
+		} `json:"orders"`
+	}
+	resp, err := BuyerGraphQLQuery[R](context.Background(), session, GraphQLParams{Query: "{ orders { id } }"})
+	if err != nil {
+		t.Fatalf("deprecated BuyerGraphQLQuery: %v", err)
 	}
 	if len(resp.Data.Orders) != 1 || resp.Data.Orders[0].ID != "ORD_a" {
 		t.Fatalf("typed data not deserialized: %+v", resp.Data)

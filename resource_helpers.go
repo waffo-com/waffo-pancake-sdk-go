@@ -16,7 +16,7 @@ import (
 // Resource methods then attach warnings onto their named Result struct's
 // Warnings field, preserving the (*Result, error) signature.
 //
-// These functions live here (not in http_client.go / buyer_http_client.go)
+// These functions live here (not in http_client.go / customer_http_client.go)
 // because they encode resource-layer policy (when to throw, when to extract
 // warnings). The transport files do plain sign + fetch + JSON parse.
 
@@ -29,8 +29,9 @@ func postAction[T any](ctx context.Context, c *httpClient, path string, body any
 	return unwrapEnvelope[T](status, env)
 }
 
-// buyerPostAction is the resource-layer helper for the Bearer buyer transport.
-func buyerPostAction[T any](ctx context.Context, c *buyerHTTPClient, path string, body any) (*T, []Notice, error) {
+// customerPostAction is the resource-layer helper for the Bearer customer
+// transport.
+func customerPostAction[T any](ctx context.Context, c *customerHTTPClient, path string, body any) (*T, []Notice, error) {
 	status, env, err := c.post(ctx, path, body)
 	if err != nil {
 		return nil, nil, err

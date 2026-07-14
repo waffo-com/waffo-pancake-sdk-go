@@ -33,6 +33,6 @@ func main() {
 		log.Fatalf("create checkout: %v", err)
 	}
 
-	fmt.Println("Redirect the buyer to:")
+	fmt.Println("Redirect the customer to:")
 	fmt.Println(res.CheckoutURL)
 }

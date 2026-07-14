@@ -4,6 +4,34 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-07-14
+
+Renames the "buyer" persona to "customer" across the public API, matching
+Waffo terminology (the session-token JWT role is `customer`).
+
+### Changed
+
+- Customer-named identifiers are now the primary public API:
+  `CustomerSession`, `CustomerGraphQLResource`, `(*Client).Customer(token)`,
+  and `pancake.CustomerGraphQLQuery[T]`. Files `buyer.go` /
+  `buyer_http_client.go` are now `customer.go` / `customer_http_client.go`,
+  and `examples/buyer` is now `examples/customer`.
+
+### Deprecated
+
+- `BuyerSession` and `BuyerGraphQLResource` remain as type aliases of the
+  customer-named types; `(*Client).Buyer(token)` and
+  `pancake.BuyerGraphQLQuery[T]` remain as thin wrappers. All carry
+  `Deprecated:` godoc markers and are kept for one release.
+
+### Notes
+
+- The wire contract is unchanged: JSON fields `buyerIdentity`, `buyerEmail`,
+  and every other `buyer*` wire field are untouched, as are the Go struct
+  fields mapped to them (`BuyerIdentity`, `BuyerEmail`,
+  `MerchantProvidedBuyerIdentity`). HTTP paths, headers, and GraphQL query
+  text are unchanged.
+
 ## [0.4.0] — 2026-06-01
 
 Brings feature parity with `@waffo/pancake-ts@0.10.0`: the full 19-field
