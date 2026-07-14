@@ -3,7 +3,7 @@
 //
 // All merchant API requests are auto-signed with RSA-SHA256 and carry
 // deterministic idempotency keys derived from the merchant ID, path, and body.
-// Webhook verification, GraphQL queries, and buyer self-service flows are
+// Webhook verification, GraphQL queries, and customer self-service flows are
 // supported out of the box. The SDK has zero external runtime dependencies —
 // only the Go standard library.
 //

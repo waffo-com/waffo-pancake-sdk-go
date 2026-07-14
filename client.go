@@ -10,7 +10,7 @@ import (
 // and access resource namespaces through its exported fields. Methods that
 // perform I/O take a context.Context first parameter.
 type Client struct {
-	// Auth issues buyer session tokens.
+	// Auth issues customer session tokens.
 	Auth *AuthResource
 	// Stores manages stores.
 	Stores *StoresResource
@@ -78,10 +78,11 @@ func New(c Config) (*Client, error) {
 	return cl, nil
 }
 
-// Buyer returns a BuyerSession backed by the given session token. The token
-// is issued by Auth.IssueSessionToken and is sent as a Bearer Authorization
-// header on every buyer request. No I/O is performed by this call.
-func (c *Client) Buyer(token string) *BuyerSession {
+// Customer returns a CustomerSession backed by the given session token. The
+// token is issued by Auth.IssueSessionToken and is sent as a Bearer
+// Authorization header on every customer request. No I/O is performed by this
+// call.
+func (c *Client) Customer(token string) *CustomerSession {
 	baseURL := c.config.BaseURL
 	if baseURL == "" {
 		baseURL = DefaultBaseURL
@@ -90,6 +91,13 @@ func (c *Client) Buyer(token string) *BuyerSession {
 	if httpC == nil {
 		httpC = http.DefaultClient
 	}
-	bh := newBuyerHTTPClient(token, baseURL, httpC)
-	return newBuyerSession(bh)
+	ch := newCustomerHTTPClient(token, baseURL, httpC)
+	return newCustomerSession(ch)
+}
+
+// Buyer returns a CustomerSession backed by the given session token.
+//
+// Deprecated: Use Customer instead.
+func (c *Client) Buyer(token string) *CustomerSession {
+	return c.Customer(token)
 }

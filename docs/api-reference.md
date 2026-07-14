@@ -18,7 +18,7 @@ Complete reference for all `github.com/waffo-com/waffo-pancake-sdk-go` resources
 
 ### `client.Auth.IssueSessionToken(ctx, params)`
 
-Issue a buyer session token (JWT) for storefront authentication.
+Issue a customer session token (JWT) for storefront authentication.
 
 ```go
 // With StoreID
@@ -41,7 +41,7 @@ fmt.Println(tok.Token, tok.ExpiresAt)
 | --------------- | --------- | -------- | ------------------------------------------------------------------------------------------------ |
 | `StoreID`       | `*string` | No       | Store ID (at least one of `StoreID` / `ProductID` required)                                      |
 | `ProductID`     | `*string` | No       | Product ID (at least one of `StoreID` / `ProductID` required; server derives store from product) |
-| `BuyerIdentity` | `string`  | Yes      | Buyer identity (email or merchant-defined identifier)                                            |
+| `BuyerIdentity` | `string`  | Yes      | Customer identity (email or merchant-defined identifier)                                            |
 
 **Returns `*SessionToken`**:
 
@@ -545,25 +545,25 @@ res, err := client.Orders.CancelSubscription(ctx, pancake.CancelSubscriptionPara
 
 ---
 
-## Buyer Self-Service
+## Customer Self-Service
 
-Issue a session token and create a buyer session to let buyers manage their own orders.
+Issue a session token and create a customer session to let customers manage their own orders.
 
-### `client.Buyer(token)`
+### `client.Customer(token)`
 
-Create a buyer session from a session token issued by `client.Auth.IssueSessionToken`.
+Create a customer session from a session token issued by `client.Auth.IssueSessionToken`.
 
 ```go
 tok, err := client.Auth.IssueSessionToken(ctx, pancake.IssueSessionTokenParams{
     StoreID:       pancake.Ptr("STO_xxx"),
     BuyerIdentity: "customer@example.com",
 })
-buyer := client.Buyer(tok.Token)
+customer := client.Customer(tok.Token)
 ```
 
 No I/O is performed; the call only wires up Bearer-token HTTP plumbing.
 
-### `buyer.CancelSubscription(ctx, params)`
+### `customer.CancelSubscription(ctx, params)`
 
 | Field     | Type     | Required | Description           |
 | --------- | -------- | -------- | --------------------- |
@@ -571,7 +571,7 @@ No I/O is performed; the call only wires up Bearer-token HTTP plumbing.
 
 **Returns `*CancelSubscriptionResult`**: `{ OrderID, Status, Warnings }` — `Status` is `"canceling"` (active) or `"canceled"` (pending)
 
-### `buyer.CancelOnetimeOrder(ctx, params)`
+### `customer.CancelOnetimeOrder(ctx, params)`
 
 | Field     | Type     | Required | Description       |
 | --------- | -------- | -------- | ----------------- |
@@ -579,7 +579,7 @@ No I/O is performed; the call only wires up Bearer-token HTTP plumbing.
 
 **Returns `*CancelOnetimeOrderResult`**: `{ OrderID, Status, Warnings }` — `Status` is `"canceled"`
 
-### `buyer.ReactivateSubscription(ctx, params)`
+### `customer.ReactivateSubscription(ctx, params)`
 
 | Field     | Type     | Required | Description                                           |
 | --------- | -------- | -------- | ----------------------------------------------------- |
@@ -587,10 +587,10 @@ No I/O is performed; the call only wires up Bearer-token HTTP plumbing.
 
 **Returns `*ReactivateSubscriptionResult`**: `{ OrderID, Status, Warnings }` — `Status` is `"active"`
 
-### `buyer.CreateRefundTicket(ctx, params)`
+### `customer.CreateRefundTicket(ctx, params)`
 
 ```go
-refund, err := buyer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams{
+refund, err := customer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams{
     PaymentID: "PAY_xxx",
     Reason:    "Product not as described",
     RequestedAmount: pancake.RequestedAmount{
@@ -618,7 +618,7 @@ refund, err := buyer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams{
 
 **Returns `*RefundTicketResult`**: `{ Ticket, Warnings }`
 
-### `buyer.ResubmitRefundTicket(ctx, params)`
+### `customer.ResubmitRefundTicket(ctx, params)`
 
 | Field             | Type                      | Required | Description           |
 | ----------------- | ------------------------- | -------- | --------------------- |
@@ -629,9 +629,9 @@ refund, err := buyer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams{
 
 **Returns `*RefundTicketResult`**: `{ Ticket, Warnings }`
 
-### `buyer.GraphQL.Query(ctx, params)`
+### `customer.GraphQL.Query(ctx, params)`
 
-Same parameters as `client.GraphQL.Query` but scoped to the buyer's own data via session token.
+Same parameters as `client.GraphQL.Query` but scoped to the customer's own data via session token.
 
 | Field       | Type             | Required | Description          |
 | ----------- | ---------------- | -------- | -------------------- |
@@ -640,7 +640,7 @@ Same parameters as `client.GraphQL.Query` but scoped to the buyer's own data via
 
 **Returns `*GraphQLResponse`**: `{ Data, Errors, Warnings }`
 
-For typed access, use the package-level `pancake.BuyerGraphQLQuery[T]`:
+For typed access, use the package-level `pancake.CustomerGraphQLQuery[T]`:
 
 ```go
 type OrdersQuery struct {
@@ -649,7 +649,7 @@ type OrdersQuery struct {
         Status string `json:"status"`
     } `json:"orders"`
 }
-resp, err := pancake.BuyerGraphQLQuery[OrdersQuery](ctx, buyer, pancake.GraphQLParams{
+resp, err := pancake.CustomerGraphQLQuery[OrdersQuery](ctx, customer, pancake.GraphQLParams{
     Query: `query { orders { id status } }`,
 })
 ```
@@ -658,25 +658,25 @@ resp, err := pancake.BuyerGraphQLQuery[OrdersQuery](ctx, buyer, pancake.GraphQLP
 
 ## Checkout
 
-Waffo supports two checkout modes based on whether the merchant knows the buyer's identity at checkout time:
+Waffo supports two checkout modes based on whether the merchant knows the customer's identity at checkout time:
 
-- **Authenticated** — the merchant has a user system or collects buyer info before checkout. The buyer's identity is provided upfront, the checkout form is pre-filled, and a session token is automatically issued.
-- **Anonymous** — the buyer arrives via a template store or shared link with no prior context. They fill in billing details manually on the checkout page.
+- **Authenticated** — the merchant has a user system or collects customer info before checkout. The customer's identity is provided upfront, the checkout form is pre-filled, and a session token is automatically issued.
+- **Anonymous** — the customer arrives via a template store or shared link with no prior context. They fill in billing details manually on the checkout page.
 
-> **Authenticated checkout is recommended.** The key advantage: the order is bound to the `BuyerIdentity` you provide — a **merchant-controlled stable identifier**. Even if the buyer changes the email on the checkout form, the order stays tied to your identifier. In anonymous mode, the buyer self-reports their email, and a different address means a different user — **previous orders become unlinked** and **subscription trial periods can be exploited** (new email = new user = fresh trial). Additionally, anonymous checkout only supports creating orders — buyers cannot cancel orders, manage subscriptions, or submit refund tickets afterward.
+> **Authenticated checkout is recommended.** The key advantage: the order is bound to the `BuyerIdentity` you provide — a **merchant-controlled stable identifier**. Even if the customer changes the email on the checkout form, the order stays tied to your identifier. In anonymous mode, the customer self-reports their email, and a different address means a different user — **previous orders become unlinked** and **subscription trial periods can be exploited** (new email = new user = fresh trial). Additionally, anonymous checkout only supports creating orders — customers cannot cancel orders, manage subscriptions, or submit refund tickets afterward.
 
 For advanced use cases, the low-level `Checkout.CreateSession` is also available.
 
 ### `client.Checkout.Authenticated.Create(ctx, params)`
 
-Authenticated checkout — the merchant provides buyer identity. The SDK issues a session token, creates a checkout session, and returns a checkout URL with the token appended as a URL fragment (`#token=...`). The checkout page pre-fills buyer information from the token.
+Authenticated checkout — the merchant provides customer identity. The SDK issues a session token, creates a checkout session, and returns a checkout URL with the token appended as a URL fragment (`#token=...`). The checkout page pre-fills customer information from the token.
 
 Internally calls `POST /v1/actions/auth/issue-session-token` and `POST /v1/actions/checkout/create-session` in parallel.
 
 `BuyerIdentity` is for order attribution and trial tracking only — it is not rendered on the checkout page. To pre-fill the email field on the checkout form, set `BuyerEmail` explicitly.
 
 ```go
-// One-time product with buyer identity (checkout page email field stays empty)
+// One-time product with customer identity (checkout page email field stays empty)
 res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheckoutParams{
     CreateCheckoutSessionParams: pancake.CreateCheckoutSessionParams{
         ProductID:  "PROD_xxx",
@@ -685,7 +685,7 @@ res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheck
     },
     BuyerIdentity: "userIdInYourSystem",
 })
-// => redirect buyer to res.CheckoutURL (includes #token=...)
+// => redirect customer to res.CheckoutURL (includes #token=...)
 
 // Subscription with trial and billing detail
 subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheckoutParams{
@@ -711,7 +711,7 @@ subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCh
 | ------------------------- | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ProductID`               | `string`                  | Yes      | Product ID (product type is auto-detected server-side)                                                                                                                     |
 | `Currency`                | `string`                  | Yes      | Currency code (ISO 4217)                                                                                                                                                   |
-| `BuyerIdentity`           | `string`                  | Yes      | Buyer identity (email or merchant-defined identifier); not serialized to the create-session body                                                                            |
+| `BuyerIdentity`           | `string`                  | Yes      | Customer identity (email or merchant-defined identifier); not serialized to the create-session body                                                                            |
 | `BuyerEmail`              | `*string`                 | No       | Pre-fill checkout page email field (independent from `BuyerIdentity`)                                                                                                      |
 | `BillingDetail`           | `*pancake.BillingDetail`  | No       | Pre-filled billing details (country, tax ID, etc.)                                                                                                                         |
 | `PriceSnapshot`           | `*pancake.PriceInfo`      | No       | Price snapshot override (reads from DB if omitted)                                                                                                                         |
@@ -735,7 +735,7 @@ subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCh
 
 ### `client.Checkout.Anonymous.Create(ctx, params)`
 
-Anonymous checkout — visitor enters without a session token. The buyer fills in billing details manually on the checkout page.
+Anonymous checkout — visitor enters without a session token. The customer fills in billing details manually on the checkout page.
 
 Internally calls `POST /v1/actions/checkout/create-session`.
 
@@ -744,7 +744,7 @@ res, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParam
     ProductID: "PROD_xxx",
     Currency:  "USD",
 })
-// => redirect buyer to res.CheckoutURL (buyer fills form manually)
+// => redirect customer to res.CheckoutURL (customer fills form manually)
 
 // With price snapshot override
 snapshotRes, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParams{
@@ -961,8 +961,8 @@ All exported types:
 | **Order**                               |                                                            |
 | `CancelSubscriptionParams`              | Cancel subscription request                                |
 | `CancelSubscriptionResult`              | Cancel subscription response                               |
-| `BillingDetail`                         | Buyer billing details (country, tax ID, etc.)              |
-| **Buyer Self-Service**                  |                                                            |
+| `BillingDetail`                         | Customer billing details (country, tax ID, etc.)              |
+| **Customer Self-Service**                  |                                                            |
 | `CancelOnetimeOrderParams`              | Cancel one-time order request                              |
 | `CancelOnetimeOrderResult`              | Cancel one-time order response                             |
 | `ReactivateSubscriptionParams`          | Reactivate subscription request                            |
@@ -974,7 +974,7 @@ All exported types:
 | `RefundTicketVersionData`               | Per-submission refund ticket data                          |
 | `RequestedAmount`                       | Refund amount (`{Amount, Currency}`)                       |
 | **Checkout**                            |                                                            |
-| `AuthenticatedCheckoutParams`           | Authenticated checkout request (with buyer identity)       |
+| `AuthenticatedCheckoutParams`           | Authenticated checkout request (with customer identity)       |
 | `AuthenticatedCheckoutResult`           | Authenticated checkout response (URL with token + expiry)  |
 | `AnonymousCheckoutParams`               | Alias of `CreateCheckoutSessionParams`                     |
 | `CreateCheckoutSessionParams`           | Low-level checkout session request                         |

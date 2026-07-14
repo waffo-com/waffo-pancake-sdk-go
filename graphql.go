@@ -54,8 +54,8 @@ func GraphQLQuery[T any](ctx context.Context, c *Client, p GraphQLParams) (*Type
 	return typedFromRaw[T](raw)
 }
 
-// BuyerGraphQLQuery executes a buyer-scoped GraphQL query and unmarshals the
-// response data into a caller-provided struct type T.
+// CustomerGraphQLQuery executes a customer-scoped GraphQL query and unmarshals
+// the response data into a caller-provided struct type T.
 //
 // Example:
 //
@@ -65,15 +65,23 @@ func GraphQLQuery[T any](ctx context.Context, c *Client, p GraphQLParams) (*Type
 //	        Status string `json:"status"`
 //	    } `json:"orders"`
 //	}
-//	resp, err := pancake.BuyerGraphQLQuery[OrdersQuery](ctx, buyer, pancake.GraphQLParams{
+//	resp, err := pancake.CustomerGraphQLQuery[OrdersQuery](ctx, customer, pancake.GraphQLParams{
 //	    Query: `query { orders { id status } }`,
 //	})
-func BuyerGraphQLQuery[T any](ctx context.Context, s *BuyerSession, p GraphQLParams) (*TypedGraphQLResponse[T], error) {
+func CustomerGraphQLQuery[T any](ctx context.Context, s *CustomerSession, p GraphQLParams) (*TypedGraphQLResponse[T], error) {
 	raw, err := s.GraphQL.Query(ctx, p)
 	if err != nil {
 		return nil, err
 	}
 	return typedFromRaw[T](raw)
+}
+
+// BuyerGraphQLQuery executes a customer-scoped GraphQL query and unmarshals
+// the response data into a caller-provided struct type T.
+//
+// Deprecated: Use CustomerGraphQLQuery instead.
+func BuyerGraphQLQuery[T any](ctx context.Context, s *CustomerSession, p GraphQLParams) (*TypedGraphQLResponse[T], error) {
+	return CustomerGraphQLQuery[T](ctx, s, p)
 }
 
 func typedFromRaw[T any](raw *GraphQLResponse) (*TypedGraphQLResponse[T], error) {

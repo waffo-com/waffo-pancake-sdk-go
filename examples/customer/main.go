@@ -1,4 +1,4 @@
-// Buyer example: issue a session token and use BuyerSession to cancel a
+// Customer example: issue a session token and use CustomerSession to cancel a
 // subscription and submit a refund request.
 package main
 
@@ -30,9 +30,9 @@ func main() {
 		log.Fatalf("issue session token: %v", err)
 	}
 
-	buyer := client.Buyer(tok.Token)
+	customer := client.Customer(tok.Token)
 
-	cancelRes, err := buyer.CancelSubscription(ctx, pancake.CancelSubscriptionParams{
+	cancelRes, err := customer.CancelSubscription(ctx, pancake.CancelSubscriptionParams{
 		OrderID: os.Getenv("WAFFO_ORDER_ID"),
 	})
 	if err != nil {

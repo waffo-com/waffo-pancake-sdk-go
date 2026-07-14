@@ -471,8 +471,8 @@ All events include the **Order**, **Amount**, and **Product** sections. Addition
 | -------------------------------- | ------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `OrderID`                        | `string`            | Yes      | Associated order ID                                                                                                                                      |
 | `OrderStatus`                    | `*string`           | No       | Order status (e.g., `"completed"`, `"active"`, `"canceling"`)                                                                                            |
-| `BuyerEmail`                     | `string`            | Yes      | Buyer email address                                                                                                                                      |
-| `MerchantProvidedBuyerIdentity`  | `*string`           | No       | Merchant-provided buyer identity from checkout session                                                                                                   |
+| `BuyerEmail`                     | `string`            | Yes      | Customer email address                                                                                                                                      |
+| `MerchantProvidedBuyerIdentity`  | `*string`           | No       | Merchant-provided customer identity from checkout session                                                                                                   |
 | `OrderMerchantExternalID`        | `*string`           | No       | Order business-side identifier set at checkout creation (max 128 chars). Present on order / payment / subscription events and on refund events (inherited from the originating order). |
 | `RefundTicketMerchantExternalID` | `*string`           | No       | Refund-ticket business-side identifier set at refund-ticket creation. **Only present on `refund.*` events**; coexists with `OrderMerchantExternalID` on the same refund payload. |
 | `Currency`                       | `string`            | Yes      | Currency code (ISO 4217)                                                                                                                                 |
@@ -544,8 +544,8 @@ case string(pancake.WebhookEventTypeRefundSucceeded):
 | `WebhookEventTypeOrderCompleted`                    | `order.completed`                | One-time order first payment succeeded                          |
 | `WebhookEventTypeSubscriptionActivated`             | `subscription.activated`         | New subscription activated                                      |
 | `WebhookEventTypeSubscriptionPaymentSucceeded`      | `subscription.payment_succeeded` | Subscription renewal payment succeeded                          |
-| `WebhookEventTypeSubscriptionCanceling`             | `subscription.canceling`         | Buyer initiated cancellation (expires at end of billing period) |
-| `WebhookEventTypeSubscriptionUncanceled`            | `subscription.uncanceled`        | Buyer withdrew cancellation request                             |
+| `WebhookEventTypeSubscriptionCanceling`             | `subscription.canceling`         | Customer initiated cancellation (expires at end of billing period) |
+| `WebhookEventTypeSubscriptionUncanceled`            | `subscription.uncanceled`        | Customer withdrew cancellation request                             |
 | `WebhookEventTypeSubscriptionUpdated`               | `subscription.updated`           | Subscription product changed (upgrade/downgrade)                |
 | `WebhookEventTypeSubscriptionCanceled`              | `subscription.canceled`          | Subscription fully terminated                                   |
 | `WebhookEventTypeSubscriptionPastDue`               | `subscription.past_due`          | Renewal payment failed (past due)                               |

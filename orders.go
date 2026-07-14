@@ -3,7 +3,8 @@ package pancake
 import "context"
 
 // OrdersResource manages orders. Currently only subscription cancellation is
-// exposed; one-time order management is performed by buyers via BuyerSession.
+// exposed; one-time order management is performed by customers via
+// CustomerSession.
 type OrdersResource struct {
 	http *httpClient
 }

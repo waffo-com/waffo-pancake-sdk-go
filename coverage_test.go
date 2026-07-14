@@ -174,58 +174,58 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 			})
 			return err
 		}},
-		// Buyer ResubmitRefundTicket — exercise the 4 unreached validation branches
-		{"Buyer.ResubmitRefundTicket bad ticketId rejected", func(c *Client) error {
-			buyer := c.Buyer("tok")
-			_, err := buyer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
+		// Customer ResubmitRefundTicket — exercise the 4 unreached validation branches
+		{"Customer.ResubmitRefundTicket bad ticketId rejected", func(c *Client) error {
+			customer := c.Customer("tok")
+			_, err := customer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
 				TicketID: "bad", PaymentID: "PAY_AbCdEfGhIjKlMnOpQrStUv",
 				Reason: "r", RequestedAmount: RequestedAmount{Amount: "1", Currency: "USD"},
 			})
 			return err
 		}},
-		{"Buyer.ResubmitRefundTicket bad paymentId rejected", func(c *Client) error {
-			buyer := c.Buyer("tok")
-			_, err := buyer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
+		{"Customer.ResubmitRefundTicket bad paymentId rejected", func(c *Client) error {
+			customer := c.Customer("tok")
+			_, err := customer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
 				TicketID: "TKT_AbCdEfGhIjKlMnOpQrStUv", PaymentID: "bad",
 				Reason: "r", RequestedAmount: RequestedAmount{Amount: "1", Currency: "USD"},
 			})
 			return err
 		}},
-		{"Buyer.ResubmitRefundTicket empty reason rejected", func(c *Client) error {
-			buyer := c.Buyer("tok")
-			_, err := buyer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
+		{"Customer.ResubmitRefundTicket empty reason rejected", func(c *Client) error {
+			customer := c.Customer("tok")
+			_, err := customer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
 				TicketID: "TKT_AbCdEfGhIjKlMnOpQrStUv", PaymentID: "PAY_AbCdEfGhIjKlMnOpQrStUv",
 				Reason: "", RequestedAmount: RequestedAmount{Amount: "1", Currency: "USD"},
 			})
 			return err
 		}},
-		{"Buyer.ResubmitRefundTicket bad amount rejected", func(c *Client) error {
-			buyer := c.Buyer("tok")
-			_, err := buyer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
+		{"Customer.ResubmitRefundTicket bad amount rejected", func(c *Client) error {
+			customer := c.Customer("tok")
+			_, err := customer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
 				TicketID: "TKT_AbCdEfGhIjKlMnOpQrStUv", PaymentID: "PAY_AbCdEfGhIjKlMnOpQrStUv",
 				Reason: "r", RequestedAmount: RequestedAmount{Amount: "not-a-number", Currency: "USD"},
 			})
 			return err
 		}},
-		{"Buyer.CreateRefundTicket empty reason rejected", func(c *Client) error {
-			buyer := c.Buyer("tok")
-			_, err := buyer.CreateRefundTicket(ctx, CreateRefundTicketParams{
+		{"Customer.CreateRefundTicket empty reason rejected", func(c *Client) error {
+			customer := c.Customer("tok")
+			_, err := customer.CreateRefundTicket(ctx, CreateRefundTicketParams{
 				PaymentID: "PAY_AbCdEfGhIjKlMnOpQrStUv", Reason: "",
 				RequestedAmount: RequestedAmount{Amount: "1", Currency: "USD"},
 			})
 			return err
 		}},
-		{"Buyer.CreateRefundTicket bad amount rejected", func(c *Client) error {
-			buyer := c.Buyer("tok")
-			_, err := buyer.CreateRefundTicket(ctx, CreateRefundTicketParams{
+		{"Customer.CreateRefundTicket bad amount rejected", func(c *Client) error {
+			customer := c.Customer("tok")
+			_, err := customer.CreateRefundTicket(ctx, CreateRefundTicketParams{
 				PaymentID: "PAY_AbCdEfGhIjKlMnOpQrStUv", Reason: "r",
 				RequestedAmount: RequestedAmount{Amount: "not-a-number", Currency: "USD"},
 			})
 			return err
 		}},
-		{"Buyer.CreateRefundTicket bad currency rejected", func(c *Client) error {
-			buyer := c.Buyer("tok")
-			_, err := buyer.CreateRefundTicket(ctx, CreateRefundTicketParams{
+		{"Customer.CreateRefundTicket bad currency rejected", func(c *Client) error {
+			customer := c.Customer("tok")
+			_, err := customer.CreateRefundTicket(ctx, CreateRefundTicketParams{
 				PaymentID: "PAY_AbCdEfGhIjKlMnOpQrStUv", Reason: "r",
 				RequestedAmount: RequestedAmount{Amount: "1", Currency: "INVALID"},
 			})
@@ -270,9 +270,9 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 	}
 }
 
-// TestBuyerHTTP_EmptyBodyOn4xxReturnsError covers the empty-body 4xx branch in
-// buyerHTTPClient.post.
-func TestBuyerHTTP_EmptyBodyOn4xxReturnsError(t *testing.T) {
+// TestCustomerHTTP_EmptyBodyOn4xxReturnsError covers the empty-body 4xx branch in
+// customerHTTPClient.post.
+func TestCustomerHTTP_EmptyBodyOn4xxReturnsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(401)
 	}))
@@ -286,8 +286,8 @@ func TestBuyerHTTP_EmptyBodyOn4xxReturnsError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
-	buyer := c.Buyer("token")
-	_, err = buyer.CancelSubscription(context.Background(), CancelSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
+	customer := c.Customer("token")
+	_, err = customer.CancelSubscription(context.Background(), CancelSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
 	if err == nil {
 		t.Fatal("expected error on empty 401 body")
 	}
@@ -297,9 +297,9 @@ func TestBuyerHTTP_EmptyBodyOn4xxReturnsError(t *testing.T) {
 	}
 }
 
-// TestBuyerHTTP_EmptyBodyOn200ReturnsEmptyEnvelope covers the empty-body 200
+// TestCustomerHTTP_EmptyBodyOn200ReturnsEmptyEnvelope covers the empty-body 200
 // branch (rare but valid: server returns no body on success).
-func TestBuyerHTTP_EmptyBodyOn200ReturnsEmptyEnvelope(t *testing.T) {
+func TestCustomerHTTP_EmptyBodyOn200ReturnsEmptyEnvelope(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(200)
 	}))
@@ -313,9 +313,9 @@ func TestBuyerHTTP_EmptyBodyOn200ReturnsEmptyEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
-	buyer := c.Buyer("token")
+	customer := c.Customer("token")
 	// Empty body yields an empty Result struct; no error.
-	res, err := buyer.CancelSubscription(context.Background(), CancelSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
+	res, err := customer.CancelSubscription(context.Background(), CancelSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -324,8 +324,8 @@ func TestBuyerHTTP_EmptyBodyOn200ReturnsEmptyEnvelope(t *testing.T) {
 	}
 }
 
-// TestBuyerHTTP_NonJSONBodyReturnsError covers the non-JSON parse branch.
-func TestBuyerHTTP_NonJSONBodyReturnsError(t *testing.T) {
+// TestCustomerHTTP_NonJSONBodyReturnsError covers the non-JSON parse branch.
+func TestCustomerHTTP_NonJSONBodyReturnsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(502)
 		_, _ = w.Write([]byte("<html>bad gateway</html>"))
@@ -340,8 +340,8 @@ func TestBuyerHTTP_NonJSONBodyReturnsError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new client: %v", err)
 	}
-	buyer := c.Buyer("token")
-	_, err = buyer.CancelSubscription(context.Background(), CancelSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
+	customer := c.Customer("token")
+	_, err = customer.CancelSubscription(context.Background(), CancelSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
 	if err == nil {
 		t.Fatal("expected error on non-JSON body")
 	}

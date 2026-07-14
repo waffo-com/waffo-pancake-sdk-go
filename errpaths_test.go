@@ -218,9 +218,9 @@ func TestResources_ErrorPropagation(t *testing.T) {
 	})
 }
 
-func TestBuyer_ErrorPropagation(t *testing.T) {
+func TestCustomer_ErrorPropagation(t *testing.T) {
 	ctx := context.Background()
-	_, buyer, srv := newBuyerTestClient(t)
+	_, customer, srv := newCustomerTestClient(t)
 	srv.respond = func(_ recordedRequest) (int, any) {
 		return 403, map[string]any{
 			"data":   nil,
@@ -233,26 +233,26 @@ func TestBuyer_ErrorPropagation(t *testing.T) {
 		call func() error
 	}{
 		{"CancelSubscription", func() error {
-			_, err := buyer.CancelSubscription(ctx, CancelSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
+			_, err := customer.CancelSubscription(ctx, CancelSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
 			return err
 		}},
 		{"CancelOnetimeOrder", func() error {
-			_, err := buyer.CancelOnetimeOrder(ctx, CancelOnetimeOrderParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
+			_, err := customer.CancelOnetimeOrder(ctx, CancelOnetimeOrderParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
 			return err
 		}},
 		{"ReactivateSubscription", func() error {
-			_, err := buyer.ReactivateSubscription(ctx, ReactivateSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
+			_, err := customer.ReactivateSubscription(ctx, ReactivateSubscriptionParams{OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv"})
 			return err
 		}},
 		{"CreateRefundTicket", func() error {
-			_, err := buyer.CreateRefundTicket(ctx, CreateRefundTicketParams{
+			_, err := customer.CreateRefundTicket(ctx, CreateRefundTicketParams{
 				PaymentID: "PAY_AbCdEfGhIjKlMnOpQrStUv", Reason: "r",
 				RequestedAmount: RequestedAmount{Amount: "1", Currency: "USD"},
 			})
 			return err
 		}},
 		{"ResubmitRefundTicket", func() error {
-			_, err := buyer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
+			_, err := customer.ResubmitRefundTicket(ctx, ResubmitRefundTicketParams{
 				TicketID: "TKT_AbCdEfGhIjKlMnOpQrStUv", PaymentID: "PAY_AbCdEfGhIjKlMnOpQrStUv",
 				Reason: "r", RequestedAmount: RequestedAmount{Amount: "1", Currency: "USD"},
 			})
