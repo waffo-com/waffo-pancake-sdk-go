@@ -4,9 +4,9 @@ Go SDK for the Waffo Pancake Merchant of Record (MoR) payment platform.
 
 - Zero runtime dependencies, Go >= 1.22
 - Automatic RSA-SHA256 request signing with deterministic idempotency keys
-- Full type definitions (14 enums, 40+ structs)
+- Full type definitions (20 enums, 40+ structs)
 - Webhook verification with embedded public keys (test/prod)
-- Feature parity with [`@waffo/pancake-ts@0.7.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
+- Feature parity with [`@waffo/pancake-ts@0.14.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
 
 ## Installation
 
@@ -341,6 +341,19 @@ _, _ = client.Webhooks.Add(ctx, pancake.AddWebhookParams{
 To list configured webhooks, query GraphQL `Store.storeWebhooks` via
 `client.GraphQL.Query`.
 
+## Content Safety
+
+Scan a user's prompt for content-safety compliance before AIGC generation — continue only when `Action` is `pancake.ScanActionAllow`. The check is stateless (prompt text is never stored); it fails closed to `pancake.ScanActionReview` if the safety service is briefly unavailable.
+
+```go
+verdict, _ := client.ContentSafety.ScanPrompt(ctx, pancake.ScanPromptParams{
+    Prompt: "a cat riding a bike",
+})
+if verdict.Action != pancake.ScanActionAllow {
+    // do not generate — verdict.Action is "review" or "block"
+}
+```
+
 ## Error Handling
 
 ```go
@@ -373,6 +386,7 @@ distinguished from server-returned errors.
 | `client.Checkout`                    | `CreateSession`, `Anonymous.Create`, `Authenticated.Create`                                                                              |
 | `client.GraphQL`                     | `Query` (also `pancake.GraphQLQuery[T]`)                                                                                                 |
 | `client.Webhooks`                    | `Add`, `Update`, `Remove`, `Verify` (also `pancake.VerifyWebhook` / `pancake.VerifyWebhookTyped[T]`)                                     |
+| `client.ContentSafety`               | `ScanPrompt` (AIGC prompt content-safety scan)                                                                                           |
 | `client.Customer(token)`                | `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, `GraphQL.Query`      |
 
 ## Optional fields
