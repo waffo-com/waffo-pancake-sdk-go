@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-07-18
+
+Adds content-safety prompt scanning for AIGC generation. Brings feature parity
+with `@waffo/pancake-ts@0.14.0`.
+
+### Added
+
+- `client.ContentSafety.ScanPrompt(ctx, params)` — scan a user prompt before
+  AIGC generation; returns a redacted verdict (`Action` = allow / review /
+  block, continue only when allow). Stateless (prompt text never stored); fails
+  closed to `review` if the safety service is briefly unavailable. POSTs to
+  `/v1/actions/verification/scan-prompt`.
+- Types: `ScanPromptParams`, `ScanResult`; enums `ScanAction`,
+  `ScanReasonCode`, `ScanPolicyCategory`, `ScanSemanticMode`,
+  `ScanSemanticStatus`.
+
 ## [0.5.0] — 2026-07-14
 
 Renames the "buyer" persona to "customer" across the public API, matching

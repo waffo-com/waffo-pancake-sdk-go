@@ -173,3 +173,59 @@ const (
 	WebhookChannelTelegram WebhookChannel = "telegram"
 	WebhookChannelSlack    WebhookChannel = "slack"
 )
+
+// ScanAction is the final content-safety verdict — continue to generation only
+// when [ScanActionAllow].
+type ScanAction string
+
+const (
+	ScanActionAllow  ScanAction = "allow"
+	ScanActionReview ScanAction = "review"
+	ScanActionBlock  ScanAction = "block"
+)
+
+// ScanReasonCode is the stable machine-readable reason for a scan verdict.
+type ScanReasonCode string
+
+const (
+	ScanReasonCodeAllowed           ScanReasonCode = "allowed"
+	ScanReasonCodeReviewRequired    ScanReasonCode = "review_required"
+	ScanReasonCodeRestrictedContent ScanReasonCode = "restricted_content"
+	ScanReasonCodeServiceDegraded   ScanReasonCode = "service_degraded"
+)
+
+// ScanPolicyCategory is a matched content-safety policy category.
+type ScanPolicyCategory string
+
+const (
+	ScanPolicyCategoryCsamMinor                   ScanPolicyCategory = "csam_minor"
+	ScanPolicyCategorySexualViolenceNonconsensual ScanPolicyCategory = "sexual_violence_nonconsensual"
+	ScanPolicyCategoryUndressTransform            ScanPolicyCategory = "undress_transform"
+	ScanPolicyCategoryFaceSwapIdentity            ScanPolicyCategory = "face_swap_identity"
+	ScanPolicyCategoryBestialityRestricted        ScanPolicyCategory = "bestiality_restricted"
+	ScanPolicyCategoryAdultNsfw                   ScanPolicyCategory = "adult_nsfw"
+)
+
+// ScanSemanticMode controls how the external semantic channel participates in
+// a scan.
+type ScanSemanticMode string
+
+const (
+	ScanSemanticModeOff     ScanSemanticMode = "off"
+	ScanSemanticModeShadow  ScanSemanticMode = "shadow"
+	ScanSemanticModeEnforce ScanSemanticMode = "enforce"
+)
+
+// ScanSemanticStatus reports whether/how the semantic channel contributed to a
+// scan.
+type ScanSemanticStatus string
+
+const (
+	ScanSemanticStatusDisabled          ScanSemanticStatus = "disabled"
+	ScanSemanticStatusScored            ScanSemanticStatus = "scored"
+	ScanSemanticStatusShadowScored      ScanSemanticStatus = "shadow_scored"
+	ScanSemanticStatusSkippedRulesBlock ScanSemanticStatus = "skipped_rules_block"
+	ScanSemanticStatusSkippedBudget     ScanSemanticStatus = "skipped_budget"
+	ScanSemanticStatusProviderTimeout   ScanSemanticStatus = "provider_timeout"
+	ScanSemanticStatusProviderError     ScanSemanticStatus = "provider_error"
+)

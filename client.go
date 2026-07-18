@@ -30,6 +30,8 @@ type Client struct {
 	GraphQL *GraphQLResource
 	// Webhooks manages webhook endpoints and verifies inbound signatures.
 	Webhooks *WebhooksResource
+	// ContentSafety scans user prompts before AIGC generation.
+	ContentSafety *ContentSafetyResource
 
 	http   *httpClient
 	config Config
@@ -75,6 +77,7 @@ func New(c Config) (*Client, error) {
 	cl.Checkout = newCheckoutResource(h)
 	cl.GraphQL = &GraphQLResource{http: h}
 	cl.Webhooks = &WebhooksResource{http: h, publicKeys: c.WebhookPublicKey}
+	cl.ContentSafety = &ContentSafetyResource{http: h}
 	return cl, nil
 }
 

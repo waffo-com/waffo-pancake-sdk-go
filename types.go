@@ -765,3 +765,26 @@ type VerifyWebhookOptions struct {
 	// config; standalone callers can pass it directly.
 	PublicKeys *WebhookPublicKeys
 }
+
+// -----------------------------------------------------------------------------
+// Content Safety
+// -----------------------------------------------------------------------------
+
+// ScanPromptParams is the input to ContentSafety.ScanPrompt.
+type ScanPromptParams struct {
+	Prompt   string           `json:"prompt"`
+	Locale   string           `json:"locale,omitempty"`
+	Semantic ScanSemanticMode `json:"semantic,omitempty"`
+}
+
+// ScanResult is the redacted verdict of ContentSafety.ScanPrompt — no scores,
+// thresholds, or keyword text. Continue to generation only when Action is
+// [ScanActionAllow].
+type ScanResult struct {
+	Action            ScanAction           `json:"action"`
+	ReasonCode        ScanReasonCode       `json:"reasonCode"`
+	MatchedCategories []ScanPolicyCategory `json:"matchedCategories"`
+	RequestID         string               `json:"requestId"`
+	SemanticStatus    ScanSemanticStatus   `json:"semanticStatus"`
+	Warnings          []Notice             `json:"warnings,omitempty"`
+}
