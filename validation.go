@@ -148,5 +148,31 @@ func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 	if err := validateMaxLength("orderMerchantExternalId", p.OrderMerchantExternalID, 128); err != nil {
 		return err
 	}
+	if err := validatePaymentMethods(p.PaymentMethods); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validatePaymentMethods checks the paymentMethods allowlist shape (non-empty, no duplicates).
+// Whether a given method is actually available for the checkout's currency/product type is
+// validated server-side against the authoritative capability source.
+func validatePaymentMethods(methods []PaymentMethodID) error {
+	if methods == nil {
+		return nil
+	}
+	if len(methods) == 0 {
+		return newSDKError("paymentMethods must not be empty")
+	}
+	seen := make(map[PaymentMethodID]bool, len(methods))
+	for _, m := range methods {
+		if m == "" {
+			return newSDKError("paymentMethods entries must not be empty")
+		}
+		if seen[m] {
+			return newSDKError("paymentMethods must not contain duplicates: %s", m)
+		}
+		seen[m] = true
+	}
 	return nil
 }

@@ -40,6 +40,29 @@ func TestCreateCheckoutSessionParams_OrderMerchantExternalID_Marshal(t *testing.
 	}
 }
 
+func TestCreateCheckoutSessionParams_PaymentMethods_Marshal(t *testing.T) {
+	p := CreateCheckoutSessionParams{
+		ProductID:      "PROD_xxx",
+		Currency:       "USD",
+		PaymentMethods: []PaymentMethodID{PaymentMethodApplePay, PaymentMethodCreditCard},
+	}
+	out, err := json.Marshal(p)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	got := string(out)
+	if !strings.Contains(got, `"paymentMethods":["APPLEPAY","CREDITCARD"]`) {
+		t.Fatalf("expected ordered paymentMethods in payload, got %s", got)
+	}
+
+	// nil slice should omit the field entirely (backward compatibility)
+	p2 := CreateCheckoutSessionParams{ProductID: "PROD_xxx", Currency: "USD"}
+	out2, _ := json.Marshal(p2)
+	if strings.Contains(string(out2), "paymentMethods") {
+		t.Fatalf("expected omitempty to drop field, got %s", out2)
+	}
+}
+
 func TestCreateRefundTicketParams_RefundTicketMerchantExternalID_Marshal(t *testing.T) {
 	p := CreateRefundTicketParams{
 		PaymentID:                      "PAY_xxx",

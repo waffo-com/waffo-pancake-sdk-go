@@ -323,6 +323,33 @@ func TestCheckoutCommon_AllValidationBranches(t *testing.T) {
 		t.Error("expected error for 3-letter country code")
 	}
 
+	// empty paymentMethods
+	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+		ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:       "USD",
+		PaymentMethods: []PaymentMethodID{},
+	}); err == nil {
+		t.Error("expected error for empty paymentMethods")
+	}
+
+	// duplicate paymentMethods entries
+	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+		ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:       "USD",
+		PaymentMethods: []PaymentMethodID{PaymentMethodCreditCard, PaymentMethodCreditCard},
+	}); err == nil {
+		t.Error("expected error for duplicate paymentMethods")
+	}
+
+	// empty-string paymentMethods entry
+	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+		ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:       "USD",
+		PaymentMethods: []PaymentMethodID{""},
+	}); err == nil {
+		t.Error("expected error for empty paymentMethods entry")
+	}
+
 	// Valid full path — should succeed (covers happy branches).
 	positive := 600
 	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
@@ -331,6 +358,7 @@ func TestCheckoutCommon_AllValidationBranches(t *testing.T) {
 		PriceSnapshot:    &PriceInfo{Amount: "9.99", TaxCategory: TaxCategoryDigitalGoods},
 		BillingDetail:    &BillingDetail{Country: "US", IsBusiness: false},
 		ExpiresInSeconds: &positive,
+		PaymentMethods:   []PaymentMethodID{PaymentMethodApplePay, PaymentMethodCreditCard},
 	}); err != nil {
 		t.Errorf("full-valid path: %v", err)
 	}

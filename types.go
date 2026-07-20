@@ -461,6 +461,20 @@ type BillingDetail struct {
 	TaxID        *string `json:"taxId,omitempty"`
 }
 
+// PaymentMethodID identifies a payment method that can be shown on the hosted checkout cashier.
+type PaymentMethodID string
+
+// Known payment method identifiers. Availability of a given method for a specific checkout still
+// depends on currency, product type, store configuration, and payment provider readiness; the
+// server validates a requested PaymentMethods list against that at session-creation time.
+const (
+	PaymentMethodCreditCard PaymentMethodID = "CREDITCARD"
+	PaymentMethodDebitCard  PaymentMethodID = "DEBITCARD"
+	PaymentMethodApplePay   PaymentMethodID = "APPLEPAY"
+	PaymentMethodGooglePay  PaymentMethodID = "GOOGLEPAY"
+	PaymentMethodEWallet    PaymentMethodID = "EWALLET"
+)
+
 // CreateCheckoutSessionParams is the input to Checkout.CreateSession.
 type CreateCheckoutSessionParams struct {
 	ProductID        string            `json:"productId"`
@@ -475,6 +489,9 @@ type CreateCheckoutSessionParams struct {
 	Metadata         map[string]string `json:"metadata,omitempty"`
 	// OrderMerchantExternalID is the order-side business identifier (max 128 chars); inherited by orders, payments, refunds.
 	OrderMerchantExternalID *string `json:"orderMerchantExternalId,omitempty"`
+	// PaymentMethods is an ordered allowlist of payment methods to show on the hosted cashier.
+	// Omit to keep the default behavior (all methods available for the checkout's currency/product type).
+	PaymentMethods []PaymentMethodID `json:"paymentMethods,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and
