@@ -246,6 +246,74 @@ func TestCheckoutAuthenticated_AppendsTokenFragment(t *testing.T) {
 	}
 }
 
+func TestCheckoutAnonymous_ForwardsPaymentMethods(t *testing.T) {
+	client, _, server := newSignedTestClient(t)
+
+	server.respond = func(_ recordedRequest) (int, any) {
+		return 200, map[string]any{"data": map[string]any{
+			"sessionId":   "ses_pm",
+			"checkoutUrl": "https://pancake.example/checkout/pm",
+			"expiresAt":   "2026-05-13T00:45:00Z",
+		}}
+	}
+
+	_, err := client.Checkout.Anonymous.Create(context.Background(), AnonymousCheckoutParams{
+		ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:       "USD",
+		PaymentMethods: []PaymentMethod{PaymentMethodEWallet, PaymentMethodCreditCard},
+	})
+	if err != nil {
+		t.Fatalf("checkout: %v", err)
+	}
+
+	reqs := server.requests()
+	if len(reqs) != 1 {
+		t.Fatalf("expected 1 request, got %d", len(reqs))
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(reqs[0].Body, &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	pm, ok := body["paymentMethods"].([]any)
+	if !ok || len(pm) != 2 || pm[0] != "EWALLET" || pm[1] != "CREDITCARD" {
+		t.Errorf("body.paymentMethods = %v, want [EWALLET CREDITCARD]", body["paymentMethods"])
+	}
+}
+
+func TestCheckoutAnonymous_OmitsPaymentMethodsWhenNotProvided(t *testing.T) {
+	client, _, server := newSignedTestClient(t)
+
+	server.respond = func(_ recordedRequest) (int, any) {
+		return 200, map[string]any{"data": map[string]any{
+			"sessionId":   "ses_no_pm",
+			"checkoutUrl": "https://pancake.example/checkout/no-pm",
+			"expiresAt":   "2026-05-13T00:45:00Z",
+		}}
+	}
+
+	_, err := client.Checkout.Anonymous.Create(context.Background(), AnonymousCheckoutParams{
+		ProductID: "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:  "USD",
+	})
+	if err != nil {
+		t.Fatalf("checkout: %v", err)
+	}
+
+	reqs := server.requests()
+	if len(reqs) != 1 {
+		t.Fatalf("expected 1 request, got %d", len(reqs))
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(reqs[0].Body, &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if _, present := body["paymentMethods"]; present {
+		t.Errorf("body.paymentMethods should be absent when omitted, got %v", body["paymentMethods"])
+	}
+}
+
 func sha256Sum(b []byte) []byte {
 	h := sha256.Sum256(b)
 	return h[:]

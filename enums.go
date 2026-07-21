@@ -122,6 +122,21 @@ const (
 	RefundStatusFailed    RefundStatus = "failed"
 )
 
+// PaymentMethod is a payment method that can be shown on the hosted checkout
+// cashier. Pass an ordered, non-empty slice as
+// [CreateCheckoutSessionParams.PaymentMethods] to restrict the cashier to only
+// these methods, shown in the given order; omit to show every method
+// available for the checkout's currency and product type.
+type PaymentMethod string
+
+const (
+	PaymentMethodCreditCard PaymentMethod = "CREDITCARD"
+	PaymentMethodDebitCard  PaymentMethod = "DEBITCARD"
+	PaymentMethodApplePay   PaymentMethod = "APPLEPAY"
+	PaymentMethodGooglePay  PaymentMethod = "GOOGLEPAY"
+	PaymentMethodEWallet    PaymentMethod = "EWALLET"
+)
+
 // MediaType is the kind of a product media asset.
 type MediaType string
 
