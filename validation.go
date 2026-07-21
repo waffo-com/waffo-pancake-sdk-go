@@ -121,6 +121,30 @@ func validateBillingDetail(d *BillingDetail) error {
 	return validateCountryCode("billingDetail.country", d.Country)
 }
 
+// validatePaymentMethods checks the optional ordered payment method allowlist shape
+// (non-empty array, non-empty entries, no duplicates). Whether each method is actually
+// available for the checkout's currency/product type is validated server-side against
+// the real capability boundary, not duplicated here.
+func validatePaymentMethods(field string, v []string) error {
+	if v == nil {
+		return nil
+	}
+	if len(v) == 0 {
+		return newSDKError("%s must not be an empty array", field)
+	}
+	seen := make(map[string]bool, len(v))
+	for _, method := range v {
+		if method == "" {
+			return newSDKError("%s entries must be non-empty strings", field)
+		}
+		if seen[method] {
+			return newSDKError("%s must not contain duplicate values", field)
+		}
+		seen[method] = true
+	}
+	return nil
+}
+
 // validateCheckoutCommon runs the shared checks for Checkout endpoints.
 func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 	if err := validateShortID("productId", p.ProductID, "PROD"); err != nil {
@@ -146,6 +170,9 @@ func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 		}
 	}
 	if err := validateMaxLength("orderMerchantExternalId", p.OrderMerchantExternalID, 128); err != nil {
+		return err
+	}
+	if err := validatePaymentMethods("paymentMethods", p.PaymentMethods); err != nil {
 		return err
 	}
 	return nil
