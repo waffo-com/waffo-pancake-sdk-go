@@ -113,6 +113,27 @@ res, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParam
 Opening the URL in a new tab is recommended so customers can return to your site
 without losing page state.
 
+### Restricting Payment Methods
+
+Pass an ordered, non-empty `PaymentMethods` allow-list (works with both `Authenticated` and
+`Anonymous` checkout) to control which methods the hosted cashier shows, and in what order.
+Omit it to keep current default behavior (all methods available for the checkout's
+currency/product type, provider default order). Unavailable, unknown, or duplicate values are
+rejected with a 4xx error and no session is created.
+
+```go
+res, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParams{
+    ProductID:      "PROD_...",
+    Currency:       "USD",
+    PaymentMethods: []string{"CREDITCARD", "DEBITCARD"}, // cards only
+})
+```
+
+Supported identifiers: `CREDITCARD`, `DEBITCARD`, `APPLEPAY`, `GOOGLEPAY`, `EWALLET`.
+Availability still depends on the checkout's currency, product type, and environment — Pancake
+validates the requested list server-side even though the SDK also rejects obviously malformed
+input (empty/duplicate/unknown values) before making a network request.
+
 ## Webhook Verification
 
 > Use the **raw** request body. Parsing and re-serializing breaks the

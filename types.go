@@ -475,6 +475,15 @@ type CreateCheckoutSessionParams struct {
 	Metadata         map[string]string `json:"metadata,omitempty"`
 	// OrderMerchantExternalID is the order-side business identifier (max 128 chars); inherited by orders, payments, refunds.
 	OrderMerchantExternalID *string `json:"orderMerchantExternalId,omitempty"`
+	// PaymentMethods is an optional ordered, non-empty allow-list restricting which
+	// payment methods the hosted cashier shows, in this order. Omit to keep current
+	// default behavior (all methods available for the checkout's currency/product
+	// type, provider default order). Unavailable, unknown, or duplicate values are
+	// rejected with a 4xx error and no session is created — Pancake never silently
+	// falls back to an unrequested method.
+	//
+	// Supported identifiers: "CREDITCARD", "DEBITCARD", "APPLEPAY", "GOOGLEPAY", "EWALLET".
+	PaymentMethods []string `json:"paymentMethods,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and
