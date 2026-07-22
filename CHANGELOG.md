@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — 2026-07-22
+
+Adds an ordered payment-method allow-list to checkout sessions. Brings feature
+parity with `@waffo/pancake-ts@0.15.0`.
+
+### Added
+
+- `PaymentMethod` type and constants (`PaymentMethodCard`, `PaymentMethodApplePay`,
+  `PaymentMethodGooglePay`, `PaymentMethodEWallet`).
+- `CreateCheckoutSessionParams.PaymentMethods` — optional ordered allow-list,
+  forwarded to `create-session`. The hosted cashier only shows these methods,
+  in this order. Omit to keep the default behavior (all methods available for
+  the checkout's currency/product type). Must be non-empty and free of
+  duplicates; unavailable methods are rejected with a 400 error.
+
 ## [0.6.0] — 2026-07-18
 
 Adds content-safety prompt scanning for AIGC generation. Brings feature parity
