@@ -22,6 +22,20 @@ const (
 	TaxCategoryProfessionalService TaxCategory = "professional_service"
 )
 
+// PaymentMethod is a payment method identifier for the checkout session
+// paymentMethods allow-list. Card covers both credit and debit cards.
+// EWallet is a single toggle for the provider's e-wallet channel (e.g.
+// Alipay/WeChat Pay are not currently exposed as independently orderable
+// identifiers — enabling/disabling EWallet controls them as one group).
+type PaymentMethod string
+
+const (
+	PaymentMethodCard      PaymentMethod = "card"
+	PaymentMethodApplePay  PaymentMethod = "applepay"
+	PaymentMethodGooglePay PaymentMethod = "googlepay"
+	PaymentMethodEWallet   PaymentMethod = "ewallet"
+)
+
 // BillingPeriod is the recurrence cadence of a subscription product.
 type BillingPeriod string
 

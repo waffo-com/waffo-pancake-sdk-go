@@ -26,6 +26,9 @@ func main() {
 			ProductID:  os.Getenv("WAFFO_PRODUCT_ID"),
 			Currency:   "USD",
 			BuyerEmail: pancake.Ptr("customer@example.com"),
+			// Optional: restrict and order the payment methods shown on the hosted cashier.
+			// Omit to keep the default behavior (all methods available for USD).
+			PaymentMethods: []pancake.PaymentMethod{pancake.PaymentMethodCard, pancake.PaymentMethodApplePay},
 		},
 		BuyerIdentity: "user-123",
 	})

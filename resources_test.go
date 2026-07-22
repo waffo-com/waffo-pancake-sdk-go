@@ -361,6 +361,68 @@ func TestResources_HappyPaths(t *testing.T) {
 	}
 }
 
+// TestCheckout_PaymentMethods covers the ordered payment-method allow-list:
+// it must serialize in the given order when provided, and be entirely absent
+// from the request body (not just null) when omitted.
+func TestCheckout_PaymentMethods(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("serializes in the given order when provided", func(t *testing.T) {
+		client, _, server := newSignedTestClient(t)
+		server.respond = func(_ recordedRequest) (int, any) {
+			return 200, map[string]any{"data": map[string]any{"sessionId": "ses", "checkoutUrl": "https://x/y", "expiresAt": "z"}}
+		}
+
+		_, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+			ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+			Currency:       "USD",
+			PaymentMethods: []PaymentMethod{PaymentMethodApplePay, PaymentMethodCard},
+		})
+		if err != nil {
+			t.Fatalf("call returned err: %v", err)
+		}
+
+		reqs := server.requests()
+		if len(reqs) == 0 {
+			t.Fatal("no request recorded")
+		}
+		var body map[string]any
+		if err := json.Unmarshal(reqs[0].Body, &body); err != nil {
+			t.Fatalf("unmarshal body: %v", err)
+		}
+		methods, ok := body["paymentMethods"].([]any)
+		if !ok {
+			t.Fatalf("expected paymentMethods array in body, got: %v", body["paymentMethods"])
+		}
+		if len(methods) != 2 || methods[0] != "applepay" || methods[1] != "card" {
+			t.Errorf("expected [applepay, card] in order, got: %v", methods)
+		}
+	})
+
+	t.Run("omitted entirely from the request body when not provided", func(t *testing.T) {
+		client, _, server := newSignedTestClient(t)
+		server.respond = func(_ recordedRequest) (int, any) {
+			return 200, map[string]any{"data": map[string]any{"sessionId": "ses", "checkoutUrl": "https://x/y", "expiresAt": "z"}}
+		}
+
+		_, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+			ProductID: "PROD_AbCdEfGhIjKlMnOpQrStUv",
+			Currency:  "USD",
+		})
+		if err != nil {
+			t.Fatalf("call returned err: %v", err)
+		}
+
+		reqs := server.requests()
+		if len(reqs) == 0 {
+			t.Fatal("no request recorded")
+		}
+		if strings.Contains(string(reqs[0].Body), "paymentMethods") {
+			t.Errorf("expected no paymentMethods key in body, got: %s", reqs[0].Body)
+		}
+	})
+}
+
 // TestResources_ValidationFailures covers the SDK-layer rejection branches
 // (validateShortID, validateRequired, validatePrices, etc).
 func TestResources_ValidationFailures(t *testing.T) {

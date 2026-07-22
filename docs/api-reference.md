@@ -721,6 +721,7 @@ subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCh
 | `DarkMode`                | `*bool`                   | No       | Dark mode override (true=dark, false=light, nil=store default)                                                                                                             |
 | `Metadata`                | `map[string]string`       | No       | Custom metadata                                                                                                                                                            |
 | `OrderMerchantExternalID` | `*string`                 | No       | Your business-side order identifier (max 128 chars). Surfaces under the same name on `Order` / `Payment` / `Refund` GraphQL types and in webhook payload (`data.orderMerchantExternalId`). |
+| `PaymentMethods`          | `[]pancake.PaymentMethod` | No       | Ordered allow-list of payment methods (`PaymentMethodCard`, `PaymentMethodApplePay`, `PaymentMethodGooglePay`, `PaymentMethodEWallet`). The hosted cashier only shows these, in this order. Omit to keep default behavior. Non-empty, no duplicates; unavailable methods return a 400. |
 
 **Returns `*AuthenticatedCheckoutResult`**:
 
@@ -774,6 +775,7 @@ snapshotRes, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheck
 | `DarkMode`                | `*bool`                   | No       | Dark mode override                                                                                                                                                                                         |
 | `Metadata`                | `map[string]string`       | No       | Custom metadata                                                                                                                                                                                            |
 | `OrderMerchantExternalID` | `*string`                 | No       | Your business-side order identifier (max 128 chars). Honored on the API Key path; visitor / store-slug flows silently drop it. Same field name in webhook payload and GraphQL `Order` / `Payment` / `Refund`. |
+| `PaymentMethods`          | `[]pancake.PaymentMethod` | No       | Ordered allow-list of payment methods (`PaymentMethodCard`, `PaymentMethodApplePay`, `PaymentMethodGooglePay`, `PaymentMethodEWallet`). The hosted cashier only shows these, in this order. Omit to keep default behavior. Non-empty, no duplicates; unavailable methods return a 400. |
 
 **Returns `*CheckoutSessionResult`**:
 
@@ -979,6 +981,7 @@ All exported types:
 | `AnonymousCheckoutParams`               | Alias of `CreateCheckoutSessionParams`                     |
 | `CreateCheckoutSessionParams`           | Low-level checkout session request                         |
 | `CheckoutSessionResult`                 | Checkout session response (URL + expiry)                   |
+| `PaymentMethod`                         | Payment method identifier (`PaymentMethodCard` / `PaymentMethodApplePay` / `PaymentMethodGooglePay` / `PaymentMethodEWallet`) |
 | **GraphQL**                             |                                                            |
 | `GraphQLParams`                         | GraphQL query parameters                                   |
 | `GraphQLResponse`                       | Raw GraphQL response envelope (`Data` is `json.RawMessage`) |
