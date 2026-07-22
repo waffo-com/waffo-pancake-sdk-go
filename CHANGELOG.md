@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — 2026-07-22
+
+Adds an optional ordered payment method whitelist to checkout session creation (WAF-508). Brings feature parity with `@waffo/pancake-ts@0.15.0`.
+
+### Added
+
+- `CreateCheckoutSessionParams.PaymentMethods []PaymentMethod` — restrict and order which payment methods the hosted checkout page offers. Non-empty, no duplicates, and must actually be available for the session's currency/environment/product type, or `CreateSession` returns a 4xx error. Omitting the field keeps current default behavior.
+- New type `PaymentMethod` with constants `PaymentMethodCreditCard`, `PaymentMethodDebitCard`, `PaymentMethodApplePay`, `PaymentMethodGooglePay`, `PaymentMethodEWallet`.
+- Client-side format validation (non-empty, known identifiers, no duplicates) added to the shared checkout validation path.
+
 ## [0.6.0] — 2026-07-18
 
 Adds content-safety prompt scanning for AIGC generation. Brings feature parity

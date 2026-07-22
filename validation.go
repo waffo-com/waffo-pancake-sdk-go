@@ -121,6 +121,34 @@ func validateBillingDetail(d *BillingDetail) error {
 	return validateCountryCode("billingDetail.country", d.Country)
 }
 
+// supportedPaymentMethods mirrors PaymentMethod's valid values.
+var supportedPaymentMethods = map[PaymentMethod]bool{
+	PaymentMethodCreditCard: true,
+	PaymentMethodDebitCard:  true,
+	PaymentMethodApplePay:   true,
+	PaymentMethodGooglePay:  true,
+	PaymentMethodEWallet:    true,
+}
+
+// validatePaymentMethods checks the ordered payment method whitelist (format
+// only; availability is checked server-side).
+func validatePaymentMethods(field string, methods []PaymentMethod) error {
+	if len(methods) == 0 {
+		return newSDKError("%s must not be empty", field)
+	}
+	seen := make(map[PaymentMethod]bool, len(methods))
+	for _, m := range methods {
+		if !supportedPaymentMethods[m] {
+			return newSDKError("Invalid %s entry %q, must be one of: CREDITCARD, DEBITCARD, APPLEPAY, GOOGLEPAY, EWALLET", field, m)
+		}
+		if seen[m] {
+			return newSDKError("%s must not contain duplicates", field)
+		}
+		seen[m] = true
+	}
+	return nil
+}
+
 // validateCheckoutCommon runs the shared checks for Checkout endpoints.
 func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 	if err := validateShortID("productId", p.ProductID, "PROD"); err != nil {
@@ -147,6 +175,11 @@ func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 	}
 	if err := validateMaxLength("orderMerchantExternalId", p.OrderMerchantExternalID, 128); err != nil {
 		return err
+	}
+	if p.PaymentMethods != nil {
+		if err := validatePaymentMethods("paymentMethods", p.PaymentMethods); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"net/http"
@@ -333,6 +334,81 @@ func TestCheckoutCommon_AllValidationBranches(t *testing.T) {
 		ExpiresInSeconds: &positive,
 	}); err != nil {
 		t.Errorf("full-valid path: %v", err)
+	}
+
+	// empty paymentMethods slice
+	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+		ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:       "USD",
+		PaymentMethods: []PaymentMethod{},
+	}); err == nil {
+		t.Error("expected error for empty paymentMethods")
+	}
+
+	// unknown paymentMethods entry
+	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+		ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:       "USD",
+		PaymentMethods: []PaymentMethod{"BITCOIN"},
+	}); err == nil {
+		t.Error("expected error for unknown paymentMethods entry")
+	}
+
+	// duplicate paymentMethods entries
+	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+		ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:       "USD",
+		PaymentMethods: []PaymentMethod{PaymentMethodCreditCard, PaymentMethodCreditCard},
+	}); err == nil {
+		t.Error("expected error for duplicate paymentMethods")
+	}
+}
+
+// TestCheckoutCommon_PaymentMethodsSerialization verifies the ordered
+// paymentMethods whitelist is forwarded on the wire, and omitted entirely
+// when not set.
+func TestCheckoutCommon_PaymentMethodsSerialization(t *testing.T) {
+	ctx := context.Background()
+	client, _, srv := newSignedTestClient(t)
+	srv.respond = func(_ recordedRequest) (int, any) {
+		return 200, map[string]any{"data": map[string]any{"sessionId": "x", "checkoutUrl": "https://x", "expiresAt": "z"}}
+	}
+
+	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+		ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:       "USD",
+		PaymentMethods: []PaymentMethod{PaymentMethodEWallet, PaymentMethodCreditCard},
+	}); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	reqs := srv.requests()
+	if len(reqs) != 1 {
+		t.Fatalf("expected 1 request, got %d", len(reqs))
+	}
+	var body map[string]any
+	if err := json.Unmarshal(reqs[0].Body, &body); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	methods, ok := body["paymentMethods"].([]any)
+	if !ok || len(methods) != 2 || methods[0] != "EWALLET" || methods[1] != "CREDITCARD" {
+		t.Errorf("expected ordered paymentMethods [EWALLET, CREDITCARD], got %v", body["paymentMethods"])
+	}
+
+	// Omitted paymentMethods should not appear in the wire body at all.
+	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+		ProductID: "PROD_AbCdEfGhIjKlMnOpQrStUv",
+		Currency:  "USD",
+	}); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	reqs = srv.requests()
+	var secondBody map[string]any
+	if err := json.Unmarshal(reqs[1].Body, &secondBody); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if _, present := secondBody["paymentMethods"]; present {
+		t.Errorf("paymentMethods should be omitted when not set, got %v", secondBody["paymentMethods"])
 	}
 }
 

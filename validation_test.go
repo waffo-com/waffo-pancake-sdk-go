@@ -76,6 +76,21 @@ func TestValidateMaxLength(t *testing.T) {
 	}
 }
 
+func TestValidatePaymentMethods(t *testing.T) {
+	if err := validatePaymentMethods("paymentMethods", []PaymentMethod{PaymentMethodEWallet, PaymentMethodCreditCard}); err != nil {
+		t.Errorf("valid ordered methods: %v", err)
+	}
+	if err := validatePaymentMethods("paymentMethods", []PaymentMethod{}); err == nil {
+		t.Errorf("empty slice should fail")
+	}
+	if err := validatePaymentMethods("paymentMethods", []PaymentMethod{"BITCOIN"}); err == nil {
+		t.Errorf("unknown method should fail")
+	}
+	if err := validatePaymentMethods("paymentMethods", []PaymentMethod{PaymentMethodCreditCard, PaymentMethodCreditCard}); err == nil {
+		t.Errorf("duplicate methods should fail")
+	}
+}
+
 func TestValidatePrices(t *testing.T) {
 	good := Prices{"USD": {Amount: "9.99", TaxCategory: TaxCategoryDigitalGoods}}
 	if err := validatePrices("prices", good); err != nil {

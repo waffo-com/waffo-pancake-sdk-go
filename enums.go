@@ -32,6 +32,23 @@ const (
 	BillingPeriodYearly    BillingPeriod = "yearly"
 )
 
+// PaymentMethod identifies a checkout payment method that can be offered to
+// the customer. Pass an ordered subset as
+// CreateCheckoutSessionParams.PaymentMethods to restrict and order which
+// methods the hosted checkout page offers. Availability still depends on
+// checkout context (currency, environment, product type, store
+// configuration); the provider rejects a session whose requested methods
+// aren't actually available.
+type PaymentMethod string
+
+const (
+	PaymentMethodCreditCard PaymentMethod = "CREDITCARD"
+	PaymentMethodDebitCard  PaymentMethod = "DEBITCARD"
+	PaymentMethodApplePay   PaymentMethod = "APPLEPAY"
+	PaymentMethodGooglePay  PaymentMethod = "GOOGLEPAY"
+	PaymentMethodEWallet    PaymentMethod = "EWALLET"
+)
+
 // ProductVersionStatus is the lifecycle state of a product version.
 type ProductVersionStatus string
 

@@ -475,6 +475,13 @@ type CreateCheckoutSessionParams struct {
 	Metadata         map[string]string `json:"metadata,omitempty"`
 	// OrderMerchantExternalID is the order-side business identifier (max 128 chars); inherited by orders, payments, refunds.
 	OrderMerchantExternalID *string `json:"orderMerchantExternalId,omitempty"`
+	// PaymentMethods is an optional ordered whitelist of allowed payment methods.
+	// The hosted checkout page shows only these methods, in the given order. Omit
+	// to keep the current default behavior (all methods available for the
+	// checkout context). Must be non-empty, without duplicates, and actually
+	// available for this session's currency/environment/product type —
+	// otherwise CreateSession returns a 4xx error.
+	PaymentMethods []PaymentMethod `json:"paymentMethods,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and
