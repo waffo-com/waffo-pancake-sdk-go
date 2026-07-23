@@ -94,3 +94,21 @@ func TestValidatePrices(t *testing.T) {
 		t.Errorf("bad amount should fail")
 	}
 }
+
+func TestValidatePaymentMethods(t *testing.T) {
+	if err := validatePaymentMethods("paymentMethods", nil); err != nil {
+		t.Errorf("nil (omitted) should pass: %v", err)
+	}
+	if err := validatePaymentMethods("paymentMethods", []PaymentMethodID{PaymentMethodApplePay, PaymentMethodCreditCard}); err != nil {
+		t.Errorf("valid ordered list should pass: %v", err)
+	}
+	if err := validatePaymentMethods("paymentMethods", []PaymentMethodID{}); err == nil {
+		t.Errorf("empty slice should fail")
+	}
+	if err := validatePaymentMethods("paymentMethods", []PaymentMethodID{"WECHAT"}); err == nil {
+		t.Errorf("unknown identifier should fail")
+	}
+	if err := validatePaymentMethods("paymentMethods", []PaymentMethodID{PaymentMethodGooglePay, PaymentMethodGooglePay}); err == nil {
+		t.Errorf("duplicate values should fail")
+	}
+}

@@ -22,6 +22,21 @@ const (
 	TaxCategoryProfessionalService TaxCategory = "professional_service"
 )
 
+// PaymentMethodID identifies a checkout payment method. These reflect the
+// payment methods Pancake's PSP integration can actually offer at checkout
+// (card networks, wallets); they are not provider-specific local payment
+// methods (e.g. no separate Alipay/WeChat identifiers exist today — the
+// closest generic bucket for either is [PaymentMethodEWallet]).
+type PaymentMethodID string
+
+const (
+	PaymentMethodCreditCard PaymentMethodID = "CREDITCARD"
+	PaymentMethodDebitCard  PaymentMethodID = "DEBITCARD"
+	PaymentMethodApplePay   PaymentMethodID = "APPLEPAY"
+	PaymentMethodGooglePay  PaymentMethodID = "GOOGLEPAY"
+	PaymentMethodEWallet    PaymentMethodID = "EWALLET"
+)
+
 // BillingPeriod is the recurrence cadence of a subscription product.
 type BillingPeriod string
 

@@ -286,8 +286,9 @@ func TestResources_HappyPaths(t *testing.T) {
 			response: map[string]any{"sessionId": "ses", "checkoutUrl": "https://x/y", "expiresAt": "z"},
 			call: func(c *Client) error {
 				_, err := c.Checkout.Anonymous.Create(ctx, AnonymousCheckoutParams{
-					ProductID: "PROD_AbCdEfGhIjKlMnOpQrStUv",
-					Currency:  "USD",
+					ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+					Currency:       "USD",
+					PaymentMethods: []PaymentMethodID{PaymentMethodApplePay, PaymentMethodCreditCard},
 				})
 				return err
 			},
@@ -445,6 +446,22 @@ func TestResources_ValidationFailures(t *testing.T) {
 		{"Checkout.CreateSession missing currency", func() error {
 			_, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
 				ProductID: "PROD_AbCdEfGhIjKlMnOpQrStUv",
+			})
+			return err
+		}},
+		{"Checkout.CreateSession unknown paymentMethods identifier", func() error {
+			_, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+				ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+				Currency:       "USD",
+				PaymentMethods: []PaymentMethodID{"WECHAT"},
+			})
+			return err
+		}},
+		{"Checkout.CreateSession empty paymentMethods", func() error {
+			_, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
+				ProductID:      "PROD_AbCdEfGhIjKlMnOpQrStUv",
+				Currency:       "USD",
+				PaymentMethods: []PaymentMethodID{},
 			})
 			return err
 		}},
