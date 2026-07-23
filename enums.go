@@ -22,6 +22,35 @@ const (
 	TaxCategoryProfessionalService TaxCategory = "professional_service"
 )
 
+// CashierLanguage is the default language of the hosted checkout page (IETF
+// BCP 47). The customer can switch language on the checkout page.
+type CashierLanguage string
+
+const (
+	CashierLanguageEn       CashierLanguage = "en"
+	CashierLanguagePtBR     CashierLanguage = "pt-BR"
+	CashierLanguageEsMX     CashierLanguage = "es-MX"
+	CashierLanguageIDID     CashierLanguage = "id-ID"
+	CashierLanguageViVN     CashierLanguage = "vi-VN"
+	CashierLanguageRuRU     CashierLanguage = "ru-RU"
+	CashierLanguageEnKE     CashierLanguage = "en-KE"
+	CashierLanguageEsPE     CashierLanguage = "es-PE"
+	CashierLanguageEsCO     CashierLanguage = "es-CO"
+	CashierLanguageEsCL     CashierLanguage = "es-CL"
+	CashierLanguageZhHantTW CashierLanguage = "zh-Hant-TW"
+	CashierLanguageZhHantHK CashierLanguage = "zh-Hant-HK"
+	CashierLanguageThTH     CashierLanguage = "th-TH"
+	CashierLanguageJaJP     CashierLanguage = "ja-JP"
+	CashierLanguageEnNG     CashierLanguage = "en-NG"
+	CashierLanguageKoKR     CashierLanguage = "ko-KR"
+	CashierLanguageEnHK     CashierLanguage = "en-HK"
+	CashierLanguageZhHansHK CashierLanguage = "zh-Hans-HK"
+	CashierLanguagePlPL     CashierLanguage = "pl-PL"
+	CashierLanguageTrTR     CashierLanguage = "tr-TR"
+	CashierLanguageZhHans   CashierLanguage = "zh-Hans"
+	CashierLanguageMsMY     CashierLanguage = "ms-MY"
+)
+
 // PaymentMethodID identifies a checkout payment method. These reflect the
 // payment methods Pancake's PSP integration can actually offer at checkout
 // (card networks, wallets); they are not provider-specific local payment

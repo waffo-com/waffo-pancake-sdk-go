@@ -482,6 +482,10 @@ type CreateCheckoutSessionParams struct {
 	// Methods not actually available for the checkout context are rejected
 	// with a 400 error — no fallback is silently added.
 	PaymentMethods []PaymentMethodID `json:"paymentMethods,omitempty"`
+	// Language is the default language of the hosted checkout page
+	// (CashierLanguage, IETF BCP 47). The customer can switch language on the
+	// checkout page. Omit to let the provider infer.
+	Language *CashierLanguage `json:"language,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and
