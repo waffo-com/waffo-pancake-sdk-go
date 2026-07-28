@@ -475,6 +475,17 @@ type CreateCheckoutSessionParams struct {
 	Metadata         map[string]string `json:"metadata,omitempty"`
 	// OrderMerchantExternalID is the order-side business identifier (max 128 chars); inherited by orders, payments, refunds.
 	OrderMerchantExternalID *string `json:"orderMerchantExternalId,omitempty"`
+	// Language is the default language of the hosted checkout page (IETF BCP 47).
+	// The customer can switch it on the page; omit to let the provider infer.
+	Language *CashierLanguage `json:"language,omitempty"`
+	// IncludePaymentMethods is a whitelist — offer only these methods. Every value must be supported
+	// by the product type x currency pair, otherwise the request is rejected. Mutually exclusive with
+	// ExcludePaymentMethods; omit both to offer every method the currency supports.
+	IncludePaymentMethods []PaymentMethod `json:"includePaymentMethods,omitempty"`
+	// ExcludePaymentMethods is a blacklist — offer everything the currency supports except these.
+	// Values the currency does not offer are ignored, so one blacklist can be reused across currencies.
+	// Mutually exclusive with IncludePaymentMethods.
+	ExcludePaymentMethods []PaymentMethod `json:"excludePaymentMethods,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and

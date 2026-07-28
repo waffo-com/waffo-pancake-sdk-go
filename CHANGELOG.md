@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — 2026-07-28
+
+Adds per-transaction payment method selection on the hosted checkout page. Brings
+feature parity with `@waffo/pancake-ts@0.17.0`.
+
+### Added
+
+- `CashierLanguage` enum + `CreateCheckoutSessionParams.Language` — default language of the hosted checkout page (IETF BCP 47, 22 tags). Catches up with `@waffo/pancake-ts@0.13.0`, which shipped `language` three minor versions ago.
+- `PaymentMethod` enum — `PaymentMethodCard` / `PaymentMethodApplePay` / `PaymentMethodGooglePay` / `PaymentMethodWeChat`
+- `CreateCheckoutSessionParams.IncludePaymentMethods` — whitelist: offer only these. Every value must be supported by the product type × currency pair (one-time `USD` supports all four, `CNY` supports `wechat`, the other currencies support card / applepay / googlepay); unsupported values are rejected with a 400.
+- `CreateCheckoutSessionParams.ExcludePaymentMethods` — blacklist: offer everything the currency supports except these. Values the currency does not offer are ignored, so one blacklist can be reused across currencies. Mutually exclusive with `IncludePaymentMethods`.
+
+### Changed
+
+- Currencies outside the payment method matrix are now rejected at checkout session creation (400) instead of falling through to the provider. Affects one-time `THB` and subscription `CNY`, neither of which has ever produced a successful charge.
+
+---
+
 ## [0.6.0] — 2026-07-18
 
 Adds content-safety prompt scanning for AIGC generation. Brings feature parity

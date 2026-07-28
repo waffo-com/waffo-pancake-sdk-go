@@ -22,6 +22,53 @@ const (
 	TaxCategoryProfessionalService TaxCategory = "professional_service"
 )
 
+// CashierLanguage is the default language of the hosted checkout page (IETF BCP 47).
+//
+// The customer can still switch language on the page. Language x currency mismatches
+// are rejected by the payment provider (A0026), not by this SDK.
+type CashierLanguage string
+
+const (
+	CashierLanguageEn       CashierLanguage = "en"
+	CashierLanguagePtBR     CashierLanguage = "pt-BR"
+	CashierLanguageEsMX     CashierLanguage = "es-MX"
+	CashierLanguageIDID     CashierLanguage = "id-ID" // Indonesian
+	CashierLanguageViVN     CashierLanguage = "vi-VN"
+	CashierLanguageRuRU     CashierLanguage = "ru-RU"
+	CashierLanguageEnKE     CashierLanguage = "en-KE"
+	CashierLanguageEsPE     CashierLanguage = "es-PE"
+	CashierLanguageEsCO     CashierLanguage = "es-CO"
+	CashierLanguageEsCL     CashierLanguage = "es-CL"
+	CashierLanguageZhHantTW CashierLanguage = "zh-Hant-TW"
+	CashierLanguageZhHantHK CashierLanguage = "zh-Hant-HK"
+	CashierLanguageThTH     CashierLanguage = "th-TH"
+	CashierLanguageJaJP     CashierLanguage = "ja-JP"
+	CashierLanguageEnNG     CashierLanguage = "en-NG"
+	CashierLanguageKoKR     CashierLanguage = "ko-KR"
+	CashierLanguageEnHK     CashierLanguage = "en-HK"
+	CashierLanguageZhHansHK CashierLanguage = "zh-Hans-HK"
+	CashierLanguagePlPL     CashierLanguage = "pl-PL"
+	CashierLanguageTrTR     CashierLanguage = "tr-TR"
+	CashierLanguageZhHans   CashierLanguage = "zh-Hans"
+	CashierLanguageMsMY     CashierLanguage = "ms-MY"
+)
+
+// PaymentMethod is a payment method offered on the hosted checkout page.
+//
+// Availability depends on the product type x currency pair. One-time: USD supports
+// all four; EUR, GBP, HKD and JPY support card, applepay and googlepay; CNY supports
+// wechat. Subscription: USD, EUR, GBP, HKD and JPY support card, applepay and
+// googlepay. Currencies outside this matrix cannot be charged at all — checkout
+// session creation is rejected with a 400.
+type PaymentMethod string
+
+const (
+	PaymentMethodCard      PaymentMethod = "card"
+	PaymentMethodApplePay  PaymentMethod = "applepay"
+	PaymentMethodGooglePay PaymentMethod = "googlepay"
+	PaymentMethodWeChat    PaymentMethod = "wechat"
+)
+
 // BillingPeriod is the recurrence cadence of a subscription product.
 type BillingPeriod string
 

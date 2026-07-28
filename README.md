@@ -99,6 +99,9 @@ res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheck
             TaxCategory: pancake.TaxCategoryDigitalGoods,
         },
         OrderMerchantExternalID: pancake.Ptr("ORDER-2026-00891"), // optional, see Business-Side Identifiers below
+        Language: pancake.Ptr(pancake.CashierLanguagePtBR), // optional, checkout page default language
+        // optional whitelist; or ExcludePaymentMethods to drop specific ones
+        IncludePaymentMethods: []pancake.PaymentMethod{pancake.PaymentMethodCard, pancake.PaymentMethodApplePay},
     },
     BuyerIdentity: "user-123",
 })
