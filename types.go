@@ -463,11 +463,15 @@ type BillingDetail struct {
 
 // CreateCheckoutSessionParams is the input to Checkout.CreateSession.
 type CreateCheckoutSessionParams struct {
-	ProductID        string            `json:"productId"`
-	Currency         string            `json:"currency"`
-	PriceSnapshot    *PriceInfo        `json:"priceSnapshot,omitempty"`
-	WithTrial        *bool             `json:"withTrial,omitempty"`
-	BuyerEmail       *string           `json:"buyerEmail,omitempty"`
+	ProductID     string     `json:"productId"`
+	Currency      string     `json:"currency"`
+	PriceSnapshot *PriceInfo `json:"priceSnapshot,omitempty"`
+	WithTrial     *bool      `json:"withTrial,omitempty"`
+	BuyerEmail    *string    `json:"buyerEmail,omitempty"`
+	// BillingDetail couples the cashier to the order's billing country: it then offers only that
+	// country's payment market and the customer cannot switch. The country that applies is the one on
+	// the finished order, not the one sent here; a country outside the payment markets Waffo covers
+	// applies no restriction. Leave nil to keep the cashier unrestricted.
 	BillingDetail    *BillingDetail    `json:"billingDetail,omitempty"`
 	SuccessURL       *string           `json:"successUrl,omitempty"`
 	ExpiresInSeconds *int              `json:"expiresInSeconds,omitempty"`
