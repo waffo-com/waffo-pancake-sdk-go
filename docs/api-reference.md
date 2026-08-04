@@ -78,9 +78,8 @@ Update store settings including notification preferences and checkout page styli
 
 ```go
 res, err := client.Stores.Update(ctx, pancake.UpdateStoreParams{
-    ID:           "STO_xxx",
-    Name:         pancake.Ptr("Updated Name"),
-    SupportEmail: pancake.NullValuePtr("help@example.com"),
+    ID:   "STO_xxx",
+    Name: pancake.Ptr("Updated Name"),
     // Only Notify* toggles are merchant-writable; Email* toggles are platform-managed
     // and silently dropped server-side if included.
     NotificationSettings: pancake.NullValuePtr(pancake.NotificationSettings{
@@ -114,13 +113,13 @@ res, err := client.Stores.Update(ctx, pancake.UpdateStoreParams{
 | Field                  | Type                                     | Required | Description                                                              |
 | ---------------------- | ---------------------------------------- | -------- | ------------------------------------------------------------------------ |
 | `ID`                   | `string`                                 | Yes      | Store ID                                                                 |
-| `Name`                 | `*string`                                | No       | Store name (1–100 characters)                                            |
+| `Name`                 | `*string`                                | No       | Store name (1–48 characters, no control characters)                      |
 | `Status`               | `*pancake.EntityStatus`                  | No       | Store status                                                             |
 | `Logo`                 | `*pancake.Nullable[string]`              | No       | Logo (Base64 encoded image); `ExplicitNullPtr[string]()` clears          |
-| `SupportEmail`         | `*pancake.Nullable[string]`              | No       | Support email address                                                    |
-| `Website`              | `*pancake.Nullable[string]`              | No       | Store website URL                                                        |
 | `NotificationSettings` | `*pancake.Nullable[NotificationSettings]` | No       | Email notification preferences                                           |
 | `CheckoutSettings`     | `*pancake.Nullable[CheckoutSettings]`    | No       | Checkout page theme (light/dark)                                         |
+
+> `SupportEmail` and `Website` are not writable through this endpoint. They are derived from ownership verification and are set only by the flows that prove it: email code binding and domain verification, or KYB approval. Both remain readable on `pancake.Store`.
 
 > Webhook endpoints are managed via `client.Webhooks.Add` / `Update` / `Remove`. The `webhookSettings` field on the TypeScript SDK is deprecated and not exposed on the Go SDK.
 

@@ -32,9 +32,9 @@ func (r *StoresResource) Create(ctx context.Context, p CreateStoreParams) (*Crea
 // Example:
 //
 //	res, err := client.Stores.Update(ctx, pancake.UpdateStoreParams{
-//	    ID:           "STO_...",
-//	    Logo:         pancake.ExplicitNullPtr[string](),
-//	    SupportEmail: pancake.NullValuePtr("help@example.com"),
+//	    ID:   "STO_...",
+//	    Name: pancake.Ptr("Renamed store"),
+//	    Logo: pancake.ExplicitNullPtr[string](),
 //	})
 func (r *StoresResource) Update(ctx context.Context, p UpdateStoreParams) (*UpdateStoreResult, error) {
 	if err := validateShortID("id", p.ID, "STO"); err != nil {

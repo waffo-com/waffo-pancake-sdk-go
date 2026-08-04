@@ -153,13 +153,16 @@ type CreateStoreParams struct {
 // UpdateStoreParams is the input to Stores.Update. Settings objects accept
 // partial updates — omitted sub-fields keep their existing values, an explicit
 // null clears the whole group.
+//
+// SupportEmail and Website are not writable here. They are derived from
+// ownership verification and are set only by the flows that prove it: email
+// code binding and domain verification, or KYB approval. Read them back from
+// Store.
 type UpdateStoreParams struct {
 	ID                   string                          `json:"id"`
 	Name                 *string                         `json:"name,omitempty"`
 	Status               *EntityStatus                   `json:"status,omitempty"`
 	Logo                 *Nullable[string]               `json:"logo,omitempty"`
-	SupportEmail         *Nullable[string]               `json:"supportEmail,omitempty"`
-	Website              *Nullable[string]               `json:"website,omitempty"`
 	NotificationSettings *Nullable[NotificationSettings] `json:"notificationSettings,omitempty"`
 	CheckoutSettings     *Nullable[CheckoutSettings]     `json:"checkoutSettings,omitempty"`
 }

@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2026-08-03
+
+`SupportEmail` and `Website` were never applied by the update-store endpoint — passing them was silently ignored.
+
+### Removed
+
+- **BREAKING** `UpdateStoreParams.SupportEmail` and `UpdateStoreParams.Website` — the endpoint never wrote these fields, so passing them had no effect. They are derived from ownership verification and are set only by the flows that prove it: email code binding, domain verification, or KYB approval. Both remain readable on `Store`. Migration: drop them from your `Stores.Update` calls; a `NullValuePtr` you were passing to "clear" them was never clearing anything. Matches the same removal in `@waffo/pancake-ts@0.17.0`.
+
+### Fixed
+
+- `docs/api-reference.md` — `Name` is limited to 48 characters, not 100 (100 is the DB column width; the application layer caps at 48) and rejects control characters as of store-service 2026.8.3.
+
 ## [0.7.0] — 2026-07-28
 
 Adds per-transaction payment method selection on the hosted checkout page. Brings

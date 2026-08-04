@@ -62,10 +62,9 @@ func TestResources_HappyPaths(t *testing.T) {
 			response: map[string]any{"store": map[string]string{"id": "STO_AbCdEfGhIjKlMnOpQrStUv", "name": "X"}},
 			call: func(c *Client) error {
 				_, err := c.Stores.Update(ctx, UpdateStoreParams{
-					ID:           "STO_AbCdEfGhIjKlMnOpQrStUv",
-					Name:         Ptr("Renamed"),
-					Logo:         ExplicitNullPtr[string](),
-					SupportEmail: NullValuePtr("a@b.c"),
+					ID:   "STO_AbCdEfGhIjKlMnOpQrStUv",
+					Name: Ptr("Renamed"),
+					Logo: ExplicitNullPtr[string](),
 				})
 				return err
 			},
