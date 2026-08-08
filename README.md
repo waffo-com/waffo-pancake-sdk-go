@@ -6,7 +6,7 @@ Go SDK for the Waffo Pancake Merchant of Record (MoR) payment platform.
 - Automatic RSA-SHA256 request signing with deterministic idempotency keys
 - Full type definitions (20 enums, 40+ structs)
 - Webhook verification with embedded public keys (test/prod)
-- Feature parity with [`@waffo/pancake-ts@0.14.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
+- Feature parity with [`@waffo/pancake-ts@0.18.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
 
 ## Installation
 
@@ -71,6 +71,7 @@ func main() {
 | `MerchantID`       | `string`                      | yes      | Merchant ID in `MER_{base62}` format                              |
 | `PrivateKey`       | `string`                      | yes      | RSA private key in PEM format (auto-normalized)                   |
 | `BaseURL`          | `string`                      | no       | API base URL override (default: `https://api.waffo.ai`)           |
+| `Environment`      | `pancake.Environment`         | for customer sessions | `EnvironmentTest` or `EnvironmentProd`, sent as `X-Environment`. No default — override per session with `CustomerWithEnvironment` |
 | `HTTPClient`       | `*http.Client`                | no       | Custom HTTP client (default: `http.DefaultClient`)                |
 | `WebhookPublicKey` | `pancake.WebhookPublicKeys`   | no       | Custom webhook public key(s) — overrides the built-in defaults    |
 
@@ -183,7 +184,9 @@ For each environment, public keys are resolved in priority order:
 4. `WAFFO_WEBHOOK_PUBLIC_KEY` env var
 5. Built-in hardcoded PEM key
 
-Replay protection: timestamps outside a 5-minute window are rejected. Set
+Replay protection: timestamps older than 45 minutes or more than 1 minute ahead
+are rejected. The past-facing window covers the full delivery retry schedule —
+the timestamp is stamped before the first attempt and retries reuse it. Set
 `VerifyWebhookOptions.ToleranceMS` to a negative value to disable.
 
 ## Customer Self-Service
@@ -195,7 +198,8 @@ tok, err := client.Auth.IssueSessionToken(ctx, pancake.IssueSessionTokenParams{
     BuyerIdentity: "user-123",
 })
 
-// Hand off to the customer session.
+// Hand off to the customer session. The environment comes from Config.Environment;
+// use CustomerWithEnvironment to override it per session.
 customer := client.Customer(tok.Token)
 
 // Cancel a subscription.
@@ -390,7 +394,7 @@ distinguished from server-returned errors.
 | `client.GraphQL`                     | `Query` (also `pancake.GraphQLQuery[T]`)                                                                                                 |
 | `client.Webhooks`                    | `Add`, `Update`, `Remove`, `Verify` (also `pancake.VerifyWebhook` / `pancake.VerifyWebhookTyped[T]`)                                     |
 | `client.ContentSafety`               | `ScanPrompt` (AIGC prompt content-safety scan)                                                                                           |
-| `client.Customer(token)`                | `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, `GraphQL.Query`      |
+| `client.Customer(token)` / `client.CustomerWithEnvironment(token, env)` | `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, `GraphQL.Query`      |
 
 ## Optional fields
 

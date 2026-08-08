@@ -89,6 +89,47 @@ func TestVerifyWebhook_RejectsStaleTimestamp(t *testing.T) {
 	}
 }
 
+func TestVerifyWebhook_AcceptsTimestampFromRetrySchedule(t *testing.T) {
+	priv, pubPEM := generateRSAKeyPair(t)
+	// Last retry of a 31-minute schedule still carries the original timestamp.
+	retryTS := time.Now().Add(-31 * time.Minute).UnixMilli()
+	payload, sig := makeSignedPayload(t, priv, map[string]any{"id": "evt"}, retryTS)
+	if _, err := VerifyWebhook(payload, sig, &VerifyWebhookOptions{PublicKey: pubPEM}); err != nil {
+		t.Fatalf("verify within retry schedule: %v", err)
+	}
+}
+
+func TestVerifyWebhook_FutureTolerance(t *testing.T) {
+	priv, pubPEM := generateRSAKeyPair(t)
+
+	t.Run("rejects a timestamp too far ahead", func(t *testing.T) {
+		future := time.Now().Add(5 * time.Minute).UnixMilli()
+		payload, sig := makeSignedPayload(t, priv, map[string]any{"id": "evt"}, future)
+		if _, err := VerifyWebhook(payload, sig, &VerifyWebhookOptions{PublicKey: pubPEM}); err == nil {
+			t.Fatal("expected future timestamp error")
+		}
+	})
+
+	t.Run("tolerates small clock skew", func(t *testing.T) {
+		skewed := time.Now().Add(30 * time.Second).UnixMilli()
+		payload, sig := makeSignedPayload(t, priv, map[string]any{"id": "evt"}, skewed)
+		if _, err := VerifyWebhook(payload, sig, &VerifyWebhookOptions{PublicKey: pubPEM}); err != nil {
+			t.Fatalf("verify with 30s skew: %v", err)
+		}
+	})
+
+	t.Run("honors a custom window", func(t *testing.T) {
+		future := time.Now().Add(5 * time.Minute).UnixMilli()
+		payload, sig := makeSignedPayload(t, priv, map[string]any{"id": "evt"}, future)
+		if _, err := VerifyWebhook(payload, sig, &VerifyWebhookOptions{
+			PublicKey:         pubPEM,
+			FutureToleranceMS: 10 * 60 * 1000,
+		}); err != nil {
+			t.Fatalf("verify with widened future window: %v", err)
+		}
+	})
+}
+
 func TestVerifyWebhook_ToleranceDisabled(t *testing.T) {
 	priv, pubPEM := generateRSAKeyPair(t)
 	stale := time.Now().Add(-1 * time.Hour).UnixMilli()

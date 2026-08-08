@@ -771,10 +771,17 @@ type VerifyWebhookOptions struct {
 	// Environment forces verification against the named environment's key.
 	// When zero, both prod and test keys are tried (prod first).
 	Environment Environment
-	// ToleranceMS is the replay-protection window in milliseconds. Set to a
-	// negative value to disable timestamp checking. Zero (default) is treated
-	// as the default 5-minute window.
+	// ToleranceMS is how far in the past a signature timestamp may be, in
+	// milliseconds. Set to a negative value to disable timestamp checking
+	// entirely (which also disables FutureToleranceMS). Zero selects
+	// DefaultWebhookToleranceMS, which covers the full delivery retry schedule:
+	// the timestamp is stamped before the first attempt and retries reuse it.
 	ToleranceMS int64
+	// FutureToleranceMS is how far in the future a signature timestamp may be,
+	// in milliseconds. Only clock skew on the receiving server puts a timestamp
+	// ahead of now, so this stays tight. Zero selects
+	// DefaultWebhookFutureToleranceMS. Ignored when ToleranceMS is negative.
+	FutureToleranceMS int64
 	// PublicKey, when non-empty, overrides all resolution chains and is used
 	// directly for verification.
 	PublicKey string

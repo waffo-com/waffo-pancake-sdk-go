@@ -7,7 +7,7 @@ Waffo Pancake sends webhook events to your configured endpoint when payment, sub
 - **Algorithm**: RSA-SHA256 with environment-specific key pairs
 - **Dual environment**: Test and production use separate key pairs; the SDK resolves the correct key automatically
 - **Multi-level key loading**: Per-call option → config field → environment variable → built-in hardcoded key
-- **Replay protection**: 5-minute timestamp tolerance by default
+- **Replay protection**: 45-minute past / 1-minute future timestamp tolerance by default
 - **Environment auto-detection**: Tries the production key first, falls back to test
 - **Zero I/O**: Verification is a pure local cryptographic operation
 
@@ -17,8 +17,15 @@ Waffo Pancake sends webhook events to your configured endpoint when payment, sub
 1. Parse X-Waffo-Signature header → t (timestamp) + v1 (Base64 signature)
 2. Build signature input: t + "." + rawBody
 3. Verify v1 with RSA-SHA256 using the Waffo public key
-4. Check timestamp (default 5-minute tolerance to prevent replay attacks)
+4. Check timestamp (default: up to 45 minutes old, up to 1 minute ahead)
 ```
+
+The timestamp is stamped once, before the first delivery attempt. Retries reuse
+the original header, so the final retry of a schedule arrives with a timestamp as
+old as the schedule itself — the past-facing window has to cover it. Treat the
+window as a bound on how long a captured request stays replayable, not as your
+primary defense: every event carries a stable `ID`, and your handler should be
+idempotent on it.
 
 ## Usage
 
@@ -134,9 +141,14 @@ event, err := pancake.VerifyWebhook(body, sig, &pancake.VerifyWebhookOptions{
     ToleranceMS: -1,
 })
 
-// Custom tolerance window (10 minutes)
+// Custom past-facing tolerance window (10 minutes)
 event, err := pancake.VerifyWebhook(body, sig, &pancake.VerifyWebhookOptions{
     ToleranceMS: 600_000,
+})
+
+// Loosen the future-facing window for a server with known clock skew
+event, err := pancake.VerifyWebhook(body, sig, &pancake.VerifyWebhookOptions{
+    FutureToleranceMS: 300_000,
 })
 ```
 
@@ -153,7 +165,8 @@ event, err := pancake.VerifyWebhook(body, sig, &pancake.VerifyWebhookOptions{
 | Field         | Type                          | Default          | Description                                                                                                              |
 | ------------- | ----------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `Environment` | `pancake.Environment`         | auto-detect      | Which environment's key to resolve. Zero value (`""`) means try prod first then test. Ignored when `PublicKey` is set.   |
-| `ToleranceMS` | `int64`                       | `300000` (5 min) | Timestamp tolerance in ms. Set to a **negative** value to skip the timestamp check; zero is treated as the 5-min default |
+| `ToleranceMS` | `int64`                       | `2700000` (45 min) | How far in the past a timestamp may be, in ms. Set to a **negative** value to skip the timestamp check entirely; zero selects the default |
+| `FutureToleranceMS` | `int64`                 | `60000` (1 min)  | How far in the future a timestamp may be, in ms. Zero selects the default; ignored when `ToleranceMS` is negative      |
 | `PublicKey`   | `string`                      | —                | Per-call public key override (highest priority, skips all resolution)                                                    |
 | `PublicKeys`  | `*pancake.WebhookPublicKeys`  | —                | Config-level key(s) for the resolution chain. Typically injected automatically by `client.Webhooks.Verify()`             |
 

@@ -14,22 +14,31 @@ import (
 // self-service operations. Not exported — consumers go through
 // CustomerSession.
 type customerHTTPClient struct {
-	token   string
-	baseURL string
-	client  *http.Client
+	token       string
+	environment Environment
+	baseURL     string
+	client      *http.Client
 }
 
-func newCustomerHTTPClient(token, baseURL string, h *http.Client) *customerHTTPClient {
+func newCustomerHTTPClient(token string, environment Environment, baseURL string, h *http.Client) *customerHTTPClient {
 	return &customerHTTPClient{
-		token:   token,
-		baseURL: strings.TrimRight(baseURL, "/"),
-		client:  h,
+		token:       token,
+		environment: environment,
+		baseURL:     strings.TrimRight(baseURL, "/"),
+		client:      h,
 	}
 }
 
 // post sends a Bearer-authenticated POST and returns the full envelope plus
 // HTTP status. Does not throw on errors[] — caller inspects the envelope.
+//
+// The environment is validated here rather than in [Client.Customer], which
+// performs no I/O and returns no error.
 func (c *customerHTTPClient) post(ctx context.Context, path string, body any) (int, *envelope, error) {
+	if err := validateEnvironment("environment", c.environment); err != nil {
+		return 0, nil, err
+	}
+
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return 0, nil, fmt.Errorf("marshal request body: %w", err)
@@ -41,6 +50,7 @@ func (c *customerHTTPClient) post(ctx context.Context, path string, body any) (i
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("X-Environment", string(c.environment))
 
 	resp, err := c.client.Do(req)
 	if err != nil {

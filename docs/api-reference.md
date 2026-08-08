@@ -550,7 +550,8 @@ Issue a session token and create a customer session to let customers manage thei
 
 ### `client.Customer(token)`
 
-Create a customer session from a session token issued by `client.Auth.IssueSessionToken`.
+Create a customer session from a session token issued by `client.Auth.IssueSessionToken`,
+running in `Config.Environment`.
 
 ```go
 tok, err := client.Auth.IssueSessionToken(ctx, pancake.IssueSessionTokenParams{
@@ -561,6 +562,24 @@ customer := client.Customer(tok.Token)
 ```
 
 No I/O is performed; the call only wires up Bearer-token HTTP plumbing.
+
+`Config.Environment` is sent as `X-Environment` on every session request — the
+session token carries none of its own, and the gateway rejects a Bearer credential
+without the header. There is no default: guessing would route the call to the
+other environment. When it is unset, the first session method returns `*Error`
+(400, `ErrorLayerSDK`) before sending anything.
+
+Session tokens expire 5 minutes after issuance — issue one right before use
+rather than caching it.
+
+### `client.CustomerWithEnvironment(token, environment)`
+
+Same as `client.Customer`, with the environment given per session instead of
+taken from `Config.Environment`.
+
+```go
+customer := client.CustomerWithEnvironment(tok.Token, pancake.EnvironmentTest)
+```
 
 ### `customer.CancelSubscription(ctx, params)`
 

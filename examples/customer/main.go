@@ -15,6 +15,9 @@ func main() {
 	client, err := pancake.New(pancake.Config{
 		MerchantID: os.Getenv("WAFFO_MERCHANT_ID"),
 		PrivateKey: os.Getenv("WAFFO_PRIVATE_KEY"),
+		// Customer sessions send this as X-Environment; the gateway rejects a
+		// session token without it.
+		Environment: pancake.EnvironmentTest,
 	})
 	if err != nil {
 		log.Fatalf("init client: %v", err)

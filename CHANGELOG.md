@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-08-08
+
+Customer sessions never reached the API, and webhook retries were rejected as replays. Matches the same two fixes in `@waffo/pancake-ts@0.18.0`.
+
+### Fixed
+
+- **Customer session requests now send `X-Environment`.** A session token carries no environment of its own, so the gateway requires the header next to the Bearer credential and rejects the request with HTTP 400 `Incomplete JWT authentication headers` without it. The header was missing, which made every `CustomerSession` method unusable: `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, and `GraphQL.Query`. API Key requests were never affected — the gateway derives their environment from the key.
+- **Webhook verification no longer rejects legitimate retries.** The signature timestamp is stamped once, before the first delivery attempt, and retries reuse the original header — so the last retry of a schedule arrives with a timestamp as old as the schedule itself (observed above 31 minutes). Against the old 5-minute window every late retry failed verification as a suspected replay. `VerifyWebhook` now allows timestamps up to **45 minutes** old.
+
+### Added
+
+- **`Config.Environment`** — `EnvironmentTest` or `EnvironmentProd`, the environment customer sessions operate in.
+- **`(*Client).CustomerWithEnvironment(token, environment)`** — overrides `Config.Environment` for a single session.
+- **`VerifyWebhookOptions.FutureToleranceMS`** — how far in the future a signature timestamp may be, default `60000` (1 minute). Raise it for a receiving server with known clock skew.
+- **`DefaultWebhookFutureToleranceMS`** — the exported default for the above.
+
+### Changed
+
+- **`Config.Environment` is required for customer sessions.** `Customer(token)` keeps its signature and still performs no I/O; when no environment is available the first session method returns `*Error` (400, `ErrorLayerSDK`) before sending anything. There is no default — guessing would route the call to the other environment. Migration: set `Config.Environment`, or use `CustomerWithEnvironment`.
+- **`DefaultWebhookToleranceMS` raised from `300000` to `2700000`, and the window is now asymmetric** — matching the gateway's API Key check, which pairs a wide past-facing window with a tight future-facing one. `ToleranceMS` now means "how far in the past"; the future direction is `FutureToleranceMS`. A negative `ToleranceMS` still disables the check entirely. A captured request stays replayable for longer under the wider window, so keep your handler idempotent on the event `ID` — that, not the window, is the real defense.
+- Feature parity target updated to `@waffo/pancake-ts@0.18.x`.
+
+---
+
 ## [0.8.0] — 2026-08-03
 
 `SupportEmail` and `Website` were never applied by the update-store endpoint — passing them was silently ignored.
