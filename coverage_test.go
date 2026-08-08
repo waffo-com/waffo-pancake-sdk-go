@@ -279,9 +279,10 @@ func TestCustomerHTTP_EmptyBodyOn4xxReturnsError(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c, err := New(Config{
-		MerchantID: "MER_AbCdEfGhIjKlMnOpQrStUv",
-		PrivateKey: freshTestPrivateKeyPEM(t),
-		BaseURL:    srv.URL,
+		MerchantID:  "MER_AbCdEfGhIjKlMnOpQrStUv",
+		PrivateKey:  freshTestPrivateKeyPEM(t),
+		BaseURL:     srv.URL,
+		Environment: EnvironmentTest,
 	})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
@@ -306,9 +307,10 @@ func TestCustomerHTTP_EmptyBodyOn200ReturnsEmptyEnvelope(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c, err := New(Config{
-		MerchantID: "MER_AbCdEfGhIjKlMnOpQrStUv",
-		PrivateKey: freshTestPrivateKeyPEM(t),
-		BaseURL:    srv.URL,
+		MerchantID:  "MER_AbCdEfGhIjKlMnOpQrStUv",
+		PrivateKey:  freshTestPrivateKeyPEM(t),
+		BaseURL:     srv.URL,
+		Environment: EnvironmentTest,
 	})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
@@ -333,9 +335,10 @@ func TestCustomerHTTP_NonJSONBodyReturnsError(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c, err := New(Config{
-		MerchantID: "MER_AbCdEfGhIjKlMnOpQrStUv",
-		PrivateKey: freshTestPrivateKeyPEM(t),
-		BaseURL:    srv.URL,
+		MerchantID:  "MER_AbCdEfGhIjKlMnOpQrStUv",
+		PrivateKey:  freshTestPrivateKeyPEM(t),
+		BaseURL:     srv.URL,
+		Environment: EnvironmentTest,
 	})
 	if err != nil {
 		t.Fatalf("new client: %v", err)

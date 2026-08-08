@@ -81,11 +81,37 @@ func New(c Config) (*Client, error) {
 	return cl, nil
 }
 
-// Customer returns a CustomerSession backed by the given session token. The
-// token is issued by Auth.IssueSessionToken and is sent as a Bearer
-// Authorization header on every customer request. No I/O is performed by this
-// call.
+// Customer returns a CustomerSession backed by the given session token, running
+// in Config.Environment. The token is issued by Auth.IssueSessionToken and is
+// sent as a Bearer Authorization header, alongside X-Environment, on every
+// customer request. No I/O is performed by this call.
+//
+// Session tokens expire 5 minutes after issuance, so issue one right before use
+// rather than caching it.
+//
+// Config.Environment must be set; otherwise the first session method returns an
+// SDK-layer *Error. Use CustomerWithEnvironment to override it per session.
+//
+// Example:
+//
+//	res, err := client.Auth.IssueSessionToken(ctx, pancake.IssueSessionTokenParams{
+//		StoreID:       "STO_...",
+//		BuyerIdentity: "customer@example.com",
+//	})
+//	session := client.Customer(res.Token)
+//	out, err := session.CancelSubscription(ctx, pancake.CancelSubscriptionParams{OrderID: "ORD_..."})
 func (c *Client) Customer(token string) *CustomerSession {
+	return c.CustomerWithEnvironment(token, c.config.Environment)
+}
+
+// CustomerWithEnvironment returns a CustomerSession backed by the given session
+// token, running in the named environment instead of Config.Environment. No I/O
+// is performed by this call.
+//
+// Example:
+//
+//	session := client.CustomerWithEnvironment(res.Token, pancake.EnvironmentTest)
+func (c *Client) CustomerWithEnvironment(token string, environment Environment) *CustomerSession {
 	baseURL := c.config.BaseURL
 	if baseURL == "" {
 		baseURL = DefaultBaseURL
@@ -94,7 +120,7 @@ func (c *Client) Customer(token string) *CustomerSession {
 	if httpC == nil {
 		httpC = http.DefaultClient
 	}
-	ch := newCustomerHTTPClient(token, baseURL, httpC)
+	ch := newCustomerHTTPClient(token, environment, baseURL, httpC)
 	return newCustomerSession(ch)
 }
 

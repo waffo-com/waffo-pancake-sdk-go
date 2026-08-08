@@ -27,6 +27,21 @@ func validateRequired(field, v string) error {
 	return nil
 }
 
+// validateEnvironment checks that env is one of the two known environments.
+func validateEnvironment(field string, env Environment) error {
+	switch env {
+	case EnvironmentTest, EnvironmentProd:
+		return nil
+	case "":
+		return newSDKError(
+			"Missing required field: %s — set Config.Environment or use client.CustomerWithEnvironment(token, pancake.EnvironmentTest)",
+			field,
+		)
+	default:
+		return newSDKError("Invalid %s: expected one of [test, prod], got %q", field, string(env))
+	}
+}
+
 // validateShortID checks the {PREFIX}_{base62} Short ID shape.
 func validateShortID(field, v, prefix string) error {
 	if err := validateRequired(field, v); err != nil {

@@ -10,11 +10,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -78,9 +80,10 @@ func newCustomerTestClient(t *testing.T) (*Client, *CustomerSession, *customerTe
 	t.Cleanup(func() { srv.srv.Close() })
 
 	c, err := New(Config{
-		MerchantID: "MER_AbCdEfGhIjKlMnOpQrStUv",
-		PrivateKey: privPEM,
-		BaseURL:    srv.srv.URL,
+		MerchantID:  "MER_AbCdEfGhIjKlMnOpQrStUv",
+		PrivateKey:  privPEM,
+		BaseURL:     srv.srv.URL,
+		Environment: EnvironmentTest,
 	})
 	if err != nil {
 		t.Fatalf("new client: %v", err)
@@ -106,6 +109,68 @@ func TestCustomer_AttachesBearer(t *testing.T) {
 	}
 	if got, want := reqs[0].Headers.Get("Authorization"), "Bearer JWT_CUSTOMER_TOKEN"; got != want {
 		t.Errorf("Authorization header = %q, want %q", got, want)
+	}
+	if got, want := reqs[0].Headers.Get("X-Environment"), "test"; got != want {
+		t.Errorf("X-Environment header = %q, want %q", got, want)
+	}
+}
+
+func TestCustomerWithEnvironment_OverridesConfig(t *testing.T) {
+	c, _, srv := newCustomerTestClient(t)
+	srv.respond = func(_ recordedRequest) (int, any) {
+		return 200, map[string]any{"data": map[string]any{"orderId": "ORD_AbCdEfGhIjKlMnOpQrStUv", "status": "canceled"}}
+	}
+
+	customer := c.CustomerWithEnvironment("JWT_CUSTOMER_TOKEN", EnvironmentProd)
+	if _, err := customer.CancelOnetimeOrder(context.Background(), CancelOnetimeOrderParams{
+		OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv",
+	}); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+	reqs := srv.requests()
+	if len(reqs) != 1 {
+		t.Fatalf("expected 1 req, got %d", len(reqs))
+	}
+	if got, want := reqs[0].Headers.Get("X-Environment"), "prod"; got != want {
+		t.Errorf("X-Environment header = %q, want %q", got, want)
+	}
+}
+
+func TestCustomer_EnvironmentValidation(t *testing.T) {
+	cases := []struct {
+		name        string
+		environment Environment
+		wantMessage string
+	}{
+		{"missing", "", "Missing required field: environment"},
+		{"invalid", Environment("staging"), `Invalid environment: expected one of [test, prod], got "staging"`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, srv := newCustomerTestClient(t)
+			customer := c.CustomerWithEnvironment("JWT_CUSTOMER_TOKEN", tc.environment)
+
+			_, err := customer.CancelOnetimeOrder(context.Background(), CancelOnetimeOrderParams{
+				OrderID: "ORD_AbCdEfGhIjKlMnOpQrStUv",
+			})
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+			var perr *Error
+			if !errors.As(err, &perr) {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if perr.Status != 400 || perr.Errors[0].Layer != ErrorLayerSDK {
+				t.Errorf("status = %d layer = %q, want 400 / %q", perr.Status, perr.Errors[0].Layer, ErrorLayerSDK)
+			}
+			if !strings.Contains(perr.Errors[0].Message, tc.wantMessage) {
+				t.Errorf("message = %q, want it to contain %q", perr.Errors[0].Message, tc.wantMessage)
+			}
+			if n := len(srv.requests()); n != 0 {
+				t.Errorf("expected no request to be sent, got %d", n)
+			}
+		})
 	}
 }
 

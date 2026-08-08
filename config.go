@@ -16,6 +16,16 @@ type Config struct {
 	PrivateKey string
 	// BaseURL overrides the API host. Defaults to DefaultBaseURL.
 	BaseURL string
+	// Environment is the environment customer sessions operate in, sent as
+	// X-Environment alongside the session token. API Key requests do not need
+	// it — the gateway derives their environment from the key. Session tokens
+	// carry none, so the gateway requires the header and answers HTTP 400
+	// without it.
+	//
+	// There is no default: a wrong guess would route the call to the other
+	// environment. Set it here, or per session via
+	// [Client.CustomerWithEnvironment].
+	Environment Environment
 	// HTTPClient overrides the underlying *http.Client. Defaults to
 	// http.DefaultClient.
 	HTTPClient *http.Client

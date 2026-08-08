@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -15,9 +14,23 @@ import (
 	"github.com/waffo-com/waffo-pancake-sdk-go/internal/signing"
 )
 
-// DefaultWebhookToleranceMS is the default replay-protection window applied
-// when [VerifyWebhookOptions.ToleranceMS] is zero.
-const DefaultWebhookToleranceMS = 5 * 60 * 1000
+// DefaultWebhookToleranceMS is the default past-facing replay-protection window
+// applied when [VerifyWebhookOptions.ToleranceMS] is zero.
+//
+// The signature timestamp is stamped once, before the first delivery attempt —
+// retries carry the original header, so by the last attempt the timestamp is as
+// old as the whole retry schedule (observed above 31 minutes). A window shorter
+// than that rejects legitimate retries. 45 minutes covers the schedule plus
+// clock skew on the receiving server.
+//
+// A window this wide does not make replay attacks cheap on its own: every event
+// carries a stable ID, and handlers are expected to be idempotent on it.
+const DefaultWebhookToleranceMS = 45 * 60 * 1000
+
+// DefaultWebhookFutureToleranceMS is the default future-facing window, matching
+// the gateway's API Key check. Only clock skew puts a timestamp ahead of now, so
+// this stays tight.
+const DefaultWebhookFutureToleranceMS = 60 * 1000
 
 // builtinTestPublicKey is the test-environment webhook verification key.
 // Mirrored byte-for-byte from sdks/waffo-pancake-sdk-ts/src/webhooks.ts.
@@ -149,6 +162,7 @@ func VerifyWebhook(payload, signatureHeader string, opts *VerifyWebhookOptions) 
 	}
 
 	tolerance := DefaultWebhookToleranceMS
+	futureTolerance := DefaultWebhookFutureToleranceMS
 	if opts != nil {
 		switch {
 		case opts.ToleranceMS < 0:
@@ -156,14 +170,18 @@ func VerifyWebhook(payload, signatureHeader string, opts *VerifyWebhookOptions) 
 		case opts.ToleranceMS > 0:
 			tolerance = int(opts.ToleranceMS)
 		}
+		if opts.FutureToleranceMS > 0 {
+			futureTolerance = int(opts.FutureToleranceMS)
+		}
 	}
+	// Asymmetric, matching the gateway's API Key check.
 	if tolerance > 0 {
 		ts, perr := strconv.ParseInt(t, 10, 64)
 		if perr != nil {
 			return nil, errors.New("invalid timestamp in X-Waffo-Signature header")
 		}
-		now := time.Now().UnixMilli()
-		if math.Abs(float64(now-ts)) > float64(tolerance) {
+		ageMS := time.Now().UnixMilli() - ts
+		if ageMS > int64(tolerance) || ageMS < -int64(futureTolerance) {
 			return nil, errors.New("webhook timestamp outside tolerance window (possible replay attack)")
 		}
 	}
