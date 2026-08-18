@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] — 2026-08-18
+
+Subscription products can now charge for the trial period. Matches `@waffo/pancake-ts@0.19.0`.
+
+### Added
+
+- **`PriceInfo.TrialAmount`** — trial period price as a display string, subscription products only. Leave it nil for a free trial. It requires `metadata.trialDays` on the product and must be lower than `Amount`; the API rejects either violation with HTTP 400.
+- **`PriceSnapshot`** — the struct `CreateCheckoutSessionParams.PriceSnapshot` accepts. Same fields as `PriceInfo` without `TrialAmount`.
+
+### Changed
+
+- **BREAKING: `CreateCheckoutSessionParams.PriceSnapshot` is `*PriceSnapshot` rather than `*PriceInfo`.** A session-level override replaces the regular period price; the trial price comes from the product version locked into the session, so a `TrialAmount` passed here would be dropped server-side. Go resolves struct types by name, so existing `&PriceInfo{...}` literals stop compiling. Migration: rename the literal to `&PriceSnapshot{...}` — field names and JSON tags are identical.
+- Feature parity target updated to `@waffo/pancake-ts@0.19.x`.
+
 ## [0.9.0] — 2026-08-08
 
 Customer sessions never reached the API, and webhook retries were rejected as replays. Matches the same two fixes in `@waffo/pancake-ts@0.18.0`.

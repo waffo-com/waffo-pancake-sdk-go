@@ -300,7 +300,7 @@ func TestCheckoutCommon_AllValidationBranches(t *testing.T) {
 	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
 		ProductID:     "PROD_AbCdEfGhIjKlMnOpQrStUv",
 		Currency:      "USD",
-		PriceSnapshot: &PriceInfo{Amount: "abc", TaxCategory: TaxCategoryDigitalGoods},
+		PriceSnapshot: &PriceSnapshot{Amount: "abc", TaxCategory: TaxCategoryDigitalGoods},
 	}); err == nil {
 		t.Error("expected error for bad priceSnapshot amount")
 	}
@@ -309,7 +309,7 @@ func TestCheckoutCommon_AllValidationBranches(t *testing.T) {
 	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
 		ProductID:     "PROD_AbCdEfGhIjKlMnOpQrStUv",
 		Currency:      "USD",
-		PriceSnapshot: &PriceInfo{Amount: "9.99", TaxCategory: ""},
+		PriceSnapshot: &PriceSnapshot{Amount: "9.99", TaxCategory: ""},
 	}); err == nil {
 		t.Error("expected error for missing taxCategory")
 	}
@@ -328,7 +328,7 @@ func TestCheckoutCommon_AllValidationBranches(t *testing.T) {
 	if _, err := client.Checkout.CreateSession(ctx, CreateCheckoutSessionParams{
 		ProductID:        "PROD_AbCdEfGhIjKlMnOpQrStUv",
 		Currency:         "USD",
-		PriceSnapshot:    &PriceInfo{Amount: "9.99", TaxCategory: TaxCategoryDigitalGoods},
+		PriceSnapshot:    &PriceSnapshot{Amount: "9.99", TaxCategory: TaxCategoryDigitalGoods},
 		BillingDetail:    &BillingDetail{Country: "US", IsBusiness: false},
 		ExpiresInSeconds: &positive,
 	}); err != nil {

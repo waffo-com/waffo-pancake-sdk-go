@@ -95,7 +95,7 @@ res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheck
         ProductID:  "PROD_...",
         Currency:   "USD",
         BuyerEmail: pancake.Ptr("customer@example.com"),
-        PriceSnapshot: &pancake.PriceInfo{
+        PriceSnapshot: &pancake.PriceSnapshot{
             Amount:      "19.99",
             TaxCategory: pancake.TaxCategoryDigitalGoods,
         },

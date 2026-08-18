@@ -241,9 +241,14 @@ type UpdateRoleResult struct {
 
 // PriceInfo is the per-currency price expressed in display units (for example
 // "9.99" for USD, "1000" for JPY).
+//
+// TrialAmount applies to subscription products only. Leave it nil for a free
+// trial; when set it requires metadata.trialDays on the product and must be
+// lower than Amount.
 type PriceInfo struct {
 	Amount      string      `json:"amount"`
 	TaxCategory TaxCategory `json:"taxCategory"`
+	TrialAmount *string     `json:"trialAmount,omitempty"`
 }
 
 // Prices is the multi-currency price map keyed by ISO 4217 currency code.
@@ -464,13 +469,23 @@ type BillingDetail struct {
 	TaxID        *string `json:"taxId,omitempty"`
 }
 
+// PriceSnapshot overrides the product price for a single checkout session and is
+// accepted with API Key authentication only.
+//
+// For subscription products it replaces the regular period price; the trial
+// price comes from the product version locked into the session.
+type PriceSnapshot struct {
+	Amount      string      `json:"amount"`
+	TaxCategory TaxCategory `json:"taxCategory"`
+}
+
 // CreateCheckoutSessionParams is the input to Checkout.CreateSession.
 type CreateCheckoutSessionParams struct {
-	ProductID     string     `json:"productId"`
-	Currency      string     `json:"currency"`
-	PriceSnapshot *PriceInfo `json:"priceSnapshot,omitempty"`
-	WithTrial     *bool      `json:"withTrial,omitempty"`
-	BuyerEmail    *string    `json:"buyerEmail,omitempty"`
+	ProductID     string         `json:"productId"`
+	Currency      string         `json:"currency"`
+	PriceSnapshot *PriceSnapshot `json:"priceSnapshot,omitempty"`
+	WithTrial     *bool          `json:"withTrial,omitempty"`
+	BuyerEmail    *string        `json:"buyerEmail,omitempty"`
 	// BillingDetail couples the cashier to the order's billing country: it then offers only that
 	// country's payment market and the customer cannot switch. The country that applies is the one on
 	// the finished order, not the one sent here; a country outside the payment markets Waffo covers
