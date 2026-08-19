@@ -11,8 +11,15 @@ type OrdersResource struct {
 
 // CancelSubscription cancels a subscription order.
 //
-//   - pending      -> canceled (immediate)
-//   - active/past_due -> canceling (PSP cancel; webhook updates the status)
+//   - pending  -> canceled (immediate, no PSP call)
+//   - active   -> canceling; the PSP cancel is scheduled for the end of the current
+//     period, so access continues until then
+//   - past_due -> canceling; the PSP cancel is dispatched immediately, since a
+//     failed renewal leaves no paid period to preserve
+//
+// Both active and past_due settle to canceled only once the PSP cancellation
+// webhook is received. A past_due cancellation emits no subscription.canceling
+// event and cannot be reactivated.
 //
 // Example:
 //

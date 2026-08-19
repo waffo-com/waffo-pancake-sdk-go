@@ -120,7 +120,7 @@ const (
 //   - pending   -> active, canceled, closed
 //   - active    -> canceling, past_due, canceled, expired
 //   - canceling -> active, canceled
-//   - past_due  -> active, canceled
+//   - past_due  -> active, canceling, canceled
 //   - closed    -> terminal
 //   - canceled  -> terminal
 //   - expired   -> terminal

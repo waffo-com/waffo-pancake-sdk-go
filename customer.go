@@ -21,8 +21,11 @@ func newCustomerSession(h *customerHTTPClient) *CustomerSession {
 
 // CancelSubscription cancels a customer's subscription order.
 //
-//   - pending -> canceled
-//   - active  -> canceling (the PSP cancellation is confirmed asynchronously)
+//   - pending  -> canceled
+//   - active   -> canceling, effective at the end of the current period
+//   - past_due -> canceling, effective immediately
+//
+// In both canceling cases the PSP cancellation is confirmed asynchronously.
 func (s *CustomerSession) CancelSubscription(ctx context.Context, p CancelSubscriptionParams) (*CancelSubscriptionResult, error) {
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
@@ -49,7 +52,8 @@ func (s *CustomerSession) CancelOnetimeOrder(ctx context.Context, p CancelOnetim
 }
 
 // ReactivateSubscription reactivates a subscription currently in the
-// "canceling" state.
+// "canceling" state. A subscription that was canceled while a renewal payment
+// was outstanding cannot be reactivated and returns 400.
 func (s *CustomerSession) ReactivateSubscription(ctx context.Context, p ReactivateSubscriptionParams) (*ReactivateSubscriptionResult, error) {
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
