@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] — 2026-08-20
+
+Pre-filling a billing country does not restrict which payment methods the hosted cashier offers. Matches `@waffo/pancake-ts@0.19.1`.
+
+### Changed
+
+- **`CreateCheckoutSessionParams.BillingDetail` no longer couples the hosted cashier to a payment market.** The cashier's market adapts to the customer's own environment, and `IncludePaymentMethods` / `ExcludePaymentMethods` are the only constraint on which methods it offers; the billing country affects tax calculation and invoice attribution only. Struct fields and JSON tags unchanged — no migration.
+
 ## [0.10.0] — 2026-08-18
 
 Subscription products can now charge for the trial period. Matches `@waffo/pancake-ts@0.19.0`.
