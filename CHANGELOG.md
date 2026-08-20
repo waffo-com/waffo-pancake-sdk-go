@@ -10,7 +10,7 @@ Pre-filling a billing country does not restrict which payment methods the hosted
 
 ### Changed
 
-- **`CreateCheckoutSessionParams.BillingDetail` no longer couples the hosted cashier to a payment market.** The cashier's market adapts to the customer's own environment, and `IncludePaymentMethods` / `ExcludePaymentMethods` are the only constraint on which methods it offers; the billing country affects tax calculation and invoice attribution only. Struct fields and JSON tags unchanged — no migration.
+- **`CreateCheckoutSessionParams.BillingDetail` no longer couples the hosted cashier to a payment market.** The cashier's market adapts to the customer's own environment. Within what the product type × currency pair supports, `IncludePaymentMethods` / `ExcludePaymentMethods` remain the only merchant-side channel constraint on which methods the cashier offers — and they require API Key authentication: Store Slug (visitor) sessions ignore both and always offer every method the currency supports. The billing country affects tax calculation and invoice attribution only. Struct fields and JSON tags unchanged — no migration.
 
 ## [0.10.0] — 2026-08-18
 
