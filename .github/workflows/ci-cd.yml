@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  ci:
+  ci-matrix:
     runs-on: ubuntu-latest
 
     strategy:
@@ -60,8 +60,24 @@ jobs:
             (cd "$dir" && go build .)
           done
 
+  # 对外只暴露这一个固定的 check 名。矩阵 job 的 check 名会带上矩阵值
+  # （ci (20.19.0)、ci (1.22.x) 之类），把那种名字登记成 ruleset 的必需检查会和矩阵硬耦合 ——
+  # 版本清单一改，那条必需检查就永远不再上报，PR 会永久卡在 pending。
+  #
+  # if: always() 是必需的：矩阵失败时本 job 仍要运行并断言失败，否则它会被跳过，
+  # 而被跳过的必需检查在 GitHub 眼里不等于失败。
+  CI:
+    needs: [ci-matrix]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 汇总矩阵结果
+        run: |
+          echo "ci-matrix: ${{ needs.ci-matrix.result }}"
+          [ "${{ needs.ci-matrix.result }}" = "success" ]
+
   publish:
-    needs: ci
+    needs: CI
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
