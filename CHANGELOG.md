@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] — 2026-09-02
+
+Subscription period and status now travel on the subscription events only. Matches `@waffo/pancake-ts@0.20.0`.
+
+### Removed
+
+- **BREAKING: `WebhookEventTypeSubscriptionUpdated` (`subscription.updated`)** — the platform has no publisher for it; plan changes are published as `subscription.plan_changed`. Migration: switch the constant to `WebhookEventTypeSubscriptionPlanChanged`. Code that matched on the raw string never fired and can be deleted.
+- **`subscription.payment_succeeded` no longer carries `BillingPeriod`, `CurrentPeriodStart`, `CurrentPeriodEnd`, `CanceledAt` or `OrderStatus`.** No struct field changed — those five stay on `WebhookEventData` for the events that do carry them, but they arrive nil on this event. `docs/webhook-guide.md` has the field-by-event table and a per-use-case migration path.
+
+### Added
+
+- **`WebhookEventTypeSubscriptionRenewed` (`subscription.renewed`)** — emitted when the current billing period actually rolls forward, carrying the new period. The first period is not a renewal and does not emit it.
+- **`WebhookEventTypeSubscriptionRecovered` (`subscription.recovered`)** — emitted when a retried charge brings a past-due subscription back to active, closing the loop with `subscription.past_due`.
+- **`WebhookEventTypeSubscriptionPlanChanged` / `...PlanChangeScheduled` / `...PlanChangeFailed`** — the three plan-change events.
+
+### Changed
+
+- Feature parity target updated to `@waffo/pancake-ts@0.20.x` (`doc.go` and `README.md` still declared `0.18.x`).
+
 ## [0.10.0] — 2026-08-18
 
 Subscription products can now charge for the trial period. Matches `@waffo/pancake-ts@0.19.0`.
