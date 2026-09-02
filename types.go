@@ -98,6 +98,9 @@ type NotificationSettings struct {
 	EmailSubscriptionPastDue      *bool `json:"emailSubscriptionPastDue,omitempty"`
 	EmailTrialStarted             *bool `json:"emailTrialStarted,omitempty"`
 	EmailTrialEnding              *bool `json:"emailTrialEnding,omitempty"`
+	// EmailSubscriptionPlanChanged is the single toggle shared by the three
+	// plan-change customer emails (scheduled / failed / applied).
+	EmailSubscriptionPlanChanged  *bool `json:"emailSubscriptionPlanChanged,omitempty"`
 	NotifyNewOrders               *bool `json:"notifyNewOrders,omitempty"`
 	NotifyNewSubscriptions        *bool `json:"notifyNewSubscriptions,omitempty"`
 	NotifySubscriptionCanceled    *bool `json:"notifySubscriptionCanceled,omitempty"`
@@ -105,7 +108,7 @@ type NotificationSettings struct {
 	NotifySubscriptionPastDue     *bool `json:"notifySubscriptionPastDue,omitempty"`
 	NotifySubscriptionRenewed     *bool `json:"notifySubscriptionRenewed,omitempty"`
 	NotifySubscriptionUncanceled  *bool `json:"notifySubscriptionUncanceled,omitempty"`
-	NotifySubscriptionUpdated     *bool `json:"notifySubscriptionUpdated,omitempty"`
+	NotifySubscriptionPlanChanged *bool `json:"notifySubscriptionPlanChanged,omitempty"`
 	NotifyChargeback              *bool `json:"notifyChargeback,omitempty"`
 	NotifyPayoutCompleted         *bool `json:"notifyPayoutCompleted,omitempty"`
 	NotifyPayoutFailed            *bool `json:"notifyPayoutFailed,omitempty"`

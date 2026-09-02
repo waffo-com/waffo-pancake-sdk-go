@@ -11,6 +11,7 @@ Subscription period and status now travel on the subscription events only. Match
 ### Removed
 
 - **BREAKING: `WebhookEventTypeSubscriptionUpdated` (`subscription.updated`)** — the platform has no publisher for it; plan changes are published as `subscription.plan_changed`. Migration: switch the constant to `WebhookEventTypeSubscriptionPlanChanged`. Code that matched on the raw string never fired and can be deleted.
+- **BREAKING: `NotificationSettings.NotifySubscriptionUpdated` renamed to `NotifySubscriptionPlanChanged`** (JSON tag `notifySubscriptionPlanChanged`) — the old key was never accepted by `update-store`, so a settings struct built from the previous field was silently dropped server-side. Migration: rename the field at the call site; the value semantics are unchanged.
 - **`subscription.payment_succeeded` no longer carries `BillingPeriod`, `CurrentPeriodStart`, `CurrentPeriodEnd`, `CanceledAt` or `OrderStatus`.** No struct field changed — those five stay on `WebhookEventData` for the events that do carry them, but they arrive nil on this event. `docs/webhook-guide.md` has the field-by-event table and a per-use-case migration path.
 
 ### Added
@@ -18,6 +19,7 @@ Subscription period and status now travel on the subscription events only. Match
 - **`WebhookEventTypeSubscriptionRenewed` (`subscription.renewed`)** — emitted when the current billing period actually rolls forward, carrying the new period. The first period is not a renewal and does not emit it.
 - **`WebhookEventTypeSubscriptionRecovered` (`subscription.recovered`)** — emitted when a retried charge brings a past-due subscription back to active, closing the loop with `subscription.past_due`.
 - **`WebhookEventTypeSubscriptionPlanChanged` / `...PlanChangeScheduled` / `...PlanChangeFailed`** — the three plan-change events.
+- **`NotificationSettings.EmailSubscriptionPlanChanged`** — the platform-managed toggle shared by the three plan-change customer emails. Read-only from this SDK, like the other `Email*` fields.
 
 ### Changed
 
