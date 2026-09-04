@@ -1034,5 +1034,5 @@ All exported types:
 | `RefundStatus`                          | `Succeeded` / `Failed`                                     |
 | `MediaType`                             | `Image` / `Video`                                          |
 | `ErrorLayer`                            | `Gateway` / `User` / `Store` / `Product` / `Order` / `Ticket` / `GraphQL` / `Resource` / `Email` / `SDK` |
-| `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionUpdated` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` |
+| `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` |
 | `WebhookChannel`                        | `HTTP` / `Feishu` / `Discord` / `Telegram` / `Slack`       |

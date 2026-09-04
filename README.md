@@ -6,7 +6,7 @@ Go SDK for the Waffo Pancake Merchant of Record (MoR) payment platform.
 - Automatic RSA-SHA256 request signing with deterministic idempotency keys
 - Full type definitions (20 enums, 40+ structs)
 - Webhook verification with embedded public keys (test/prod)
-- Feature parity with [`@waffo/pancake-ts@0.18.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
+- Feature parity with [`@waffo/pancake-ts@0.20.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
 
 ## Installation
 

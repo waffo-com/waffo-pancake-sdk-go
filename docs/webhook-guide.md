@@ -522,7 +522,7 @@ All events include the **Order**, **Amount**, and **Product** sections. Addition
 | `PaymentFailureReason` | `*string` | Payment failure reason (present when failed)       |
 | `PaymentDate`          | `*string` | Payment date (ISO 8601 date, e.g., `"2026-04-18"`) |
 
-**Subscription fields** (present for `subscription.*` events):
+**Subscription fields** — present on the subscription domain events, **not** on `subscription.payment_succeeded`:
 
 | Field                | Type      | Description                                                           |
 | -------------------- | --------- | --------------------------------------------------------------------- |
@@ -530,6 +530,34 @@ All events include the **Order**, **Amount**, and **Product** sections. Addition
 | `CurrentPeriodStart` | `*string` | Current billing period start date (ISO 8601)                          |
 | `CurrentPeriodEnd`   | `*string` | Current billing period end date (ISO 8601)                            |
 | `CanceledAt`         | `*string` | Subscription cancellation timestamp (ISO 8601, present when canceled) |
+
+Which events carry that block:
+
+| Event                                                                                                                                                                                                 | Subscription block | `OrderStatus` |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------------- |
+| `subscription.activated`, `subscription.renewed`, `subscription.recovered`, `subscription.plan_changed`, `subscription.plan_change_scheduled`, `subscription.plan_change_failed`, `subscription.canceling`, `subscription.uncanceled`, `subscription.canceled`, `subscription.past_due` | Yes                | Yes           |
+| `subscription.payment_succeeded`                                                                                                                                                                      | No                 | No            |
+| `order.completed`, `refund.succeeded`, `refund.failed`                                                                                                                                                | No                 | Yes           |
+
+### Migrating off the subscription fields on `subscription.payment_succeeded`
+
+`subscription.payment_succeeded` is a pure payment event: it describes one charge and leaves
+`BillingPeriod`, `CurrentPeriodStart`, `CurrentPeriodEnd`, `CanceledAt` and `OrderStatus` nil.
+The subscription's period and status now travel on the subscription domain events only, where
+they are written and published inside the same request — so they no longer arrive empty.
+
+If your handler reads any of those five fields off `subscription.payment_succeeded`:
+
+| You used it for                     | Read it from instead                                                                                |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Extending access after a renewal    | `subscription.renewed` — emitted whenever the current period actually rolls forward                  |
+| Detecting the first paid period     | `subscription.activated` — now always carries the full period                                        |
+| Knowing the subscription is healthy | `subscription.recovered` — emitted when a retried charge brings a past-due subscription back to active |
+| Reading the subscription status     | any subscription domain event (`OrderStatus`), or query the order via GraphQL                        |
+
+The renewal receipt itself is unchanged: `subscription.payment_succeeded` still carries the
+payment fields (`PaymentID`, `PaymentStatus`, `Amount`, `TaxAmount`, …) and `OrderID`, so a
+handler that only uses those needs no change.
 
 **Refund fields** (present for `refund.succeeded`, `refund.failed`):
 
@@ -556,10 +584,14 @@ case string(pancake.WebhookEventTypeRefundSucceeded):
 | --------------------------------------------------- | -------------------------------- | --------------------------------------------------------------- |
 | `WebhookEventTypeOrderCompleted`                    | `order.completed`                | One-time order first payment succeeded                          |
 | `WebhookEventTypeSubscriptionActivated`             | `subscription.activated`         | New subscription activated                                      |
-| `WebhookEventTypeSubscriptionPaymentSucceeded`      | `subscription.payment_succeeded` | Subscription renewal payment succeeded                          |
+| `WebhookEventTypeSubscriptionPaymentSucceeded`      | `subscription.payment_succeeded` | Subscription payment succeeded (pure payment event)             |
+| `WebhookEventTypeSubscriptionRenewed`               | `subscription.renewed`           | Current billing period rolled forward (renewal)                 |
+| `WebhookEventTypeSubscriptionRecovered`             | `subscription.recovered`         | Past-due subscription recovered by a successful retry           |
+| `WebhookEventTypeSubscriptionPlanChanged`           | `subscription.plan_changed`      | Plan change took effect (upgrade/downgrade)                     |
+| `WebhookEventTypeSubscriptionPlanChangeScheduled`   | `subscription.plan_change_scheduled` | Plan change confirmed, effective next billing period        |
+| `WebhookEventTypeSubscriptionPlanChangeFailed`      | `subscription.plan_change_failed` | Plan change did not complete, current plan stays in effect      |
 | `WebhookEventTypeSubscriptionCanceling`             | `subscription.canceling`         | Customer initiated cancellation (expires at end of billing period) |
 | `WebhookEventTypeSubscriptionUncanceled`            | `subscription.uncanceled`        | Customer withdrew cancellation request                             |
-| `WebhookEventTypeSubscriptionUpdated`               | `subscription.updated`           | Subscription product changed (upgrade/downgrade)                |
 | `WebhookEventTypeSubscriptionCanceled`              | `subscription.canceled`          | Subscription fully terminated                                   |
 | `WebhookEventTypeSubscriptionPastDue`               | `subscription.past_due`          | Renewal payment failed (past due)                               |
 | `WebhookEventTypeRefundSucceeded`                   | `refund.succeeded`               | Refund completed successfully                                   |

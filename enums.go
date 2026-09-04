@@ -198,16 +198,20 @@ const (
 type WebhookEventType string
 
 const (
-	WebhookEventTypeOrderCompleted               WebhookEventType = "order.completed"
-	WebhookEventTypeSubscriptionActivated        WebhookEventType = "subscription.activated"
-	WebhookEventTypeSubscriptionPaymentSucceeded WebhookEventType = "subscription.payment_succeeded"
-	WebhookEventTypeSubscriptionCanceling        WebhookEventType = "subscription.canceling"
-	WebhookEventTypeSubscriptionUncanceled       WebhookEventType = "subscription.uncanceled"
-	WebhookEventTypeSubscriptionUpdated          WebhookEventType = "subscription.updated"
-	WebhookEventTypeSubscriptionCanceled         WebhookEventType = "subscription.canceled"
-	WebhookEventTypeSubscriptionPastDue          WebhookEventType = "subscription.past_due"
-	WebhookEventTypeRefundSucceeded              WebhookEventType = "refund.succeeded"
-	WebhookEventTypeRefundFailed                 WebhookEventType = "refund.failed"
+	WebhookEventTypeOrderCompleted                  WebhookEventType = "order.completed"
+	WebhookEventTypeSubscriptionActivated           WebhookEventType = "subscription.activated"
+	WebhookEventTypeSubscriptionPaymentSucceeded    WebhookEventType = "subscription.payment_succeeded"
+	WebhookEventTypeSubscriptionRenewed             WebhookEventType = "subscription.renewed"
+	WebhookEventTypeSubscriptionRecovered           WebhookEventType = "subscription.recovered"
+	WebhookEventTypeSubscriptionPlanChanged         WebhookEventType = "subscription.plan_changed"
+	WebhookEventTypeSubscriptionPlanChangeScheduled WebhookEventType = "subscription.plan_change_scheduled"
+	WebhookEventTypeSubscriptionPlanChangeFailed    WebhookEventType = "subscription.plan_change_failed"
+	WebhookEventTypeSubscriptionCanceling           WebhookEventType = "subscription.canceling"
+	WebhookEventTypeSubscriptionUncanceled          WebhookEventType = "subscription.uncanceled"
+	WebhookEventTypeSubscriptionCanceled            WebhookEventType = "subscription.canceled"
+	WebhookEventTypeSubscriptionPastDue             WebhookEventType = "subscription.past_due"
+	WebhookEventTypeRefundSucceeded                 WebhookEventType = "refund.succeeded"
+	WebhookEventTypeRefundFailed                    WebhookEventType = "refund.failed"
 )
 
 // WebhookChannel is the delivery channel of a configured webhook endpoint.
