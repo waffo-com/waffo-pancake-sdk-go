@@ -100,7 +100,7 @@ type NotificationSettings struct {
 	EmailTrialEnding              *bool `json:"emailTrialEnding,omitempty"`
 	// EmailSubscriptionPlanChanged is the single toggle shared by the three
 	// plan-change customer emails (scheduled / failed / applied).
-	EmailSubscriptionPlanChanged  *bool `json:"emailSubscriptionPlanChanged,omitempty"`
+	EmailSubscriptionPlanChanged *bool `json:"emailSubscriptionPlanChanged,omitempty"`
 	// EmailRefundSucceeded is the customer email sent when a refund on the
 	// buyer's payment completes.
 	EmailRefundSucceeded          *bool `json:"emailRefundSucceeded,omitempty"`
@@ -115,9 +115,9 @@ type NotificationSettings struct {
 	NotifyChargeback              *bool `json:"notifyChargeback,omitempty"`
 	// NotifyRefundSucceeded is the merchant notification sent when a refund on
 	// a payment completes.
-	NotifyRefundSucceeded         *bool `json:"notifyRefundSucceeded,omitempty"`
-	NotifyPayoutCompleted         *bool `json:"notifyPayoutCompleted,omitempty"`
-	NotifyPayoutFailed            *bool `json:"notifyPayoutFailed,omitempty"`
+	NotifyRefundSucceeded *bool `json:"notifyRefundSucceeded,omitempty"`
+	NotifyPayoutCompleted *bool `json:"notifyPayoutCompleted,omitempty"`
+	NotifyPayoutFailed    *bool `json:"notifyPayoutFailed,omitempty"`
 }
 
 // CheckoutThemeSettings holds checkout page styling for a single theme.
