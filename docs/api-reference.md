@@ -80,14 +80,17 @@ Update store settings including notification preferences and checkout page styli
 res, err := client.Stores.Update(ctx, pancake.UpdateStoreParams{
     ID:   "STO_xxx",
     Name: pancake.Ptr("Updated Name"),
-    // Only Notify* toggles are merchant-writable; Email* toggles are platform-managed
-    // and silently dropped server-side if included.
+    // Merchant-writable: the Notify* toggles plus EmailUpcomingCharge. The other
+    // Email* toggles are platform-managed and silently dropped server-side if
+    // included.
     NotificationSettings: pancake.NullValuePtr(pancake.NotificationSettings{
         NotifyNewOrders:            pancake.Ptr(true),
         NotifyNewSubscriptions:     pancake.Ptr(false),
         NotifySubscriptionCanceled: pancake.Ptr(true),
         NotifyChargeback:           pancake.Ptr(true),
         NotifyPayoutFailed:         pancake.Ptr(true),
+        // Stop reminding this store's buyers before a renewal is charged.
+        EmailUpcomingCharge:        pancake.Ptr(false),
     }),
     CheckoutSettings: pancake.NullValuePtr(pancake.CheckoutSettings{
         Light: pancake.CheckoutThemeSettings{
@@ -116,7 +119,7 @@ res, err := client.Stores.Update(ctx, pancake.UpdateStoreParams{
 | `Name`                 | `*string`                                | No       | Store name (1–48 characters, no control characters)                      |
 | `Status`               | `*pancake.EntityStatus`                  | No       | Store status                                                             |
 | `Logo`                 | `*pancake.Nullable[string]`              | No       | Logo (Base64 encoded image); `ExplicitNullPtr[string]()` clears          |
-| `NotificationSettings` | `*pancake.Nullable[NotificationSettings]` | No       | Email notification preferences                                           |
+| `NotificationSettings` | `*pancake.Nullable[NotificationSettings]` | No       | Notification preferences. Merchant-writable: the `Notify*` toggles plus `EmailUpcomingCharge`; the other `Email*` toggles are platform-managed and dropped with a `warnings` entry |
 | `CheckoutSettings`     | `*pancake.Nullable[CheckoutSettings]`    | No       | Checkout page theme (light/dark)                                         |
 
 > `SupportEmail` and `Website` are not writable through this endpoint. They are derived from ownership verification and are set only by the flows that prove it: email code binding and domain verification, or KYB approval. Both remain readable on `pancake.Store`.
