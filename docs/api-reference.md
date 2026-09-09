@@ -80,15 +80,15 @@ Update store settings including notification preferences and checkout page styli
 res, err := client.Stores.Update(ctx, pancake.UpdateStoreParams{
     ID:   "STO_xxx",
     Name: pancake.Ptr("Updated Name"),
-    // Merchant-writable: the Notify* toggles plus EmailUpcomingCharge. The other
-    // Email* toggles are platform-managed and silently dropped server-side if
+    // Merchant-writable: all the Notify* toggles plus EmailUpcomingCharge. Every
+    // other Email* toggle is platform-managed and silently dropped server-side if
     // included.
     NotificationSettings: pancake.NullValuePtr(pancake.NotificationSettings{
         NotifyNewOrders:            pancake.Ptr(true),
         NotifyNewSubscriptions:     pancake.Ptr(false),
         NotifySubscriptionCanceled: pancake.Ptr(true),
         NotifyChargeback:           pancake.Ptr(true),
-        NotifyPayoutFailed:         pancake.Ptr(true),
+        NotifyRefundSucceeded:      pancake.Ptr(true),
         // Stop reminding this store's buyers before a renewal is charged.
         EmailUpcomingCharge:        pancake.Ptr(false),
     }),
@@ -941,7 +941,7 @@ All exported types:
 | `UpdateStoreParams`                     | Update store request                                       |
 | `DeleteStoreParams`                     | Delete store request                                       |
 | `CreateStoreResult`                     | Create store response (also aliased as Update/DeleteStoreResult) |
-| `NotificationSettings`                  | Email notification preferences                             |
+| `NotificationSettings`                  | 21 notification toggles (10 Notify* + 11 Email*)           |
 | `CheckoutSettings`                      | Checkout page theme (light/dark)                           |
 | `CheckoutThemeSettings`                 | Single-theme checkout styling                              |
 | **Store Webhook** (managed via `client.Webhooks`)             |                                              |

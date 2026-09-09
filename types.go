@@ -86,11 +86,11 @@ type RemoveWebhookParams struct {
 // preferences. All fields are optional on input (omit to keep server-side
 // value); the response always carries the full set.
 //
-// Merchant-writable are the Notify* toggles plus EmailUpcomingCharge, the
+// Merchant-writable are all the Notify* toggles plus EmailUpcomingCharge, the
 // buyer-facing renewal reminder — switching that one off silences it for every
 // billing period in the store, yearly plans included.
 //
-// The other Email* toggles are managed by the PANCAKE platform (admin-only via
+// Every other Email* toggle is managed by the PANCAKE platform (admin-only via
 // DB): the merchant update-store endpoint silently drops them and names them in
 // the response's warnings.
 type NotificationSettings struct {
@@ -108,7 +108,10 @@ type NotificationSettings struct {
 	EmailUpcomingCharge *bool `json:"emailUpcomingCharge,omitempty"`
 	// EmailSubscriptionPlanChanged is the single toggle shared by the three
 	// plan-change customer emails (scheduled / failed / applied).
-	EmailSubscriptionPlanChanged  *bool `json:"emailSubscriptionPlanChanged,omitempty"`
+	EmailSubscriptionPlanChanged *bool `json:"emailSubscriptionPlanChanged,omitempty"`
+	// EmailRefundSucceeded is the customer email sent when a refund on the
+	// buyer's payment completes.
+	EmailRefundSucceeded          *bool `json:"emailRefundSucceeded,omitempty"`
 	NotifyNewOrders               *bool `json:"notifyNewOrders,omitempty"`
 	NotifyNewSubscriptions        *bool `json:"notifyNewSubscriptions,omitempty"`
 	NotifySubscriptionCanceled    *bool `json:"notifySubscriptionCanceled,omitempty"`
@@ -118,8 +121,11 @@ type NotificationSettings struct {
 	NotifySubscriptionUncanceled  *bool `json:"notifySubscriptionUncanceled,omitempty"`
 	NotifySubscriptionPlanChanged *bool `json:"notifySubscriptionPlanChanged,omitempty"`
 	NotifyChargeback              *bool `json:"notifyChargeback,omitempty"`
-	NotifyPayoutCompleted         *bool `json:"notifyPayoutCompleted,omitempty"`
-	NotifyPayoutFailed            *bool `json:"notifyPayoutFailed,omitempty"`
+	// NotifyRefundSucceeded is the merchant notification sent when a refund on
+	// a payment completes.
+	NotifyRefundSucceeded *bool `json:"notifyRefundSucceeded,omitempty"`
+	NotifyPayoutCompleted *bool `json:"notifyPayoutCompleted,omitempty"`
+	NotifyPayoutFailed    *bool `json:"notifyPayoutFailed,omitempty"`
 }
 
 // CheckoutThemeSettings holds checkout page styling for a single theme.
