@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] — 2026-09-10
+
+Subscription webhooks now report which billing period an event belongs to. Matches `@waffo/pancake-ts@0.22.0`.
+
+### Added
+
+- **`WebhookEventData.PeriodNumber` (`*int`, JSON `periodNumber`)** — the billing period the event belongs to, as reported by the payment channel: `1` on the first period, `N` on the Nth renewal. The platform never derives or counts it. A failed charge still consumes a period, so the number keeps counting up — it is the billing period, not a count of successful charges (the renewal-receipt emails count charges, and the two disagree after a failed renewal). `0` means the channel authorized the subscription but has not charged it yet.
+
+  It sits outside the subscription block and is not gated by it, so `subscription.payment_succeeded` carries the period number while still leaving the period dates nil. It is nil on `subscription.canceling`, `subscription.uncanceled` and `subscription.plan_change_failed` — no channel notification reports a period number for those — and on `order.completed` / `refund.*`, so nil-check before dereferencing. Several events can report the same period, so it is not a deduplication key; keep deduplicating on `EventType` + `EventID`. `docs/webhook-guide.md` has the field-by-event table.
+
+### Changed
+
+- Feature parity target updated to `@waffo/pancake-ts@0.22.x` (`doc.go` and `README.md` updated together).
+
 ## [0.11.0] — 2026-09-02
 
 Subscription period and status now travel on the subscription events only. Matches `@waffo/pancake-ts@0.20.0`.
