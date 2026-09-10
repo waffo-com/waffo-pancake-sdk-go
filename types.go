@@ -86,9 +86,13 @@ type RemoveWebhookParams struct {
 // preferences. All fields are optional on input (omit to keep server-side
 // value); the response always carries the full set.
 //
-// Email* toggles (Email…) are managed by the PANCAKE platform (admin-only via
-// DB) and are silently dropped if passed to the merchant update-store endpoint.
-// Only the 10 Notify* toggles are merchant-writable.
+// Merchant-writable are all the Notify* toggles plus EmailUpcomingCharge, the
+// buyer-facing renewal reminder — switching that one off silences it for every
+// billing period in the store, yearly plans included.
+//
+// Every other Email* toggle is managed by the PANCAKE platform (admin-only via
+// DB): the merchant update-store endpoint silently drops them and names them in
+// the response's warnings.
 type NotificationSettings struct {
 	EmailOrderConfirmation        *bool `json:"emailOrderConfirmation,omitempty"`
 	EmailSubscriptionConfirmation *bool `json:"emailSubscriptionConfirmation,omitempty"`
@@ -98,6 +102,10 @@ type NotificationSettings struct {
 	EmailSubscriptionPastDue      *bool `json:"emailSubscriptionPastDue,omitempty"`
 	EmailTrialStarted             *bool `json:"emailTrialStarted,omitempty"`
 	EmailTrialEnding              *bool `json:"emailTrialEnding,omitempty"`
+	// EmailUpcomingCharge is the renewal reminder sent to the buyer before a
+	// subscription is charged. Unlike the other Email* toggles it is
+	// merchant-writable.
+	EmailUpcomingCharge *bool `json:"emailUpcomingCharge,omitempty"`
 	// EmailSubscriptionPlanChanged is the single toggle shared by the three
 	// plan-change customer emails (scheduled / failed / applied).
 	EmailSubscriptionPlanChanged *bool `json:"emailSubscriptionPlanChanged,omitempty"`
