@@ -755,9 +755,12 @@ type WebhookEventData struct {
 	//
 	// Present on every subscription event a channel notification drives, including
 	// subscription.payment_succeeded: it sits outside the subscription block below and is
-	// not gated by it. Nil on subscription.canceling, subscription.uncanceled and
-	// subscription.plan_change_failed (no channel notification reports a period number for
-	// those) and on order.completed / refund.* events.
+	// not gated by it. On refund.succeeded / refund.failed it is the period of the charge
+	// being refunded, not the period the refund happens in — refunding the first period of a
+	// subscription already in its second reports 1. Nil on subscription.canceling,
+	// subscription.uncanceled and subscription.plan_change_failed (no channel notification
+	// reports a period number for those), on order.completed, and on refunds of one-time
+	// orders.
 	//
 	// Not a deduplication key: several events can report the same period (a status and a
 	// period notification for one roll-forward, overdue retries). Deduplicate on

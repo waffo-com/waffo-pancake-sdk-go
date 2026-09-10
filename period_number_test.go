@@ -1,9 +1,10 @@
 // Billing-period-number contract tests for the webhook payload.
 //
 // periodNumber is reported by the payment channel and pointer-typed because three
-// subscription events (canceling / uncanceled / plan_change_failed) and the one-time
-// order and refund events carry no period number at all. Period 0 is a real channel
-// value (authorized, not yet charged), so "absent" and "zero" must stay distinguishable.
+// subscription events (canceling / uncanceled / plan_change_failed), one-time orders and
+// refunds of one-time orders carry no period number at all. On a subscription refund it is
+// the period of the charge being refunded. Period 0 is a real channel value (authorized,
+// not yet charged), so "absent" and "zero" must stay distinguishable.
 package pancake
 
 import (

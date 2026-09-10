@@ -535,9 +535,12 @@ renewal). `0` means the channel has authorized the subscription but has not char
 on a plan change scheduled for the next period.
 
 It sits **outside** the subscription block below and is not gated by it, so a pure payment event carries the
-period number without carrying the period dates. It is nil on `subscription.canceling`,
+period number without carrying the period dates. On `refund.succeeded` / `refund.failed` it is the period of
+the **charge being refunded**, not the period the refund happens in: refunding the first period of a
+subscription already in its second reports `1`. It is nil on `subscription.canceling`,
 `subscription.uncanceled` and `subscription.plan_change_failed` (no channel notification reports a period
-number for those) and on `order.completed` / `refund.*`, so nil-check it before dereferencing.
+number for those), on `order.completed`, and on refunds of one-time orders — nil-check it before
+dereferencing.
 
 Several events can report the same period — a status and a period notification for one roll-forward, or
 overdue retries — so it is not a deduplication key. Deduplicate on `EventType` + `EventID`.
@@ -558,7 +561,8 @@ Which events carry that block:
 | `subscription.activated`, `subscription.renewed`, `subscription.recovered`, `subscription.plan_changed`, `subscription.plan_change_scheduled`, `subscription.canceled`, `subscription.past_due` | Yes                | Yes           | Yes            |
 | `subscription.canceling`, `subscription.uncanceled`, `subscription.plan_change_failed`                                                                                                         | Yes                | Yes           | No             |
 | `subscription.payment_succeeded`                                                                                                                                                               | No                 | No            | Yes            |
-| `order.completed`, `refund.succeeded`, `refund.failed`                                                                                                                                         | No                 | Yes           | No             |
+| `refund.succeeded`, `refund.failed`                                                                                                                                                            | No                 | Yes           | Subscription refunds only |
+| `order.completed`                                                                                                                                                                              | No                 | Yes           | No             |
 
 ### Migrating off the subscription fields on `subscription.payment_succeeded`
 
