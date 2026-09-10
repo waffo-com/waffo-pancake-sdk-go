@@ -522,6 +522,29 @@ All events include the **Order**, **Amount**, and **Product** sections. Addition
 | `PaymentFailureReason` | `*string` | Payment failure reason (present when failed)       |
 | `PaymentDate`          | `*string` | Payment date (ISO 8601 date, e.g., `"2026-04-18"`) |
 
+**Billing period number** — present on every subscription event that a channel notification drives, including `subscription.payment_succeeded`:
+
+| Field          | Type   | Description                                                                                    |
+| -------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| `PeriodNumber` | `*int` | Which billing period this event belongs to — `1` for the first period, `N` for the Nth renewal |
+
+`PeriodNumber` comes from the payment channel; the platform never derives or counts it. A failed charge
+still consumes a period, so the number keeps counting up — it is the billing period, **not** a count of
+successful charges (the renewal-receipt emails count charges instead, and the two disagree after a failed
+renewal). `0` means the channel has authorized the subscription but has not charged it yet, which shows up
+on a plan change scheduled for the next period.
+
+It sits **outside** the subscription block below and is not gated by it, so a pure payment event carries the
+period number without carrying the period dates. On `refund.succeeded` / `refund.failed` it is the period of
+the **charge being refunded**, not the period the refund happens in: refunding the first period of a
+subscription already in its second reports `1`. It is nil on `subscription.canceling`,
+`subscription.uncanceled` and `subscription.plan_change_failed` (no channel notification reports a period
+number for those), on `order.completed`, and on refunds of one-time orders — nil-check it before
+dereferencing.
+
+Several events can report the same period — a status and a period notification for one roll-forward, or
+overdue retries — so it is not a deduplication key. Deduplicate on `EventType` + `EventID`.
+
 **Subscription fields** — present on the subscription domain events, **not** on `subscription.payment_succeeded`:
 
 | Field                | Type      | Description                                                           |
@@ -533,11 +556,13 @@ All events include the **Order**, **Amount**, and **Product** sections. Addition
 
 Which events carry that block:
 
-| Event                                                                                                                                                                                                 | Subscription block | `OrderStatus` |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------------- |
-| `subscription.activated`, `subscription.renewed`, `subscription.recovered`, `subscription.plan_changed`, `subscription.plan_change_scheduled`, `subscription.plan_change_failed`, `subscription.canceling`, `subscription.uncanceled`, `subscription.canceled`, `subscription.past_due` | Yes                | Yes           |
-| `subscription.payment_succeeded`                                                                                                                                                                      | No                 | No            |
-| `order.completed`, `refund.succeeded`, `refund.failed`                                                                                                                                                | No                 | Yes           |
+| Event                                                                                                                                                                                          | Subscription block | `OrderStatus` | `PeriodNumber` |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------------- | -------------- |
+| `subscription.activated`, `subscription.renewed`, `subscription.recovered`, `subscription.plan_changed`, `subscription.plan_change_scheduled`, `subscription.canceled`, `subscription.past_due` | Yes                | Yes           | Yes            |
+| `subscription.canceling`, `subscription.uncanceled`, `subscription.plan_change_failed`                                                                                                         | Yes                | Yes           | No             |
+| `subscription.payment_succeeded`                                                                                                                                                               | No                 | No            | Yes            |
+| `refund.succeeded`, `refund.failed`                                                                                                                                                            | No                 | Yes           | Subscription refunds only |
+| `order.completed`                                                                                                                                                                              | No                 | Yes           | No             |
 
 ### Migrating off the subscription fields on `subscription.payment_succeeded`
 

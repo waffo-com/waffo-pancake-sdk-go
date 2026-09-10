@@ -746,6 +746,27 @@ type WebhookEventData struct {
 	PaymentFailureReason *string `json:"paymentFailureReason,omitempty"`
 	PaymentDate          *string `json:"paymentDate,omitempty"`
 
+	// PeriodNumber is which billing period the event belongs to, as reported by the
+	// payment channel: 1 on the first period, N on the Nth renewal. The platform never
+	// derives or counts it. A failed charge still consumes a period, so the number keeps
+	// counting up — it is the billing period, not a count of successful charges (the
+	// renewal-receipt emails count charges instead, and the two disagree after a failed
+	// renewal). 0 means the channel authorized the subscription but has not charged it yet.
+	//
+	// Present on every subscription event a channel notification drives, including
+	// subscription.payment_succeeded: it sits outside the subscription block below and is
+	// not gated by it. On refund.succeeded / refund.failed it is the period of the charge
+	// being refunded, not the period the refund happens in — refunding the first period of a
+	// subscription already in its second reports 1. Nil on subscription.canceling,
+	// subscription.uncanceled and subscription.plan_change_failed (no channel notification
+	// reports a period number for those), on order.completed, and on refunds of one-time
+	// orders.
+	//
+	// Not a deduplication key: several events can report the same period (a status and a
+	// period notification for one roll-forward, overdue retries). Deduplicate on
+	// EventType + EventID.
+	PeriodNumber *int `json:"periodNumber,omitempty"`
+
 	BillingPeriod      *string `json:"billingPeriod,omitempty"`
 	CurrentPeriodStart *string `json:"currentPeriodStart,omitempty"`
 	CurrentPeriodEnd   *string `json:"currentPeriodEnd,omitempty"`
