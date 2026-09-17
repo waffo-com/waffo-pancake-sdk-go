@@ -761,7 +761,12 @@ type WebhookEventData struct {
 	// block, so subscription.payment_succeeded carries it even though
 	// BillingPeriod and the CurrentPeriod* fields are nil there. Nil for
 	// one-time orders and their refunds, and for subscriptions and payments that
-	// predate this field.
+	// predate this field. The same concept is exposed on GraphQL under two names,
+	// one per anchor: Payment.periodNumber (frozen to that charge) and
+	// SubscriptionOrder.currentPeriodNumber (moves as the subscription renews);
+	// they are not different numbers. Test webhooks sent from the Dashboard always
+	// report 1 on subscription events and omit the field on refund events, while
+	// real subscription refunds in production do carry it.
 	PeriodNumber *int `json:"periodNumber,omitempty"`
 
 	BillingPeriod      *string `json:"billingPeriod,omitempty"`
