@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] — 2026-09-19
+
+Plan changes can now be started from the SDK, and product groups expose the switch that lets customers start one themselves. Matches `@waffo/pancake-ts@0.23.0`.
+
+### Added
+
+- **`Checkout.CreatePlanChangeSession(ctx, params)`** — issues a link that changes an existing subscription to another plan. It hits the same `create-session` endpoint as a new purchase, in the mode selected by `OriginOrderID`, and returns a `CheckoutURL` pointing at the change confirmation page (`…/store/{slug}/change/{sessionId}`). `ChangeAmount` (charge this much) and `ChangeCreditAmount` (credit this much) are two ways to price the same change, mutually exclusive and rejected together with a 400; they and `WithTrial` are merchant-credential only. The mode rules are not enforced client-side — the SDK forwards what you pass.
+- **`Checkout.Authenticated.CreatePlanChange(ctx, params)`** — the authenticated form: same `BuyerIdentity` split as `Authenticated.Create`, with the issued token appended to the confirmation URL as `#token=...`.
+- **`CreatePlanChangeSessionParams` / `AuthenticatedPlanChangeParams`** — plan change params with **`OriginOrderID` required**. `CreateCheckoutSessionParams` (and therefore the `AnonymousCheckoutParams` alias) carries no plan change field, and `Checkout.Anonymous` has no plan change method: a Store Slug session is anonymous and the platform answers 403 for it.
+- **`ChangeTiming`** (`ChangeTimingImmediate` / `ChangeTimingNextPeriod`) — when the new plan takes effect. Leave it nil and the platform derives the tier from the change direction; the derived tier is not echoed back, so pass it when you need certainty.
+- **`GroupRules.SelfServicePlanChange`** — the group-level master switch for customers changing plans within the group from the customer portal. While it is off, a customer-credential plan change link is rejected with a 403; merchant-issued links are unaffected.
+
+### Changed
+
+- **BREAKING: `GroupRules` split into an entity type and an input type.** `GroupRules` (returned on a group) keeps plain `bool` fields and gains `SelfServicePlanChange` — the platform always reports a complete set, an unset switch as `false`. Group create / update now take the new `GroupRulesInput`, whose switches are `*bool` to match the platform's field-by-field merge: sending only `SelfServicePlanChange` leaves `SharedTrial` at its stored value. Migration: `Rules: &pancake.GroupRules{SharedTrial: true}` becomes `Rules: &pancake.GroupRulesInput{SharedTrial: pancake.Ptr(true)}`. Reading `group.Rules` is unchanged.
+- Feature parity target updated to `@waffo/pancake-ts@0.23.x` (`doc.go` and `README.md` updated with it).
+
 ## [0.13.0] — 2026-09-19
 
 Subscription webhooks carry the payment channel's billing period number. Matches `@waffo/pancake-ts@0.22.0`.

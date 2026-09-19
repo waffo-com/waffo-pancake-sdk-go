@@ -6,7 +6,7 @@ Go SDK for the Waffo Pancake Merchant of Record (MoR) payment platform.
 - Automatic RSA-SHA256 request signing with deterministic idempotency keys
 - Full type definitions (20 enums, 40+ structs)
 - Webhook verification with embedded public keys (test/prod)
-- Feature parity with [`@waffo/pancake-ts@0.22.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
+- Feature parity with [`@waffo/pancake-ts@0.23.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
 
 ## Installation
 
@@ -116,6 +116,54 @@ res, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParam
 
 Opening the URL in a new tab is recommended so customers can return to your site
 without losing page state.
+
+### Plan change links
+
+Switching an existing subscription to another plan uses the same endpoint in a
+different mode, so it gets its own pair of methods with `OriginOrderID` required —
+the platform rejects the plan change fields whenever they appear without it.
+
+```go
+// API Key entry point: send the customer to the returned URL yourself.
+session, err := client.Checkout.CreatePlanChangeSession(ctx, pancake.CreatePlanChangeSessionParams{
+    OriginOrderID:      "ORD_...",             // the subscription being changed (required)
+    ProductID:          "PROD_target_plan",    // the plan to switch to
+    Currency:           "USD",
+    ChangeTiming:       pancake.Ptr(pancake.ChangeTimingImmediate), // omit to let the platform derive it
+    ChangeCreditAmount: pancake.Ptr("8.00"),   // "credit this much" — or ChangeAmount, never both
+})
+// session.CheckoutURL = "https://pancake.waffo.ai/store/{slug}/change/{sessionId}"
+
+// Authenticated entry point: the token is appended so the customer lands on the
+// confirmation page already signed in.
+res, err := client.Checkout.Authenticated.CreatePlanChange(ctx, pancake.AuthenticatedPlanChangeParams{
+    CreatePlanChangeSessionParams: pancake.CreatePlanChangeSessionParams{
+        OriginOrderID: "ORD_...",
+        ProductID:     "PROD_target_plan",
+        Currency:      "USD",
+    },
+    BuyerIdentity: "user-123",
+})
+```
+
+- `ChangeAmount` sets what you charge for this period, `ChangeCreditAmount` how
+  much you credit against it. Same unit and tax basis, opposite meaning — they are
+  mutually exclusive and sending both is rejected with a 400.
+- `ChangeAmount`, `ChangeCreditAmount` and `WithTrial` are honored because these
+  calls are signed with your API Key; a customer-session credential has them
+  silently dropped.
+- `Checkout.Anonymous` has no plan change method — a Store Slug session has no
+  subscription to attribute the change to and the platform answers 403.
+- To let customers start a change themselves from the customer portal, switch on
+  `SelfServicePlanChange` on the product group:
+
+```go
+_, err = client.SubscriptionProductGroups.Update(ctx, pancake.UpdateSubscriptionProductGroupParams{
+    ID:    "spg_xxx",
+    Rules: &pancake.GroupRulesInput{SelfServicePlanChange: pancake.Ptr(true)},
+})
+// Rules merges switch by switch: SharedTrial keeps its stored value.
+```
 
 ## Webhook Verification
 
@@ -390,7 +438,7 @@ distinguished from server-returned errors.
 | `client.SubscriptionProducts`        | `Create`, `Update`, `Publish`, `UpdateStatus`                                                                                            |
 | `client.SubscriptionProductGroups`   | `Create`, `Update`, `Delete`, `Publish`                                                                                                  |
 | `client.Orders`                      | `CancelSubscription`                                                                                                                     |
-| `client.Checkout`                    | `CreateSession`, `Anonymous.Create`, `Authenticated.Create`                                                                              |
+| `client.Checkout`                    | `CreateSession`, `CreatePlanChangeSession`, `Anonymous.Create`, `Authenticated.Create`, `Authenticated.CreatePlanChange`                  |
 | `client.GraphQL`                     | `Query` (also `pancake.GraphQLQuery[T]`)                                                                                                 |
 | `client.Webhooks`                    | `Add`, `Update`, `Remove`, `Verify` (also `pancake.VerifyWebhook` / `pancake.VerifyWebhookTyped[T]`)                                     |
 | `client.ContentSafety`               | `ScanPrompt` (AIGC prompt content-safety scan)                                                                                           |

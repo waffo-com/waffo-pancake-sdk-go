@@ -461,7 +461,7 @@ res, err := client.SubscriptionProductGroups.Create(ctx, pancake.CreateSubscript
     StoreID:     "STO_xxx",
     Name:        "Pro Plans",
     Description: pancake.Ptr("All Pro tier plans"),
-    Rules:       &pancake.GroupRules{SharedTrial: true},
+    Rules:       &pancake.GroupRulesInput{SharedTrial: pancake.Ptr(true), SelfServicePlanChange: pancake.Ptr(true)},
     ProductIDs:  []string{"PROD_aaa", "PROD_bbb"},
 })
 ```
@@ -473,23 +473,30 @@ res, err := client.SubscriptionProductGroups.Create(ctx, pancake.CreateSubscript
 | `StoreID`     | `string`              | Yes      | Store ID                                          |
 | `Name`        | `string`              | Yes      | Group name                                        |
 | `Description` | `*string`             | No       | Group description                                 |
-| `Rules`       | `*pancake.GroupRules` | No       | Group rules (e.g. `{SharedTrial: true}`)          |
+| `Rules`       | `*pancake.GroupRulesInput` | No  | Group switches, each an optional `*bool`: `SharedTrial` shares the trial across the group, `SelfServicePlanChange` lets customers change plan within the group from the customer portal. A switch left nil is created off |
 | `ProductIDs`  | `[]string`            | No       | Subscription product IDs to include               |
 
 **Returns `*SubscriptionProductGroupResult`**: `{ Group, Warnings }`
 
 ### `client.SubscriptionProductGroups.Update(ctx, params)`
 
-Update a group. `ProductIDs` is a **full replacement** (not a merge).
+Update a group. `ProductIDs` is a **full replacement** (not a merge); `Rules` is the opposite — it is merged switch by switch, so a switch left nil keeps its stored value.
 
 ```go
 res, err := client.SubscriptionProductGroups.Update(ctx, pancake.UpdateSubscriptionProductGroupParams{
     ID:         "spg_xxx",
     ProductIDs: []string{"PROD_aaa", "PROD_bbb", "PROD_ccc"},
 })
+
+// Open self-service plan change without touching SharedTrial
+opened, err := client.SubscriptionProductGroups.Update(ctx, pancake.UpdateSubscriptionProductGroupParams{
+    ID:    "spg_xxx",
+    Rules: &pancake.GroupRulesInput{SelfServicePlanChange: pancake.Ptr(true)},
+})
+// opened.Group.Rules => { SharedTrial: <stored value>, SelfServicePlanChange: true }
 ```
 
-**Returns `*SubscriptionProductGroupResult`**: `{ Group, Warnings }`
+**Returns `*SubscriptionProductGroupResult`**: `{ Group, Warnings }` — `Group.Rules` always carries both switches, so reading one never needs a fallback.
 
 ### `client.SubscriptionProductGroups.Delete(ctx, params)`
 
@@ -686,6 +693,8 @@ Waffo supports two checkout modes based on whether the merchant knows the custom
 
 > **Authenticated checkout is recommended.** The key advantage: the order is bound to the `BuyerIdentity` you provide — a **merchant-controlled stable identifier**. Even if the customer changes the email on the checkout form, the order stays tied to your identifier. In anonymous mode, the customer self-reports their email, and a different address means a different user — **previous orders become unlinked** and **subscription trial periods can be exploited** (new email = new user = fresh trial). Additionally, anonymous checkout only supports creating orders — customers cannot cancel orders, manage subscriptions, or submit refund tickets afterward.
 
+Changing the plan of an existing subscription is a third flow with its own pair of methods — `Checkout.CreatePlanChangeSession` and `Checkout.Authenticated.CreatePlanChange`.
+
 For advanced use cases, the low-level `Checkout.CreateSession` is also available.
 
 ### `client.Checkout.Authenticated.Create(ctx, params)`
@@ -807,6 +816,70 @@ snapshotRes, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheck
 | `CheckoutURL` | `string`           | Hosted checkout page URL |
 | `ExpiresAt`   | `string`           | Session expiration time  |
 | `Warnings`    | `[]pancake.Notice` | Migration notices        |
+
+### `client.Checkout.CreatePlanChangeSession(ctx, params)`
+
+Issue a link that changes an existing subscription to another plan. Same `create-session` endpoint as a new purchase — `OriginOrderID` is what puts it into plan change mode, which is why it is a required field here instead of an optional one on the new-purchase params.
+
+The returned `CheckoutURL` points at the change confirmation page (`…/store/{slug}/change/{sessionId}`), where the customer confirms the change.
+
+```go
+session, err := client.Checkout.CreatePlanChangeSession(ctx, pancake.CreatePlanChangeSessionParams{
+    OriginOrderID:      "ORD_xxx",
+    ProductID:          "PROD_target_plan",
+    Currency:           "USD",
+    ChangeTiming:       pancake.Ptr(pancake.ChangeTimingImmediate),
+    ChangeCreditAmount: pancake.Ptr("8.00"),
+})
+```
+
+**Parameters `CreatePlanChangeSessionParams`**:
+
+| Field | Type | Required | Description |
+| ------------------------- | ---------------------- | -------- | ----------- |
+| `OriginOrderID`           | `string`               | Yes      | Subscription being changed (`ORD_xxx`). Its presence is what selects plan change mode |
+| `ProductID`               | `string`               | Yes      | Target plan — a subscription product other than the current one |
+| `Currency`                | `string`               | Yes      | Currency code (ISO 4217) |
+| `ChangeTiming`            | `*pancake.ChangeTiming`| No       | `ChangeTimingImmediate` or `ChangeTimingNextPeriod`. Leave nil to let the platform derive it; the derived tier is not echoed back |
+| `ChangeAmount`            | `*string`              | No       | What to charge for this change (display string, tax inclusive). Mutually exclusive with `ChangeCreditAmount`; merchant credentials only |
+| `ChangeCreditAmount`      | `*string`              | No       | How much to credit against this change (display string, tax inclusive, same basis as `ChangeAmount`). Mutually exclusive with `ChangeAmount`; merchant credentials only |
+| `WithTrial`               | `*bool`                | No       | Trial toggle for the target plan, three-state as on a new purchase. Merchant credentials only |
+| `PriceSnapshot`           | `*pancake.PriceSnapshot` | No     | Price override for the target plan |
+| `SuccessURL`              | `*string`              | No       | Redirect URL after the change is confirmed and paid |
+| `ExpiresInSeconds`        | `*int`                 | No       | Session expiry in seconds (default: 45 minutes) |
+| `DarkMode`                | `*bool`                | No       | Dark mode override |
+| `Metadata`                | `map[string]string`    | No       | Custom metadata |
+| `OrderMerchantExternalID` | `*string`              | No       | Business-side order identifier (max 128 chars) |
+| `Language`                | `*pancake.CashierLanguage` | No   | Confirmation page language (IETF BCP 47) |
+| `IncludePaymentMethods` / `ExcludePaymentMethods` | `[]pancake.PaymentMethod` | No | Whitelist / blacklist, mutually exclusive |
+
+There is no `BuyerEmail` or `BillingDetail`: in plan change mode the customer email, billing details, and tax all come from the origin subscription.
+
+Two amount fields, two ways to price the same change: `ChangeAmount` says what to charge for this period, `ChangeCreditAmount` says how much to credit against it. Same unit and tax basis, opposite meaning — sending both is rejected with a 400, and the SDK forwards what you pass rather than picking one.
+
+**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Warnings }`
+
+### `client.Checkout.Authenticated.CreatePlanChange(ctx, params)`
+
+The authenticated form of the above: issues a customer session token in parallel and appends it to the confirmation URL (`#token=...`), so the customer lands on the page already signed in.
+
+```go
+res, err := client.Checkout.Authenticated.CreatePlanChange(ctx, pancake.AuthenticatedPlanChangeParams{
+    CreatePlanChangeSessionParams: pancake.CreatePlanChangeSessionParams{
+        OriginOrderID: "ORD_xxx",
+        ProductID:     "PROD_target_plan",
+        Currency:      "USD",
+        ChangeTiming:  pancake.Ptr(pancake.ChangeTimingNextPeriod),
+    },
+    BuyerIdentity: "userIdInYourSystem",
+})
+```
+
+**Parameters `AuthenticatedPlanChangeParams`**: embeds `CreatePlanChangeSessionParams`, plus `BuyerIdentity` (`string`, required) — routed to `issue-session-token` only, never into the session body.
+
+**Returns `*AuthenticatedCheckoutResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Token, TokenExpiresAt, Warnings }`
+
+> **There is no anonymous plan change.** A Store Slug session is an anonymous credential with no subscription to attribute the change to, and the platform answers 403 — so `client.Checkout.Anonymous` carries no plan change method.
 
 ### `client.Checkout.CreateSession(ctx, params)` (low-level)
 
@@ -977,7 +1050,8 @@ All exported types:
 | **Subscription Product Group**          |                                                            |
 | `SubscriptionProductGroup`              | Product group entity                                       |
 | `SubscriptionProductGroupResult`        | Envelope `{Group, Warnings}`                               |
-| `GroupRules`                            | Group rules (shared trial, etc.)                           |
+| `GroupRules`                            | Group switches as returned on an entity (both always set)  |
+| `GroupRulesInput`                       | Group switches as accepted on create / update (optional, merged) |
 | `CreateSubscriptionProductGroupParams`  | Create request                                             |
 | `UpdateSubscriptionProductGroupParams`  | Update request (`ProductIDs` = full replacement)           |
 | `DeleteSubscriptionProductGroupParams`  | Delete request                                             |
@@ -1002,6 +1076,9 @@ All exported types:
 | `AuthenticatedCheckoutResult`           | Authenticated checkout response (URL with token + expiry)  |
 | `AnonymousCheckoutParams`               | Alias of `CreateCheckoutSessionParams`                     |
 | `CreateCheckoutSessionParams`           | Low-level checkout session request                         |
+| `CreatePlanChangeSessionParams`         | Plan change session request (`OriginOrderID` required)     |
+| `AuthenticatedPlanChangeParams`         | Plan change request with customer identity                 |
+| `ChangeTiming`                          | When a plan change takes effect (`immediate` / `next_period`) |
 | `CheckoutSessionResult`                 | Checkout session response (URL + expiry)                   |
 | **GraphQL**                             |                                                            |
 | `GraphQLParams`                         | GraphQL query parameters                                   |
