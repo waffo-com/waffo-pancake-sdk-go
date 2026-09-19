@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] — 2026-09-19
+
+Subscription webhooks carry the payment channel's billing period number. Matches `@waffo/pancake-ts@0.22.0`.
+
+### Added
+
+- **`WebhookEventData.PeriodNumber` (`*int`, JSON `periodNumber`)** — which billing period the event refers to, exactly as reported by the payment channel: `1` on the first charge, `N` on the Nth renewal. A failed charge still consumes a period, so it is not a count of successful charges; `0` means the channel authorized the subscription but has not charged it yet. On payment events it is the period of that charge, on refund events the period of the **refunded** charge. Present on the subscription domain events and on `subscription.payment_succeeded`; **nil on one-time orders and their refunds**. Several events in one period share the number, so it is not a deduplication key — use `ID` or `EventID`.
+
+### Changed
+
+- Feature parity target updated to `@waffo/pancake-ts@0.22.x` (`doc.go` and `README.md` still declared `0.20.x`).
+
 ## [0.11.0] — 2026-09-02
 
 Subscription period and status now travel on the subscription events only. Matches `@waffo/pancake-ts@0.20.0`.

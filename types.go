@@ -746,6 +746,9 @@ type WebhookEventData struct {
 	PaymentFailureReason *string `json:"paymentFailureReason,omitempty"`
 	PaymentDate          *string `json:"paymentDate,omitempty"`
 
+	// PeriodNumber is the billing period this event refers to, as reported by the payment channel.
+	PeriodNumber *int `json:"periodNumber,omitempty"`
+
 	BillingPeriod      *string `json:"billingPeriod,omitempty"`
 	CurrentPeriodStart *string `json:"currentPeriodStart,omitempty"`
 	CurrentPeriodEnd   *string `json:"currentPeriodEnd,omitempty"`
