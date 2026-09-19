@@ -657,6 +657,43 @@ refund, err := customer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams
 
 **Returns `*RefundTicketResult`**: `{ Ticket, Warnings }`
 
+### `customer.CreatePlanChangeSession(ctx, params)`
+
+The self-service half of a plan change: the customer switches one of their own subscriptions to another plan in the same group. Same `create-session` endpoint as the merchant methods, reached with the customer session token.
+
+```go
+session, err := customer.CreatePlanChangeSession(ctx, pancake.CustomerPlanChangeParams{
+    OriginOrderID: "ORD_xxx",
+    ProductID:     "PROD_target_plan",
+    Currency:      "USD",
+    ChangeTiming:  pancake.Ptr(pancake.ChangeTimingNextPeriod),
+})
+```
+
+**Parameters `CustomerPlanChangeParams`**:
+
+| Field | Type | Required | Description |
+| --------------- | ---------------------- | -------- | ----------- |
+| `OriginOrderID` | `string`               | Yes      | The customer's own subscription being changed (`ORD_xxx`) |
+| `ProductID`     | `string`               | Yes      | Target plan — must be in the same product group as the current plan |
+| `Currency`      | `string`               | Yes      | Currency code (ISO 4217); must match the origin subscription |
+| `ChangeTiming`  | `*pancake.ChangeTiming`| No       | `ChangeTimingImmediate` or `ChangeTimingNextPeriod`; nil lets the platform derive it |
+| `SuccessURL`    | `*string`              | No       | Redirect URL after the change is confirmed and paid |
+| `DarkMode`      | `*bool`                | No       | Dark mode override |
+| `Language`      | `*pancake.CashierLanguage` | No   | Confirmation page language (IETF BCP 47) |
+
+The merchant-only fields (`ChangeAmount`, `ChangeCreditAmount`, `WithTrial`, `PriceSnapshot`, `ExpiresInSeconds`, `Metadata`, `OrderMerchantExternalID`, `IncludePaymentMethods`, `ExcludePaymentMethods`) are **not** on this struct. A customer-session request carries no merchant id, so the platform drops all of them without reporting it — accepting them here would only look like they worked.
+
+Three platform checks apply to this path and not to merchant-issued links, each a 403:
+
+| Check | Message when it fails |
+|-------|----------------------|
+| The subscription belongs to this customer | `Subscription order does not belong to this credential` |
+| Target plan is in the same product group | `Target plan is not in the same product group as the current plan` |
+| That group's `selfServicePlanChange` is on | `Self-service plan change is not enabled for this product group` |
+
+**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Warnings }`
+
 ### `customer.GraphQL.Query(ctx, params)`
 
 Same parameters as `client.GraphQL.Query` but scoped to the customer's own data via session token.
@@ -1077,6 +1114,7 @@ All exported types:
 | `AnonymousCheckoutParams`               | Alias of `CreateCheckoutSessionParams`                     |
 | `CreateCheckoutSessionParams`           | Low-level checkout session request                         |
 | `CreatePlanChangeSessionParams`         | Plan change session request (`OriginOrderID` required)     |
+| `CustomerPlanChangeParams`              | Customer-initiated plan change request (no merchant-only fields) |
 | `AuthenticatedPlanChangeParams`         | Plan change request with customer identity                 |
 | `ChangeTiming`                          | When a plan change takes effect (`immediate` / `next_period`) |
 | `CheckoutSessionResult`                 | Checkout session response (URL + expiry)                   |

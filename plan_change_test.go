@@ -299,3 +299,110 @@ func TestGroupRulesInput_SendsBothSwitches(t *testing.T) {
 		t.Error("entity selfServicePlanChange should be false")
 	}
 }
+
+func TestCustomerCreatePlanChangeSession_UsesBearerAndNoIdempotencyKey(t *testing.T) {
+	_, customer, srv := newCustomerTestClient(t)
+	srv.respond = func(_ recordedRequest) (int, any) {
+		return 200, map[string]any{"data": map[string]any{
+			"sessionId":   "ses_self_service",
+			"checkoutUrl": "https://pancake.example/store/my-store/change/ses_self_service",
+			"expiresAt":   "2026-05-13T00:45:00Z",
+		}}
+	}
+
+	res, err := customer.CreatePlanChangeSession(context.Background(), CustomerPlanChangeParams{
+		OriginOrderID: testOriginOrderID,
+		ProductID:     testTargetProduct,
+		Currency:      "USD",
+		ChangeTiming:  Ptr(ChangeTimingNextPeriod),
+	})
+	if err != nil {
+		t.Fatalf("plan change: %v", err)
+	}
+	if !strings.Contains(res.CheckoutURL, "/change/") {
+		t.Errorf("CheckoutURL is not a change link: %s", res.CheckoutURL)
+	}
+
+	reqs := srv.requests()
+	if len(reqs) != 1 {
+		t.Fatalf("expected 1 request, got %d", len(reqs))
+	}
+	req := reqs[0]
+	if req.Path != "/v1/actions/checkout/create-session" {
+		t.Errorf("path = %q", req.Path)
+	}
+	if got := req.Headers.Get("Authorization"); got != "Bearer JWT_CUSTOMER_TOKEN" {
+		t.Errorf("Authorization = %q", got)
+	}
+	if got := req.Headers.Get("X-Environment"); got != "test" {
+		t.Errorf("X-Environment = %q", got)
+	}
+	// Customer session requests are outside the gateway idempotency cache, and
+	// carry no merchant signature — the platform sees a customer issuer.
+	if got := req.Headers.Get("X-Idempotency-Key"); got != "" {
+		t.Errorf("expected no idempotency key, got %q", got)
+	}
+	if got := req.Headers.Get("X-Signature"); got != "" {
+		t.Errorf("expected no merchant signature, got %q", got)
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(req.Body, &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if body["originOrderId"] != testOriginOrderID || body["changeTiming"] != "next_period" {
+		t.Errorf("unexpected body: %v", body)
+	}
+}
+
+func TestCustomerPlanChangeParams_CarryNoMerchantOnlyFields(t *testing.T) {
+	// The platform silently drops every API-Key-only field on a customer-session
+	// request, so they are absent from the struct instead of accepted and ignored.
+	out, err := json.Marshal(CustomerPlanChangeParams{
+		OriginOrderID: testOriginOrderID,
+		ProductID:     testTargetProduct,
+		Currency:      "USD",
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	for _, field := range []string{
+		"changeAmount", "changeCreditAmount", "withTrial", "priceSnapshot",
+		"expiresInSeconds", "metadata", "orderMerchantExternalId",
+		"includePaymentMethods", "excludePaymentMethods", "buyerEmail", "billingDetail",
+	} {
+		if strings.Contains(string(out), field) {
+			t.Errorf("customer params must not carry %s, got %s", field, out)
+		}
+	}
+
+	// Compile-time cross-check: the merchant-only fields exist on the merchant type,
+	// so their absence here is a deliberate narrowing, not an oversight.
+	merchant := CreatePlanChangeSessionParams{ChangeAmount: Ptr("12.00"), WithTrial: Ptr(true)}
+	if merchant.ChangeAmount == nil || merchant.WithTrial == nil {
+		t.Fatal("merchant params should carry the API-Key-only fields")
+	}
+}
+
+func TestCustomerCreatePlanChangeSession_ValidatesInput(t *testing.T) {
+	_, customer, srv := newCustomerTestClient(t)
+
+	cases := []struct {
+		name   string
+		params CustomerPlanChangeParams
+	}{
+		{"bad originOrderId", CustomerPlanChangeParams{OriginOrderID: "nope", ProductID: testTargetProduct, Currency: "USD"}},
+		{"bad productId", CustomerPlanChangeParams{OriginOrderID: testOriginOrderID, ProductID: "nope", Currency: "USD"}},
+		{"bad currency", CustomerPlanChangeParams{OriginOrderID: testOriginOrderID, ProductID: testTargetProduct, Currency: "usd"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := customer.CreatePlanChangeSession(context.Background(), tc.params); err == nil {
+				t.Fatal("expected an SDK validation error")
+			}
+		})
+	}
+	if len(srv.requests()) != 0 {
+		t.Fatalf("expected no request to be sent, got %d", len(srv.requests()))
+	}
+}

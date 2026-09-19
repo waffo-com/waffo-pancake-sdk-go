@@ -154,8 +154,9 @@ res, err := client.Checkout.Authenticated.CreatePlanChange(ctx, pancake.Authenti
   silently dropped.
 - `Checkout.Anonymous` has no plan change method — a Store Slug session has no
   subscription to attribute the change to and the platform answers 403.
-- To let customers start a change themselves from the customer portal, switch on
-  `SelfServicePlanChange` on the product group:
+- To let customers start a change themselves, switch on `SelfServicePlanChange` on
+  the product group and call `CreatePlanChangeSession` on their session. That path
+  is the only one the switch gates; merchant-issued links ignore it:
 
 ```go
 _, err = client.SubscriptionProductGroups.Update(ctx, pancake.UpdateSubscriptionProductGroupParams{
@@ -163,7 +164,19 @@ _, err = client.SubscriptionProductGroups.Update(ctx, pancake.UpdateSubscription
     Rules: &pancake.GroupRulesInput{SelfServicePlanChange: pancake.Ptr(true)},
 })
 // Rules merges switch by switch: SharedTrial keeps its stored value.
+
+// Then, on the customer's own session (token from Auth.IssueSessionToken):
+session, err := customer.CreatePlanChangeSession(ctx, pancake.CustomerPlanChangeParams{
+    OriginOrderID: "ORD_...",
+    ProductID:     "PROD_target_plan",
+    Currency:      "USD",
+})
 ```
+
+The customer path has three preconditions, each answered with 403: the subscription
+belongs to that customer, the target plan is in the **same product group**, and that
+group's `SelfServicePlanChange` is on. The merchant-only pricing fields are not part
+of `CustomerPlanChangeParams` — the platform drops them on this path without saying so.
 
 ## Webhook Verification
 
@@ -442,7 +455,7 @@ distinguished from server-returned errors.
 | `client.GraphQL`                     | `Query` (also `pancake.GraphQLQuery[T]`)                                                                                                 |
 | `client.Webhooks`                    | `Add`, `Update`, `Remove`, `Verify` (also `pancake.VerifyWebhook` / `pancake.VerifyWebhookTyped[T]`)                                     |
 | `client.ContentSafety`               | `ScanPrompt` (AIGC prompt content-safety scan)                                                                                           |
-| `client.Customer(token)` / `client.CustomerWithEnvironment(token, env)` | `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, `GraphQL.Query`      |
+| `client.Customer(token)` / `client.CustomerWithEnvironment(token, env)` | `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, `CreatePlanChangeSession`, `GraphQL.Query`      |
 
 ## Optional fields
 

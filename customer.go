@@ -5,6 +5,11 @@ import "context"
 // CustomerSession exposes the customer self-service API surface backed by a
 // session token. Construct via [Client.Customer]. All HTTP methods use Bearer
 // authentication.
+//
+// These requests carry no idempotency key. The API Key client derives one per write
+// and the gateway deduplicates on it; customer session actions are outside that
+// cache by design, so a write retried after a timeout can execute twice. Guard
+// retries on the caller side where a duplicate would matter.
 type CustomerSession struct {
 	// GraphQL runs customer-scoped GraphQL queries.
 	GraphQL *CustomerGraphQLResource
@@ -115,6 +120,55 @@ func (s *CustomerSession) ResubmitRefundTicket(ctx context.Context, p ResubmitRe
 		return nil, err
 	}
 	out, warnings, err := customerPostAction[RefundTicketResult](ctx, s.http, "/v1/actions/refund-ticket/resubmit-ticket", p)
+	if err != nil {
+		return nil, err
+	}
+	out.Warnings = warnings
+	return out, nil
+}
+
+// CreatePlanChangeSession issues a plan change link for one of the customer's own
+// subscriptions — the self-service half of a plan change. Send the customer to the
+// returned CheckoutURL, which points at the change confirmation page.
+//
+// The platform applies three checks to a customer-issued link that it does not apply
+// to a merchant-issued one, each answered with 403:
+//
+//   - Ownership: the subscription must belong to this session's customer (its buyer
+//     identity and store must match the token), else "Subscription order does not
+//     belong to this credential"
+//   - Same group: the target plan must sit in the same product group as the current
+//     plan, else "Target plan is not in the same product group as the current plan"
+//   - Switch on: that group's rules.selfServicePlanChange must be true, else
+//     "Self-service plan change is not enabled for this product group". Open it with
+//     SubscriptionProductGroups.Update
+//
+// A merchant issuing the link with the API Key (Checkout.CreatePlanChangeSession) is
+// subject to none of the three and may switch a subscription to any plan, group or not.
+//
+// The API-Key-only fields are absent from CustomerPlanChangeParams by construction —
+// the platform would drop them here without saying so. Like every call on this
+// session it carries no idempotency key, so a retry after a timeout can issue a
+// second session rather than returning the first.
+//
+// Example:
+//
+//	session, err := customer.CreatePlanChangeSession(ctx, pancake.CustomerPlanChangeParams{
+//	    OriginOrderID: "ORD_...",
+//	    ProductID:     "PROD_...",
+//	    Currency:      "USD",
+//	})
+func (s *CustomerSession) CreatePlanChangeSession(ctx context.Context, p CustomerPlanChangeParams) (*CheckoutSessionResult, error) {
+	if err := validateShortID("originOrderId", p.OriginOrderID, "ORD"); err != nil {
+		return nil, err
+	}
+	if err := validateShortID("productId", p.ProductID, "PROD"); err != nil {
+		return nil, err
+	}
+	if err := validateCurrencyCode("currency", p.Currency); err != nil {
+		return nil, err
+	}
+	out, warnings, err := customerPostAction[CheckoutSessionResult](ctx, s.http, "/v1/actions/checkout/create-session", p)
 	if err != nil {
 		return nil, err
 	}

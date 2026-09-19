@@ -713,6 +713,34 @@ type AuthenticatedCheckoutParams struct {
 	BuyerIdentity string `json:"-"`
 }
 
+// CustomerPlanChangeParams is the input to
+// CustomerSession.CreatePlanChangeSession.
+//
+// Same endpoint as CreatePlanChangeSessionParams, reached with a customer session
+// token instead of the merchant API Key. The credential is what narrows the field
+// set: a customer-session request carries no merchant id, so the platform treats
+// every API-Key-only field as absent and silently drops it — no error says so.
+// Those fields are therefore left off this struct rather than accepted and ignored:
+// ChangeAmount, ChangeCreditAmount, WithTrial, PriceSnapshot, ExpiresInSeconds,
+// Metadata, OrderMerchantExternalID, IncludePaymentMethods and ExcludePaymentMethods.
+// BuyerEmail and BillingDetail are absent for the same reason they are on the
+// merchant struct — plan change mode takes both from the origin subscription.
+type CustomerPlanChangeParams struct {
+	// OriginOrderID is the customer's own subscription being changed (Short ID, ORD_xxx).
+	OriginOrderID string `json:"originOrderId"`
+	// ProductID is the target plan — must sit in the same product group as the current plan.
+	ProductID string `json:"productId"`
+	// Currency must match the origin subscription.
+	Currency string `json:"currency"`
+	// ChangeTiming is when the new plan takes effect. Leave nil to let the platform
+	// derive it from the change direction.
+	ChangeTiming *ChangeTiming `json:"changeTiming,omitempty"`
+	SuccessURL   *string       `json:"successUrl,omitempty"`
+	DarkMode     *bool         `json:"darkMode,omitempty"`
+	// Language is the default language of the confirmation page (IETF BCP 47).
+	Language *CashierLanguage `json:"language,omitempty"`
+}
+
 // AuthenticatedPlanChangeParams is the input to
 // Checkout.Authenticated.CreatePlanChange. Same split as
 // AuthenticatedCheckoutParams: BuyerIdentity is routed to the issue-session-token

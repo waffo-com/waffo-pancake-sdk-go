@@ -11,6 +11,10 @@ import (
 // existing subscription. Anonymous has no plan change counterpart: a Store Slug
 // session is an anonymous credential with no subscription to attribute the change
 // to, and the platform answers 403 for it.
+//
+// CreateSession is the one method here that runs no client-side validation — that is
+// what "full control" buys, and it is the deliberate exception. Every other method on
+// this resource validates its input first, as resource methods do throughout the SDK.
 type CheckoutResource struct {
 	// Anonymous creates checkout sessions without a customer identity.
 	Anonymous *CheckoutAnonymousResource
