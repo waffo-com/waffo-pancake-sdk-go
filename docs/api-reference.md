@@ -1151,6 +1151,7 @@ All exported types:
 | `WebhookEvent`                          | Verified event envelope (`Data` is `json.RawMessage`)      |
 | `TypedWebhookEvent[T]`                  | Typed event envelope                                       |
 | `WebhookEventData`                      | Common event data fields                                   |
+| `WebhookAmountBreakdown`                | Amount breakdown of the object an event refers to          |
 | `WebhookPublicKeys`                     | Per-environment webhook public keys                        |
 | `VerifyWebhookOptions`                  | Verification options (environment, tolerance, key)         |
 | **Nullable helpers**                    |                                                            |

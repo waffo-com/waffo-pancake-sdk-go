@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] — 2026-09-20
+
+Webhook amount fields now say whose amount they are, and the six generic ones are deprecated. Matches `@waffo/pancake-ts@0.24.0`.
+
+### Added
+
+- **`WebhookEventData.ChargedAmount` / `RefundedAmount` (`*string`)** — what this event's transaction actually moved, as reported by the payment channel. `ChargedAmount` appears only on payment events (`order.completed`, `subscription.payment_succeeded`), `RefundedAmount` only on refund events. Either is **nil** when the channel reported no amount — never zero-filled, so a non-nil pointer is itself the signal that the figure is known.
+- **`WebhookEventData.ListPrice` / `OriginalPayment` / `PlanPrice` (`*WebhookAmountBreakdown`)** — the object the event's figure refers to: the list price snapshot behind a charge, the original payment behind a refund, the plan price behind a subscription status change. At most one is non-nil on a given event, and each is nil when the underlying snapshot is.
+- **`WebhookAmountBreakdown`** — `Total`, `Subtotal`, `TaxAmount`, `TaxRate`, `TaxName`. The struct deliberately does not reuse the name `Amount`.
+
+### Deprecated
+
+- **`WebhookEventData.Amount` / `Total` / `Subtotal` / `TaxAmount` / `TaxRate` / `TaxName`** — one name per three different subjects, depending on the event family. Each now carries a `// Deprecated:` comment pointing at its per-family replacement. They keep being sent, their types do not change, and — except for `Amount` on payment events, below — their values do not change either. Removal is no earlier than 12 months away and ships with the next major version.
+
+### Changed
+
+- **On payment events `Amount` reports the amount actually charged** (equal to `ChargedAmount`), falling back to the list price total when the channel reported no amount. This is a value change for the minority of charges where a prorated credit or a zero-amount card check makes the charge differ from the list price; every other event family's `Amount` is untouched. The effective date is in the webhook API reference — a payload produced before it still carries the list price.
+
 ## [0.14.0] — 2026-09-20
 
 Plan changes can now be started from the SDK, and product groups expose the switch that lets customers start one themselves. **The SDK also stops sending idempotency keys on its own** — see the BREAKING entries under Changed before upgrading. Matches `@waffo/pancake-ts@0.23.0`.
