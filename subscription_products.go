@@ -8,7 +8,7 @@ type SubscriptionProductsResource struct {
 }
 
 // Create creates a subscription product with billing period and pricing.
-func (r *SubscriptionProductsResource) Create(ctx context.Context, p CreateSubscriptionProductParams) (*SubscriptionProductResult, error) {
+func (r *SubscriptionProductsResource) Create(ctx context.Context, p CreateSubscriptionProductParams, opts ...RequestOption) (*SubscriptionProductResult, error) {
 	if err := validateShortID("storeId", p.StoreID, "STO"); err != nil {
 		return nil, err
 	}
@@ -21,7 +21,7 @@ func (r *SubscriptionProductsResource) Create(ctx context.Context, p CreateSubsc
 	if err := validatePrices("prices", p.Prices); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/create-product", p, nil)
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/create-product", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (r *SubscriptionProductsResource) Create(ctx context.Context, p CreateSubsc
 }
 
 // Update creates a new immutable subscription product version.
-func (r *SubscriptionProductsResource) Update(ctx context.Context, p UpdateSubscriptionProductParams) (*SubscriptionProductResult, error) {
+func (r *SubscriptionProductsResource) Update(ctx context.Context, p UpdateSubscriptionProductParams, opts ...RequestOption) (*SubscriptionProductResult, error) {
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (r *SubscriptionProductsResource) Update(ctx context.Context, p UpdateSubsc
 			return nil, err
 		}
 	}
-	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/update-product", p, nil)
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/update-product", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +58,11 @@ func (r *SubscriptionProductsResource) Update(ctx context.Context, p UpdateSubsc
 }
 
 // Publish promotes a subscription product's test version to production.
-func (r *SubscriptionProductsResource) Publish(ctx context.Context, p PublishSubscriptionProductParams) (*SubscriptionProductResult, error) {
+func (r *SubscriptionProductsResource) Publish(ctx context.Context, p PublishSubscriptionProductParams, opts ...RequestOption) (*SubscriptionProductResult, error) {
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/publish-product", p, nil)
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/publish-product", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -71,14 +71,14 @@ func (r *SubscriptionProductsResource) Publish(ctx context.Context, p PublishSub
 }
 
 // UpdateStatus flips a subscription product between active and inactive.
-func (r *SubscriptionProductsResource) UpdateStatus(ctx context.Context, p UpdateSubscriptionStatusParams) (*SubscriptionProductResult, error) {
+func (r *SubscriptionProductsResource) UpdateStatus(ctx context.Context, p UpdateSubscriptionStatusParams, opts ...RequestOption) (*SubscriptionProductResult, error) {
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
 	if err := validateProductStatus(p.Status); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/update-status", p, nil)
+	out, warnings, err := postAction[SubscriptionProductResult](ctx, r.http, "/v1/actions/subscription-product/update-status", p, opts)
 	if err != nil {
 		return nil, err
 	}

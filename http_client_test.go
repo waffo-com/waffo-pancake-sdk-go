@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"io"
@@ -133,12 +132,14 @@ func TestHTTPClient_SignsRequest(t *testing.T) {
 	}
 }
 
-func TestHTTPClient_IdempotencyKey(t *testing.T) {
+func TestHTTPClient_NoIdempotencyKeyByDefault(t *testing.T) {
 	client, _, server := newSignedTestClient(t)
 	server.respond = func(_ recordedRequest) (int, any) {
 		return 200, map[string]any{"data": map[string]any{"store": map[string]string{"id": "STO_AbCdEfGhIjKlMnOpQrStUv", "name": "x"}}}
 	}
 
+	// Two identical writes used to share a derived key and hit the gateway's 24h
+	// cache. Neither carries one now, so both execute.
 	for i := 0; i < 2; i++ {
 		if _, err := client.Stores.Create(context.Background(), CreateStoreParams{Name: "X"}); err != nil {
 			t.Fatalf("create iter %d: %v", i, err)
@@ -148,22 +149,45 @@ func TestHTTPClient_IdempotencyKey(t *testing.T) {
 	if len(reqs) != 2 {
 		t.Fatalf("expected 2 reqs, got %d", len(reqs))
 	}
-	k1 := reqs[0].Headers.Get("X-Idempotency-Key")
-	k2 := reqs[1].Headers.Get("X-Idempotency-Key")
-	if k1 == "" || k1 != k2 {
-		t.Fatalf("expected identical idempotency keys for identical params, got %q vs %q", k1, k2)
+	for i, req := range reqs {
+		if got := req.Headers.Get("X-Idempotency-Key"); got != "" {
+			t.Errorf("req %d carries an idempotency key %q; none should be sent", i, got)
+		}
+		if req.Headers.Get("X-Signature") == "" {
+			t.Errorf("req %d lost its signature", i)
+		}
 	}
-	if _, err := hex.DecodeString(k1); err != nil {
-		t.Fatalf("idempotency key is not hex: %q (err: %v)", k1, err)
+}
+
+func TestHTTPClient_SendsCallerIdempotencyKeyVerbatim(t *testing.T) {
+	client, _, server := newSignedTestClient(t)
+	server.respond = func(_ recordedRequest) (int, any) {
+		return 200, map[string]any{"data": map[string]any{"store": map[string]string{"id": "STO_AbCdEfGhIjKlMnOpQrStUv", "name": "x"}}}
 	}
 
-	// Different body -> different key.
-	if _, err := client.Stores.Create(context.Background(), CreateStoreParams{Name: "Y"}); err != nil {
+	const key = "MER_store-create-2026-00891"
+	if _, err := client.Stores.Create(context.Background(), CreateStoreParams{Name: "X"}, WithIdempotencyKey(key)); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	// Passed through unchanged — the SDK neither hashes nor rewrites it.
+	if got := server.requests()[0].Headers.Get("X-Idempotency-Key"); got != key {
+		t.Fatalf("X-Idempotency-Key = %q want %q", got, key)
+	}
+
+	// An empty key is the same as not asking for one.
+	if _, err := client.Stores.Create(context.Background(), CreateStoreParams{Name: "Y"}, WithIdempotencyKey("")); err != nil {
 		t.Fatalf("create Y: %v", err)
 	}
-	k3 := server.requests()[2].Headers.Get("X-Idempotency-Key")
-	if k3 == k1 {
-		t.Fatal("expected different idempotency key for different body")
+	if got := server.requests()[1].Headers.Get("X-Idempotency-Key"); got != "" {
+		t.Fatalf("empty key should send no header, got %q", got)
+	}
+
+	// A nil option in the list is ignored rather than panicking.
+	if _, err := client.Stores.Create(context.Background(), CreateStoreParams{Name: "Z"}, nil); err != nil {
+		t.Fatalf("create Z: %v", err)
+	}
+	if got := server.requests()[2].Headers.Get("X-Idempotency-Key"); got != "" {
+		t.Fatalf("nil option should send no header, got %q", got)
 	}
 }
 

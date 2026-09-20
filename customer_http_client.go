@@ -32,9 +32,13 @@ func newCustomerHTTPClient(token string, environment Environment, baseURL string
 // post sends a Bearer-authenticated POST and returns the full envelope plus
 // HTTP status. Does not throw on errors[] — caller inspects the envelope.
 //
+// X-Idempotency-Key is attached only when the caller supplied one via
+// WithIdempotencyKey, exactly as on the merchant transport — the gateway keys
+// off the header, not off the credential.
+//
 // The environment is validated here rather than in [Client.Customer], which
 // performs no I/O and returns no error.
-func (c *customerHTTPClient) post(ctx context.Context, path string, body any) (int, *envelope, error) {
+func (c *customerHTTPClient) post(ctx context.Context, path string, body any, opts requestOptions) (int, *envelope, error) {
 	if err := validateEnvironment("environment", c.environment); err != nil {
 		return 0, nil, err
 	}
@@ -51,6 +55,9 @@ func (c *customerHTTPClient) post(ctx context.Context, path string, body any) (i
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("X-Environment", string(c.environment))
+	if opts.idempotencyKey != "" {
+		req.Header.Set("X-Idempotency-Key", opts.idempotencyKey)
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {

@@ -136,32 +136,61 @@ func validateBillingDetail(d *BillingDetail) error {
 	return validateCountryCode("billingDetail.country", d.Country)
 }
 
+// validateSessionCommon runs the checks shared by every create-session shape:
+// new purchase (validateCheckoutCommon) and plan change (validatePlanChangeCommon).
+func validateSessionCommon(productID, currency string, priceSnapshot *PriceSnapshot, expiresInSeconds *int, orderMerchantExternalID *string) error {
+	if err := validateShortID("productId", productID, "PROD"); err != nil {
+		return err
+	}
+	if err := validateCurrencyCode("currency", currency); err != nil {
+		return err
+	}
+	if priceSnapshot != nil {
+		if err := validateAmountString("priceSnapshot.amount", priceSnapshot.Amount); err != nil {
+			return err
+		}
+		if err := validateRequired("priceSnapshot.taxCategory", string(priceSnapshot.TaxCategory)); err != nil {
+			return err
+		}
+	}
+	if expiresInSeconds != nil {
+		if err := validatePositiveInt("expiresInSeconds", *expiresInSeconds); err != nil {
+			return err
+		}
+	}
+	return validateMaxLength("orderMerchantExternalId", orderMerchantExternalID, 128)
+}
+
 // validateCheckoutCommon runs the shared checks for Checkout endpoints.
 func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
-	if err := validateShortID("productId", p.ProductID, "PROD"); err != nil {
+	if err := validateSessionCommon(p.ProductID, p.Currency, p.PriceSnapshot, p.ExpiresInSeconds, p.OrderMerchantExternalID); err != nil {
 		return err
 	}
-	if err := validateCurrencyCode("currency", p.Currency); err != nil {
+	return validateBillingDetail(p.BillingDetail)
+}
+
+// validatePlanChangeCommon runs the shared checks for plan change endpoints.
+//
+// It covers the same ground as validateCheckoutCommon minus BillingDetail (plan
+// change mode takes it from the origin subscription) plus the plan-change-only
+// fields. The mode rules themselves (which field may accompany which) belong to
+// the platform — this only catches malformed input before the request goes out.
+func validatePlanChangeCommon(p *CreatePlanChangeSessionParams) error {
+	if err := validateSessionCommon(p.ProductID, p.Currency, p.PriceSnapshot, p.ExpiresInSeconds, p.OrderMerchantExternalID); err != nil {
 		return err
 	}
-	if p.PriceSnapshot != nil {
-		if err := validateAmountString("priceSnapshot.amount", p.PriceSnapshot.Amount); err != nil {
+	if err := validateShortID("originOrderId", p.OriginOrderID, "ORD"); err != nil {
+		return err
+	}
+	if p.ChangeAmount != nil {
+		if err := validateAmountString("changeAmount", *p.ChangeAmount); err != nil {
 			return err
 		}
-		if err := validateRequired("priceSnapshot.taxCategory", string(p.PriceSnapshot.TaxCategory)); err != nil {
+	}
+	if p.ChangeCreditAmount != nil {
+		if err := validateAmountString("changeCreditAmount", *p.ChangeCreditAmount); err != nil {
 			return err
 		}
-	}
-	if err := validateBillingDetail(p.BillingDetail); err != nil {
-		return err
-	}
-	if p.ExpiresInSeconds != nil {
-		if err := validatePositiveInt("expiresInSeconds", *p.ExpiresInSeconds); err != nil {
-			return err
-		}
-	}
-	if err := validateMaxLength("orderMerchantExternalId", p.OrderMerchantExternalID, 128); err != nil {
-		return err
 	}
 	return nil
 }

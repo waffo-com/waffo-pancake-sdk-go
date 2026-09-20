@@ -21,8 +21,8 @@ import (
 // warnings). The transport files do plain sign + fetch + JSON parse.
 
 // postAction is the resource-layer helper for the signed merchant transport.
-func postAction[T any](ctx context.Context, c *httpClient, path string, body any, opts *postOptions) (*T, []Notice, error) {
-	status, env, err := c.post(ctx, path, body, opts)
+func postAction[T any](ctx context.Context, c *httpClient, path string, body any, opts []RequestOption) (*T, []Notice, error) {
+	status, env, err := c.post(ctx, path, body, newRequestOptions(opts))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -31,8 +31,8 @@ func postAction[T any](ctx context.Context, c *httpClient, path string, body any
 
 // customerPostAction is the resource-layer helper for the Bearer customer
 // transport.
-func customerPostAction[T any](ctx context.Context, c *customerHTTPClient, path string, body any) (*T, []Notice, error) {
-	status, env, err := c.post(ctx, path, body)
+func customerPostAction[T any](ctx context.Context, c *customerHTTPClient, path string, body any, opts []RequestOption) (*T, []Notice, error) {
+	status, env, err := c.post(ctx, path, body, newRequestOptions(opts))
 	if err != nil {
 		return nil, nil, err
 	}

@@ -79,6 +79,18 @@ const (
 	BillingPeriodYearly    BillingPeriod = "yearly"
 )
 
+// ChangeTiming is when a subscription plan change takes effect.
+//
+// Omit it and the platform derives the tier from the change direction: an upgrade
+// defaults to immediate, a downgrade or same-price switch to next period. The derived
+// tier is not echoed back, so pass it explicitly when the caller needs certainty.
+type ChangeTiming string
+
+const (
+	ChangeTimingImmediate  ChangeTiming = "immediate"
+	ChangeTimingNextPeriod ChangeTiming = "next_period"
+)
+
 // ProductVersionStatus is the lifecycle state of a product version.
 type ProductVersionStatus string
 

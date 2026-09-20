@@ -3,10 +3,10 @@
 Go SDK for the Waffo Pancake Merchant of Record (MoR) payment platform.
 
 - Zero runtime dependencies, Go >= 1.22
-- Automatic RSA-SHA256 request signing with deterministic idempotency keys
+- Automatic RSA-SHA256 request signing; opt-in idempotency keys per call
 - Full type definitions (20 enums, 40+ structs)
 - Webhook verification with embedded public keys (test/prod)
-- Feature parity with [`@waffo/pancake-ts@0.22.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
+- Feature parity with [`@waffo/pancake-ts@0.23.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
 
 ## Installation
 
@@ -116,6 +116,67 @@ res, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParam
 
 Opening the URL in a new tab is recommended so customers can return to your site
 without losing page state.
+
+### Plan change links
+
+Switching an existing subscription to another plan uses the same endpoint in a
+different mode, so it gets its own pair of methods with `OriginOrderID` required —
+the platform rejects the plan change fields whenever they appear without it.
+
+```go
+// API Key entry point: send the customer to the returned URL yourself.
+session, err := client.Checkout.CreatePlanChangeSession(ctx, pancake.CreatePlanChangeSessionParams{
+    OriginOrderID:      "ORD_...",             // the subscription being changed (required)
+    ProductID:          "PROD_target_plan",    // the plan to switch to
+    Currency:           "USD",
+    ChangeTiming:       pancake.Ptr(pancake.ChangeTimingImmediate), // omit to let the platform derive it
+    ChangeCreditAmount: pancake.Ptr("8.00"),   // "credit this much" — or ChangeAmount, never both
+})
+// session.CheckoutURL = "https://pancake.waffo.ai/store/{slug}/change/{sessionId}"
+
+// Authenticated entry point: the token is appended so the customer lands on the
+// confirmation page already signed in.
+res, err := client.Checkout.Authenticated.CreatePlanChange(ctx, pancake.AuthenticatedPlanChangeParams{
+    CreatePlanChangeSessionParams: pancake.CreatePlanChangeSessionParams{
+        OriginOrderID: "ORD_...",
+        ProductID:     "PROD_target_plan",
+        Currency:      "USD",
+    },
+    BuyerIdentity: "user-123",
+})
+```
+
+- `ChangeAmount` sets what you charge for this period, `ChangeCreditAmount` how
+  much you credit against it. Same unit and tax basis, opposite meaning — they are
+  mutually exclusive and sending both is rejected with a 400.
+- `ChangeAmount`, `ChangeCreditAmount` and `WithTrial` are honored because these
+  calls are signed with your API Key; a customer-session credential has them
+  silently dropped.
+- `Checkout.Anonymous` has no plan change method — a Store Slug session has no
+  subscription to attribute the change to and the platform answers 403.
+- To let customers start a change themselves, switch on `SelfServicePlanChange` on
+  the product group and call `CreatePlanChangeSession` on their session. That path
+  is the only one the switch gates; merchant-issued links ignore it:
+
+```go
+_, err = client.SubscriptionProductGroups.Update(ctx, pancake.UpdateSubscriptionProductGroupParams{
+    ID:    "spg_xxx",
+    Rules: &pancake.GroupRulesInput{SelfServicePlanChange: pancake.Ptr(true)},
+})
+// Rules merges switch by switch: SharedTrial keeps its stored value.
+
+// Then, on the customer's own session (token from Auth.IssueSessionToken):
+session, err := customer.CreatePlanChangeSession(ctx, pancake.CustomerPlanChangeParams{
+    OriginOrderID: "ORD_...",
+    ProductID:     "PROD_target_plan",
+    Currency:      "USD",
+})
+```
+
+The customer path has three preconditions, each answered with 403: the subscription
+belongs to that customer, the target plan is in the **same product group**, and that
+group's `SelfServicePlanChange` is on. The merchant-only pricing fields are not part
+of `CustomerPlanChangeParams` — the platform drops them on this path without saying so.
 
 ## Webhook Verification
 
@@ -361,6 +422,33 @@ if verdict.Action != pancake.ScanActionAllow {
 }
 ```
 
+## Idempotency
+
+**No idempotency key is sent unless you ask for one.** The SDK does not derive keys, so a write that times out and gets retried executes a second time unless you supplied a key on the first attempt.
+
+Pass `WithIdempotencyKey` as a trailing option on any write:
+
+```go
+res, err := client.Stores.Create(ctx, pancake.CreateStoreParams{Name: "My Store"},
+    pancake.WithIdempotencyKey("MER_store-create-"+requestID))
+```
+
+What the platform does with it:
+
+| Situation | Result |
+| --------- | ------ |
+| First request with this key | Executes; the 2xx response is cached for **24 hours** |
+| Same key again, original finished | The cached response is returned, nothing re-executes |
+| Same key again, original still in flight | **409 Conflict** |
+| Original finished non-2xx | The key is free; the same key can be retried |
+| No key at all | Nothing is deduplicated |
+
+**Uniqueness is yours to guarantee.** At most 256 characters of letters, numbers, hyphens and underscores; a malformed key is rejected by the gateway with a 400. Use one key per logical operation, and never reuse a key across two different calls — the second would replay the first one's response.
+
+A key passed to `Checkout.Authenticated.Create` / `.CreatePlanChange` applies to the `create-session` call only: one key cannot address two endpoints, and re-issuing a session token is harmless.
+
+GraphQL queries take no options: they are reads, and a cached replay would serve stale data.
+
 ## Error Handling
 
 ```go
@@ -390,11 +478,11 @@ distinguished from server-returned errors.
 | `client.SubscriptionProducts`        | `Create`, `Update`, `Publish`, `UpdateStatus`                                                                                            |
 | `client.SubscriptionProductGroups`   | `Create`, `Update`, `Delete`, `Publish`                                                                                                  |
 | `client.Orders`                      | `CancelSubscription`                                                                                                                     |
-| `client.Checkout`                    | `CreateSession`, `Anonymous.Create`, `Authenticated.Create`                                                                              |
+| `client.Checkout`                    | `CreateSession`, `CreatePlanChangeSession`, `Anonymous.Create`, `Authenticated.Create`, `Authenticated.CreatePlanChange`                  |
 | `client.GraphQL`                     | `Query` (also `pancake.GraphQLQuery[T]`)                                                                                                 |
 | `client.Webhooks`                    | `Add`, `Update`, `Remove`, `Verify` (also `pancake.VerifyWebhook` / `pancake.VerifyWebhookTyped[T]`)                                     |
 | `client.ContentSafety`               | `ScanPrompt` (AIGC prompt content-safety scan)                                                                                           |
-| `client.Customer(token)` / `client.CustomerWithEnvironment(token, env)` | `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, `GraphQL.Query`      |
+| `client.Customer(token)` / `client.CustomerWithEnvironment(token, env)` | `CancelSubscription`, `CancelOnetimeOrder`, `ReactivateSubscription`, `CreateRefundTicket`, `ResubmitRefundTicket`, `CreatePlanChangeSession`, `GraphQL.Query`      |
 
 ## Optional fields
 

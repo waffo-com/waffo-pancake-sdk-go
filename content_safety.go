@@ -27,11 +27,11 @@ type ContentSafetyResource struct {
 //	if verdict.Action != pancake.ScanActionAllow {
 //	    // do not generate — verdict.Action is "review" or "block"
 //	}
-func (r *ContentSafetyResource) ScanPrompt(ctx context.Context, p ScanPromptParams) (*ScanResult, error) {
+func (r *ContentSafetyResource) ScanPrompt(ctx context.Context, p ScanPromptParams, opts ...RequestOption) (*ScanResult, error) {
 	if err := validateRequired("prompt", p.Prompt); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[ScanResult](ctx, r.http, "/v1/actions/verification/scan-prompt", p, nil)
+	out, warnings, err := postAction[ScanResult](ctx, r.http, "/v1/actions/verification/scan-prompt", p, opts)
 	if err != nil {
 		return nil, err
 	}

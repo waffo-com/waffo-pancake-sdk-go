@@ -3,18 +3,50 @@ package pancake
 import "encoding/json"
 
 // -----------------------------------------------------------------------------
-// Internal HTTP options
+// Per-call request options
 // -----------------------------------------------------------------------------
 
-// postOptions tunes a single signed POST request.
-type postOptions struct {
-	// IdempotencyWindow rotates the deterministic idempotency key by time
-	// window (in seconds). Used by checkout session creation.
-	IdempotencyWindow int
-	// NoIdempotency omits the X-Idempotency-Key header entirely. Set for
-	// read-only queries (e.g. GraphQL) so the gateway's 24h idempotency
-	// cache does not serve stale data on identical repeat queries.
-	NoIdempotency bool
+// RequestOption customizes a single API call. Pass any number of them as the
+// trailing arguments of a write method; passing none is the normal case.
+//
+// Variadic rather than a trailing *Options pointer (the shape [WebhooksResource.Verify]
+// uses) so that adding it to every write method keeps existing call sites compiling.
+type RequestOption func(*requestOptions)
+
+// WithIdempotencyKey sends key as X-Idempotency-Key on this call.
+//
+// Nothing is sent when this option is absent, and the SDK never derives a key —
+// so by default a write is not deduplicated and a retry executes it again.
+//
+// Platform semantics once a key is sent:
+//
+//   - The first request executes and its 2xx response is cached for 24 hours
+//   - A repeat of the same key returns that cached response without re-executing
+//   - A repeat while the original is still in flight returns 409
+//   - A non-2xx original does not occupy the key; the same key can be retried
+//
+// The key is the whole cache identity of the request, so uniqueness is the
+// caller's to guarantee: at most 256 characters of letters, numbers, hyphens and
+// underscores, distinct per logical operation. A malformed key is rejected by the
+// gateway with a 400.
+func WithIdempotencyKey(key string) RequestOption {
+	return func(o *requestOptions) { o.idempotencyKey = key }
+}
+
+// requestOptions is the resolved form of the RequestOption list.
+type requestOptions struct {
+	idempotencyKey string
+}
+
+// newRequestOptions applies opts in order and returns the result.
+func newRequestOptions(opts []RequestOption) requestOptions {
+	var resolved requestOptions
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&resolved)
+		}
+	}
+	return resolved
 }
 
 // -----------------------------------------------------------------------------
@@ -403,9 +435,24 @@ type SubscriptionProductResult struct {
 // Subscription Product Group
 // -----------------------------------------------------------------------------
 
-// GroupRules controls cross-product behavior within a subscription group.
+// GroupRules is the rules object as returned on a group entity. Every switch is
+// always present — the platform reports an unset switch as false rather than
+// omitting it.
 type GroupRules struct {
 	SharedTrial bool `json:"sharedTrial"`
+	// SelfServicePlanChange controls whether customers may switch plans within this
+	// group on their own from the customer portal. A customer-credential plan change
+	// link is rejected with 403 while this is off; merchant-issued links are unaffected.
+	SelfServicePlanChange bool `json:"selfServicePlanChange"`
+}
+
+// GroupRulesInput is the rules object accepted on group create and update. Every
+// switch is optional and the platform merges them field by field: sending one
+// switch leaves the other at its stored value (unlike ProductIDs, which is a full
+// replacement). A switch left out on create is created off.
+type GroupRulesInput struct {
+	SharedTrial           *bool `json:"sharedTrial,omitempty"`
+	SelfServicePlanChange *bool `json:"selfServicePlanChange,omitempty"`
 }
 
 // SubscriptionProductGroup is the API shape of a subscription product group.
@@ -424,22 +471,22 @@ type SubscriptionProductGroup struct {
 // CreateSubscriptionProductGroupParams is the input to
 // SubscriptionProductGroups.Create.
 type CreateSubscriptionProductGroupParams struct {
-	StoreID     string      `json:"storeId"`
-	Name        string      `json:"name"`
-	Description *string     `json:"description,omitempty"`
-	Rules       *GroupRules `json:"rules,omitempty"`
-	ProductIDs  []string    `json:"productIds,omitempty"`
+	StoreID     string           `json:"storeId"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description,omitempty"`
+	Rules       *GroupRulesInput `json:"rules,omitempty"`
+	ProductIDs  []string         `json:"productIds,omitempty"`
 }
 
 // UpdateSubscriptionProductGroupParams is the input to
 // SubscriptionProductGroups.Update. ProductIDs is a full replacement, not a
-// merge.
+// merge; Rules is the opposite — it is merged switch by switch.
 type UpdateSubscriptionProductGroupParams struct {
-	ID          string      `json:"id"`
-	Name        *string     `json:"name,omitempty"`
-	Description *string     `json:"description,omitempty"`
-	Rules       *GroupRules `json:"rules,omitempty"`
-	ProductIDs  []string    `json:"productIds,omitempty"`
+	ID          string           `json:"id"`
+	Name        *string          `json:"name,omitempty"`
+	Description *string          `json:"description,omitempty"`
+	Rules       *GroupRulesInput `json:"rules,omitempty"`
+	ProductIDs  []string         `json:"productIds,omitempty"`
 }
 
 // DeleteSubscriptionProductGroupParams is the input to
@@ -534,6 +581,59 @@ type CheckoutSessionResult struct {
 	CheckoutURL string   `json:"checkoutUrl"`
 	ExpiresAt   string   `json:"expiresAt"`
 	Warnings    []Notice `json:"warnings,omitempty"`
+}
+
+// CreatePlanChangeSessionParams is the input to Checkout.CreatePlanChangeSession.
+//
+// A plan change is the same create-session endpoint in a different mode, and
+// OriginOrderID is what switches it — which is why it is a plain required field
+// here instead of an optional one on CreateCheckoutSessionParams. The returned
+// CheckoutURL points at the change confirmation page
+// (…/store/{slug}/change/{sessionId}), where the customer confirms the change.
+//
+// BuyerEmail and BillingDetail have no counterpart here: in plan change mode the
+// customer email, billing details and tax all come from the origin subscription.
+type CreatePlanChangeSessionParams struct {
+	// OriginOrderID is the subscription being changed (Short ID, ORD_xxx). Required —
+	// its presence is what puts the request into plan change mode.
+	OriginOrderID string `json:"originOrderId"`
+	// ProductID is the target plan — a subscription product other than the current one.
+	ProductID string `json:"productId"`
+	Currency  string `json:"currency"`
+	// ChangeTiming is when the new plan takes effect. Leave nil to let the platform
+	// derive it from the change direction; the derived tier is not echoed back.
+	ChangeTiming *ChangeTiming `json:"changeTiming,omitempty"`
+	// ChangeAmount is what to actually charge for this change, as a display string,
+	// tax inclusive (e.g. "12.00") — the "charge this much" form. Mutually exclusive
+	// with ChangeCreditAmount: the same number means the opposite thing under each, so
+	// sending both is rejected with a 400 rather than one being picked. Merchant
+	// credentials only — any other credential has it silently dropped by the platform,
+	// the same way PriceSnapshot is on a new purchase.
+	ChangeAmount *string `json:"changeAmount,omitempty"`
+	// ChangeCreditAmount is how much to credit against this change, as a display
+	// string, tax inclusive (e.g. "8.00") — the "credit this much" form, same unit and
+	// tax basis as ChangeAmount. Mutually exclusive with ChangeAmount (sending both is
+	// a 400) and merchant credentials only.
+	ChangeCreditAmount *string `json:"changeCreditAmount,omitempty"`
+	// WithTrial is the trial toggle for the target plan. Three-state and identical to a
+	// new purchase: true grants one, false withholds one, nil follows the product
+	// group's rule. Merchant credentials only — silently dropped otherwise.
+	WithTrial *bool `json:"withTrial,omitempty"`
+	// PriceSnapshot overrides the target plan's price for this session.
+	PriceSnapshot    *PriceSnapshot    `json:"priceSnapshot,omitempty"`
+	SuccessURL       *string           `json:"successUrl,omitempty"`
+	ExpiresInSeconds *int              `json:"expiresInSeconds,omitempty"`
+	DarkMode         *bool             `json:"darkMode,omitempty"`
+	Metadata         map[string]string `json:"metadata,omitempty"`
+	// OrderMerchantExternalID is the order-side business identifier (max 128 chars);
+	// inherited by orders, payments, refunds.
+	OrderMerchantExternalID *string `json:"orderMerchantExternalId,omitempty"`
+	// Language is the default language of the confirmation page (IETF BCP 47).
+	Language *CashierLanguage `json:"language,omitempty"`
+	// IncludePaymentMethods is a whitelist, mutually exclusive with ExcludePaymentMethods.
+	IncludePaymentMethods []PaymentMethod `json:"includePaymentMethods,omitempty"`
+	// ExcludePaymentMethods is a blacklist, mutually exclusive with IncludePaymentMethods.
+	ExcludePaymentMethods []PaymentMethod `json:"excludePaymentMethods,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -642,6 +742,45 @@ type AuthenticatedCheckoutParams struct {
 	// BuyerIdentity is encoded into the JWT for merchant-side customer
 	// identification. Use BuyerEmail to pre-fill the checkout form's email
 	// input; the two fields are independent.
+	BuyerIdentity string `json:"-"`
+}
+
+// CustomerPlanChangeParams is the input to
+// CustomerSession.CreatePlanChangeSession.
+//
+// Same endpoint as CreatePlanChangeSessionParams, reached with a customer session
+// token instead of the merchant API Key. The credential is what narrows the field
+// set: a customer-session request carries no merchant id, so the platform treats
+// every API-Key-only field as absent and silently drops it — no error says so.
+// Those fields are therefore left off this struct rather than accepted and ignored:
+// ChangeAmount, ChangeCreditAmount, WithTrial, PriceSnapshot, ExpiresInSeconds,
+// Metadata, OrderMerchantExternalID, IncludePaymentMethods and ExcludePaymentMethods.
+// BuyerEmail and BillingDetail are absent for the same reason they are on the
+// merchant struct — plan change mode takes both from the origin subscription.
+type CustomerPlanChangeParams struct {
+	// OriginOrderID is the customer's own subscription being changed (Short ID, ORD_xxx).
+	OriginOrderID string `json:"originOrderId"`
+	// ProductID is the target plan — must sit in the same product group as the current plan.
+	ProductID string `json:"productId"`
+	// Currency must match the origin subscription.
+	Currency string `json:"currency"`
+	// ChangeTiming is when the new plan takes effect. Leave nil to let the platform
+	// derive it from the change direction.
+	ChangeTiming *ChangeTiming `json:"changeTiming,omitempty"`
+	SuccessURL   *string       `json:"successUrl,omitempty"`
+	DarkMode     *bool         `json:"darkMode,omitempty"`
+	// Language is the default language of the confirmation page (IETF BCP 47).
+	Language *CashierLanguage `json:"language,omitempty"`
+}
+
+// AuthenticatedPlanChangeParams is the input to
+// Checkout.Authenticated.CreatePlanChange. Same split as
+// AuthenticatedCheckoutParams: BuyerIdentity is routed to the issue-session-token
+// endpoint while the remaining fields go to the create-session endpoint.
+type AuthenticatedPlanChangeParams struct {
+	CreatePlanChangeSessionParams
+	// BuyerIdentity is encoded into the JWT for merchant-side customer
+	// identification, so the customer reaches the confirmation page signed in.
 	BuyerIdentity string `json:"-"`
 }
 
