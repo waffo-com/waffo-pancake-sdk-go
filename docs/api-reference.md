@@ -11,6 +11,7 @@ Complete reference for all `github.com/waffo-com/waffo-pancake-sdk-go` resources
 > - Every method takes `ctx context.Context` first and returns `(*Result, error)`
 > - Every result struct carries a `Warnings []pancake.Notice` slice (the v0.2.0 unified envelope) — inspect it for non-fatal advisories and migration hints
 > - Optional scalar fields are `*T` (use `pancake.Ptr(v)` to construct); tri-state nullable fields are `*pancake.Nullable[T]` (use `pancake.NullValuePtr(v)` / `pancake.ExplicitNullPtr[T]()`)
+> - Every write method accepts trailing `pancake.RequestOption` values; the only one today is `pancake.WithIdempotencyKey`. No key is sent unless you pass it — see [Idempotency](#idempotency)
 
 ---
 
@@ -1009,6 +1010,26 @@ See [GraphQL Guide](graphql-guide.md) for introspection, filters, pagination, an
 
 ---
 
+## Idempotency
+
+Every write method takes trailing `RequestOption` values:
+
+```go
+res, err := client.Stores.Create(ctx, pancake.CreateStoreParams{Name: "My Store"},
+    pancake.WithIdempotencyKey("MER_store-create-9f2c"))
+```
+
+| Option | Effect |
+| ------ | ------ |
+| `pancake.WithIdempotencyKey(key)` | Sends `key` as `X-Idempotency-Key` on that call |
+| *(none)* | No header is sent and nothing is deduplicated |
+
+Platform behavior when a key is sent: the first request executes and its 2xx response is cached for **24 hours**; the same key returns that cached response; the same key while the original is in flight returns **409**; a non-2xx original leaves the key free to retry. Keys are at most 256 characters of letters, numbers, hyphens and underscores, and a malformed one is rejected by the gateway with a 400.
+
+The SDK never derives a key — **uniqueness is the caller's to guarantee**, and reusing one key across two different calls makes the second replay the first one's response. For that reason a key passed to `Checkout.Authenticated.Create` / `.CreatePlanChange` is applied to the `create-session` call only, not to the token call. GraphQL queries accept no options.
+
+---
+
 ## Error Handling
 
 All SDK methods return `error`. When the API returns a non-success response (or client-side validation fails), the error is `*pancake.Error`. Use `errors.As` to extract it:
@@ -1115,6 +1136,7 @@ All exported types:
 | `CreateCheckoutSessionParams`           | Low-level checkout session request                         |
 | `CreatePlanChangeSessionParams`         | Plan change session request (`OriginOrderID` required)     |
 | `CustomerPlanChangeParams`              | Customer-initiated plan change request (no merchant-only fields) |
+| `RequestOption` / `WithIdempotencyKey`  | Per-call options; idempotency key only                     |
 | `AuthenticatedPlanChangeParams`         | Plan change request with customer identity                 |
 | `ChangeTiming`                          | When a plan change takes effect (`immediate` / `next_period`) |
 | `CheckoutSessionResult`                 | Checkout session response (URL + expiry)                   |

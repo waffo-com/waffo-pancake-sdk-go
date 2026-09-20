@@ -4,9 +4,9 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.14.0] — 2026-09-19
+## [0.14.0] — 2026-09-20
 
-Plan changes can now be started from the SDK, and product groups expose the switch that lets customers start one themselves. Matches `@waffo/pancake-ts@0.23.0`.
+Plan changes can now be started from the SDK, and product groups expose the switch that lets customers start one themselves. **The SDK also stops sending idempotency keys on its own** — see the BREAKING entries under Changed before upgrading. Matches `@waffo/pancake-ts@0.23.0`.
 
 ### Added
 
@@ -20,7 +20,12 @@ Plan changes can now be started from the SDK, and product groups expose the swit
 
 ### Changed
 
-- **`CustomerSession` documents that its writes are not idempotent.** Behavior is unchanged — the customer client has never sent an idempotency key (`customer_http_client.go`), the API Key client always has. It is now said out loud on the type, because a retried customer write can execute twice and nothing in the public docs said so.
+- **BREAKING: the SDK no longer sends `X-Idempotency-Key` on its own.** Until now every write carried a key derived as `sha256(merchantID + path + body)` (with a 60-second window on checkout-session calls), which made the gateway deduplicate writes for 24 hours whether you wanted it or not — and made identical calls replay an old response.
+  - **What you lose by doing nothing**: writes are no longer deduplicated. A request that times out and is retried executes twice — two stores, two refund tickets, two checkout sessions.
+  - **What to do if you want idempotency**: pass the new option, e.g. `client.Stores.Create(ctx, params, pancake.WithIdempotencyKey("MER_store-create-9f2c"))`. Uniqueness is yours to guarantee (≤256 chars of letters, numbers, `-`, `_`; malformed keys are rejected with a 400). Same key within 24h returns the first response; same key while the original is in flight returns 409.
+  - **No compensating behavior was added** — no automatic retry, no local dedup, no fallback key.
+- **BREAKING: every write method gained a trailing `opts ...RequestOption` parameter**, and the internal `postOptions` (`IdempotencyWindow` / `NoIdempotency`) is gone. Variadic keeps existing call sites compiling — `client.Stores.Create(ctx, params)` is unchanged — while `WithIdempotencyKey` is available where you need it. `GraphQLResource.Query` and `CustomerGraphQLResource.Query` take no options: a key on a read would serve cached data. `CustomerSession`'s methods take the option too, and its transport now sends the header when one is given; the gateway keys off the header, not the credential.
+- **`CustomerSession` documents that its writes are not idempotent by default** — the same rule as every other method now that no client derives a key. A retried customer write executes twice unless you pass `WithIdempotencyKey`.
 - **The plan change methods validate their input; `Checkout.CreateSession` still does not.** They share a resource type, so the difference is now stated in its GoDoc rather than left implicit. Reasoning: local validation is the SDK-wide default for resource methods (and matches sdk-ts), while `CreateSession` is the single documented escape hatch for full control. The plan change methods are the only entry points to their flow, and every other method taking an `ORD_` id validates its format. What is validated stays purely formal (Short ID shape, currency, amount strings); no mode rule is enforced client-side.
 - **BREAKING: `GroupRules` split into an entity type and an input type.** `GroupRules` (returned on a group) keeps plain `bool` fields and gains `SelfServicePlanChange` — the platform always reports a complete set, an unset switch as `false`. Group create / update now take the new `GroupRulesInput`, whose switches are `*bool` to match the platform's field-by-field merge: sending only `SelfServicePlanChange` leaves `SharedTrial` at its stored value. Migration: `Rules: &pancake.GroupRules{SharedTrial: true}` becomes `Rules: &pancake.GroupRulesInput{SharedTrial: pancake.Ptr(true)}`. Reading `group.Rules` is unchanged.
 - Feature parity target updated to `@waffo/pancake-ts@0.23.x` (`doc.go` and `README.md` updated with it).

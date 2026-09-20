@@ -31,11 +31,11 @@ func newCustomerSession(h *customerHTTPClient) *CustomerSession {
 //   - past_due -> canceling immediately (the billing period has already lapsed)
 //
 // The PSP cancellation is confirmed asynchronously in both canceling cases.
-func (s *CustomerSession) CancelSubscription(ctx context.Context, p CancelSubscriptionParams) (*CancelSubscriptionResult, error) {
+func (s *CustomerSession) CancelSubscription(ctx context.Context, p CancelSubscriptionParams, opts ...RequestOption) (*CancelSubscriptionResult, error) {
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := customerPostAction[CancelSubscriptionResult](ctx, s.http, "/v1/actions/subscription-order/cancel-order", p)
+	out, warnings, err := customerPostAction[CancelSubscriptionResult](ctx, s.http, "/v1/actions/subscription-order/cancel-order", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +44,11 @@ func (s *CustomerSession) CancelSubscription(ctx context.Context, p CancelSubscr
 }
 
 // CancelOnetimeOrder cancels a one-time order whose payment is still pending.
-func (s *CustomerSession) CancelOnetimeOrder(ctx context.Context, p CancelOnetimeOrderParams) (*CancelOnetimeOrderResult, error) {
+func (s *CustomerSession) CancelOnetimeOrder(ctx context.Context, p CancelOnetimeOrderParams, opts ...RequestOption) (*CancelOnetimeOrderResult, error) {
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := customerPostAction[CancelOnetimeOrderResult](ctx, s.http, "/v1/actions/onetime-order/cancel-order", p)
+	out, warnings, err := customerPostAction[CancelOnetimeOrderResult](ctx, s.http, "/v1/actions/onetime-order/cancel-order", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -64,11 +64,11 @@ func (s *CustomerSession) CancelOnetimeOrder(ctx context.Context, p CancelOnetim
 // reactivated"), which is distinct from the 400 returned when the order is not
 // in the "canceling" state. Cancelling a past_due subscription always falls
 // into the former category.
-func (s *CustomerSession) ReactivateSubscription(ctx context.Context, p ReactivateSubscriptionParams) (*ReactivateSubscriptionResult, error) {
+func (s *CustomerSession) ReactivateSubscription(ctx context.Context, p ReactivateSubscriptionParams, opts ...RequestOption) (*ReactivateSubscriptionResult, error) {
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := customerPostAction[ReactivateSubscriptionResult](ctx, s.http, "/v1/actions/subscription-order/reactivate-order", p)
+	out, warnings, err := customerPostAction[ReactivateSubscriptionResult](ctx, s.http, "/v1/actions/subscription-order/reactivate-order", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (s *CustomerSession) ReactivateSubscription(ctx context.Context, p Reactiva
 }
 
 // CreateRefundTicket submits a refund request for a payment.
-func (s *CustomerSession) CreateRefundTicket(ctx context.Context, p CreateRefundTicketParams) (*RefundTicketResult, error) {
+func (s *CustomerSession) CreateRefundTicket(ctx context.Context, p CreateRefundTicketParams, opts ...RequestOption) (*RefundTicketResult, error) {
 	if err := validateShortID("paymentId", p.PaymentID, "PAY"); err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (s *CustomerSession) CreateRefundTicket(ctx context.Context, p CreateRefund
 	if err := validateMaxLength("refundTicketMerchantExternalId", p.RefundTicketMerchantExternalID, 128); err != nil {
 		return nil, err
 	}
-	out, warnings, err := customerPostAction[RefundTicketResult](ctx, s.http, "/v1/actions/refund-ticket/create-ticket", p)
+	out, warnings, err := customerPostAction[RefundTicketResult](ctx, s.http, "/v1/actions/refund-ticket/create-ticket", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (s *CustomerSession) CreateRefundTicket(ctx context.Context, p CreateRefund
 
 // ResubmitRefundTicket resubmits a previously rejected refund ticket with
 // updated details.
-func (s *CustomerSession) ResubmitRefundTicket(ctx context.Context, p ResubmitRefundTicketParams) (*RefundTicketResult, error) {
+func (s *CustomerSession) ResubmitRefundTicket(ctx context.Context, p ResubmitRefundTicketParams, opts ...RequestOption) (*RefundTicketResult, error) {
 	if err := validateShortID("ticketId", p.TicketID, "TKT"); err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (s *CustomerSession) ResubmitRefundTicket(ctx context.Context, p ResubmitRe
 	if err := validateCurrencyCode("requestedAmount.currency", p.RequestedAmount.Currency); err != nil {
 		return nil, err
 	}
-	out, warnings, err := customerPostAction[RefundTicketResult](ctx, s.http, "/v1/actions/refund-ticket/resubmit-ticket", p)
+	out, warnings, err := customerPostAction[RefundTicketResult](ctx, s.http, "/v1/actions/refund-ticket/resubmit-ticket", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (s *CustomerSession) ResubmitRefundTicket(ctx context.Context, p ResubmitRe
 //	    ProductID:     "PROD_...",
 //	    Currency:      "USD",
 //	})
-func (s *CustomerSession) CreatePlanChangeSession(ctx context.Context, p CustomerPlanChangeParams) (*CheckoutSessionResult, error) {
+func (s *CustomerSession) CreatePlanChangeSession(ctx context.Context, p CustomerPlanChangeParams, opts ...RequestOption) (*CheckoutSessionResult, error) {
 	if err := validateShortID("originOrderId", p.OriginOrderID, "ORD"); err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (s *CustomerSession) CreatePlanChangeSession(ctx context.Context, p Custome
 	if err := validateCurrencyCode("currency", p.Currency); err != nil {
 		return nil, err
 	}
-	out, warnings, err := customerPostAction[CheckoutSessionResult](ctx, s.http, "/v1/actions/checkout/create-session", p)
+	out, warnings, err := customerPostAction[CheckoutSessionResult](ctx, s.http, "/v1/actions/checkout/create-session", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,8 @@ func (r *CustomerGraphQLResource) Query(ctx context.Context, p GraphQLParams) (*
 	if err := validateRequired("query", p.Query); err != nil {
 		return nil, err
 	}
-	_, env, err := r.http.post(ctx, "/v1/graphql", p)
+	// Reads take no idempotency key: a cached replay would serve stale data.
+	_, env, err := r.http.post(ctx, "/v1/graphql", p, requestOptions{})
 	if err != nil {
 		return nil, err
 	}

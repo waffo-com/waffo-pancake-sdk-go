@@ -3,18 +3,50 @@ package pancake
 import "encoding/json"
 
 // -----------------------------------------------------------------------------
-// Internal HTTP options
+// Per-call request options
 // -----------------------------------------------------------------------------
 
-// postOptions tunes a single signed POST request.
-type postOptions struct {
-	// IdempotencyWindow rotates the deterministic idempotency key by time
-	// window (in seconds). Used by checkout session creation.
-	IdempotencyWindow int
-	// NoIdempotency omits the X-Idempotency-Key header entirely. Set for
-	// read-only queries (e.g. GraphQL) so the gateway's 24h idempotency
-	// cache does not serve stale data on identical repeat queries.
-	NoIdempotency bool
+// RequestOption customizes a single API call. Pass any number of them as the
+// trailing arguments of a write method; passing none is the normal case.
+//
+// Variadic rather than a trailing *Options pointer (the shape [WebhooksResource.Verify]
+// uses) so that adding it to every write method keeps existing call sites compiling.
+type RequestOption func(*requestOptions)
+
+// WithIdempotencyKey sends key as X-Idempotency-Key on this call.
+//
+// Nothing is sent when this option is absent, and the SDK never derives a key —
+// so by default a write is not deduplicated and a retry executes it again.
+//
+// Platform semantics once a key is sent:
+//
+//   - The first request executes and its 2xx response is cached for 24 hours
+//   - A repeat of the same key returns that cached response without re-executing
+//   - A repeat while the original is still in flight returns 409
+//   - A non-2xx original does not occupy the key; the same key can be retried
+//
+// The key is the whole cache identity of the request, so uniqueness is the
+// caller's to guarantee: at most 256 characters of letters, numbers, hyphens and
+// underscores, distinct per logical operation. A malformed key is rejected by the
+// gateway with a 400.
+func WithIdempotencyKey(key string) RequestOption {
+	return func(o *requestOptions) { o.idempotencyKey = key }
+}
+
+// requestOptions is the resolved form of the RequestOption list.
+type requestOptions struct {
+	idempotencyKey string
+}
+
+// newRequestOptions applies opts in order and returns the result.
+func newRequestOptions(opts []RequestOption) requestOptions {
+	var resolved requestOptions
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&resolved)
+		}
+	}
+	return resolved
 }
 
 // -----------------------------------------------------------------------------

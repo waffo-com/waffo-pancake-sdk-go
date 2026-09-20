@@ -87,7 +87,7 @@ type WebhooksResource struct {
 //	    Events:   []pancake.WebhookEventType{pancake.WebhookEventTypeOrderCompleted},
 //	    TestMode: false,
 //	})
-func (r *WebhooksResource) Add(ctx context.Context, p AddWebhookParams) (*AddWebhookResult, error) {
+func (r *WebhooksResource) Add(ctx context.Context, p AddWebhookParams, opts ...RequestOption) (*AddWebhookResult, error) {
 	if err := validateShortID("storeId", p.StoreID, "STO"); err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (r *WebhooksResource) Add(ctx context.Context, p AddWebhookParams) (*AddWeb
 	if err := validateRequired("url", p.URL); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[AddWebhookResult](ctx, r.http, "/v1/actions/store/add-webhook", p, nil)
+	out, warnings, err := postAction[AddWebhookResult](ctx, r.http, "/v1/actions/store/add-webhook", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -107,11 +107,11 @@ func (r *WebhooksResource) Add(ctx context.Context, p AddWebhookParams) (*AddWeb
 
 // Update updates a webhook's mutable fields (URL, events, secret). Channel
 // and TestMode are immutable — remove and re-add to change them.
-func (r *WebhooksResource) Update(ctx context.Context, p UpdateWebhookParams) (*UpdateWebhookResult, error) {
+func (r *WebhooksResource) Update(ctx context.Context, p UpdateWebhookParams, opts ...RequestOption) (*UpdateWebhookResult, error) {
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[UpdateWebhookResult](ctx, r.http, "/v1/actions/store/update-webhook", p, nil)
+	out, warnings, err := postAction[UpdateWebhookResult](ctx, r.http, "/v1/actions/store/update-webhook", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -121,11 +121,11 @@ func (r *WebhooksResource) Update(ctx context.Context, p UpdateWebhookParams) (*
 
 // Remove hard-deletes a webhook. Historical delivery records are retained
 // with a nulled-out webhook reference for audit purposes.
-func (r *WebhooksResource) Remove(ctx context.Context, p RemoveWebhookParams) (*RemoveWebhookResult, error) {
+func (r *WebhooksResource) Remove(ctx context.Context, p RemoveWebhookParams, opts ...RequestOption) (*RemoveWebhookResult, error) {
 	if err := validateRequired("id", p.ID); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[RemoveWebhookResult](ctx, r.http, "/v1/actions/store/remove-webhook", p, nil)
+	out, warnings, err := postAction[RemoveWebhookResult](ctx, r.http, "/v1/actions/store/remove-webhook", p, opts)
 	if err != nil {
 		return nil, err
 	}

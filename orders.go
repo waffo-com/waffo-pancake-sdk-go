@@ -27,11 +27,11 @@ type OrdersResource struct {
 //	res, err := client.Orders.CancelSubscription(ctx, pancake.CancelSubscriptionParams{
 //	    OrderID: "ORD_...",
 //	})
-func (r *OrdersResource) CancelSubscription(ctx context.Context, p CancelSubscriptionParams) (*CancelSubscriptionResult, error) {
+func (r *OrdersResource) CancelSubscription(ctx context.Context, p CancelSubscriptionParams, opts ...RequestOption) (*CancelSubscriptionResult, error) {
 	if err := validateShortID("orderId", p.OrderID, "ORD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[CancelSubscriptionResult](ctx, r.http, "/v1/actions/subscription-order/cancel-order", p, nil)
+	out, warnings, err := postAction[CancelSubscriptionResult](ctx, r.http, "/v1/actions/subscription-order/cancel-order", p, opts)
 	if err != nil {
 		return nil, err
 	}

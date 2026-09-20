@@ -17,7 +17,7 @@ type AuthResource struct {
 //	    StoreID:       pancake.Ptr("STO_..."),
 //	    BuyerIdentity: "customer@example.com",
 //	})
-func (r *AuthResource) IssueSessionToken(ctx context.Context, p IssueSessionTokenParams) (*SessionToken, error) {
+func (r *AuthResource) IssueSessionToken(ctx context.Context, p IssueSessionTokenParams, opts ...RequestOption) (*SessionToken, error) {
 	if p.StoreID == nil && p.ProductID == nil {
 		return nil, newSDKError("Missing required field: provide storeId or productId")
 	}
@@ -34,7 +34,7 @@ func (r *AuthResource) IssueSessionToken(ctx context.Context, p IssueSessionToke
 	if err := validateRequired("buyerIdentity", p.BuyerIdentity); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[SessionToken](ctx, r.http, "/v1/actions/auth/issue-session-token", p, nil)
+	out, warnings, err := postAction[SessionToken](ctx, r.http, "/v1/actions/auth/issue-session-token", p, opts)
 	if err != nil {
 		return nil, err
 	}

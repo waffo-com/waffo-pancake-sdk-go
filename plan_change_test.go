@@ -406,3 +406,73 @@ func TestCustomerCreatePlanChangeSession_ValidatesInput(t *testing.T) {
 		t.Fatalf("expected no request to be sent, got %d", len(srv.requests()))
 	}
 }
+
+func TestPlanChange_IdempotencyKeyIsOptInAndScoped(t *testing.T) {
+	client, _, server := newSignedTestClient(t)
+	server.respond = changeSessionResponder
+
+	// Default: no key on the wire.
+	if _, err := client.Checkout.CreatePlanChangeSession(context.Background(), planChangeParams()); err != nil {
+		t.Fatalf("plan change: %v", err)
+	}
+	if got := server.requests()[0].Headers.Get("X-Idempotency-Key"); got != "" {
+		t.Errorf("expected no key by default, got %q", got)
+	}
+
+	// Explicit: sent verbatim.
+	const key = "MER_plan-change-2026-00891"
+	if _, err := client.Checkout.CreatePlanChangeSession(context.Background(), planChangeParams(), WithIdempotencyKey(key)); err != nil {
+		t.Fatalf("plan change with key: %v", err)
+	}
+	if got := server.requests()[1].Headers.Get("X-Idempotency-Key"); got != key {
+		t.Errorf("X-Idempotency-Key = %q want %q", got, key)
+	}
+
+	// Authenticated: the key addresses create-session only, never the token call.
+	if _, err := client.Checkout.Authenticated.CreatePlanChange(context.Background(), AuthenticatedPlanChangeParams{
+		CreatePlanChangeSessionParams: planChangeParams(),
+		BuyerIdentity:                 "user-1",
+	}, WithIdempotencyKey("MER_plan-change-2026-00892")); err != nil {
+		t.Fatalf("authenticated plan change: %v", err)
+	}
+	for _, req := range server.requests()[2:] {
+		got := req.Headers.Get("X-Idempotency-Key")
+		switch {
+		case strings.HasSuffix(req.Path, "/create-session"):
+			if got != "MER_plan-change-2026-00892" {
+				t.Errorf("create-session key = %q", got)
+			}
+		case strings.HasSuffix(req.Path, "/issue-session-token"):
+			if got != "" {
+				t.Errorf("token call must not reuse the key, got %q", got)
+			}
+		}
+	}
+}
+
+func TestCustomerSession_IdempotencyKeyIsOptIn(t *testing.T) {
+	_, customer, srv := newCustomerTestClient(t)
+	srv.respond = func(_ recordedRequest) (int, any) {
+		return 200, map[string]any{"data": map[string]any{
+			"sessionId":   "ses_self_service",
+			"checkoutUrl": "https://pancake.example/store/my-store/change/ses_self_service",
+			"expiresAt":   "2026-05-13T00:45:00Z",
+		}}
+	}
+
+	p := CustomerPlanChangeParams{OriginOrderID: testOriginOrderID, ProductID: testTargetProduct, Currency: "USD"}
+	if _, err := customer.CreatePlanChangeSession(context.Background(), p); err != nil {
+		t.Fatalf("plan change: %v", err)
+	}
+	if got := srv.requests()[0].Headers.Get("X-Idempotency-Key"); got != "" {
+		t.Errorf("expected no key by default, got %q", got)
+	}
+
+	const key = "MER_self-service-2026-00893"
+	if _, err := customer.CreatePlanChangeSession(context.Background(), p, WithIdempotencyKey(key)); err != nil {
+		t.Fatalf("plan change with key: %v", err)
+	}
+	if got := srv.requests()[1].Headers.Get("X-Idempotency-Key"); got != key {
+		t.Errorf("X-Idempotency-Key = %q want %q", got, key)
+	}
+}

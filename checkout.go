@@ -43,11 +43,11 @@ func newCheckoutResource(h *httpClient) *CheckoutResource {
 //	    Currency:  "USD",
 //	})
 //	// Redirect the customer to session.CheckoutURL.
-func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSessionParams) (*CheckoutSessionResult, error) {
+func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSessionParams, opts ...RequestOption) (*CheckoutSessionResult, error) {
 	if err := validateCheckoutCommon(&p); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[CheckoutSessionResult](ctx, r.http, "/v1/actions/checkout/create-session", p, &postOptions{IdempotencyWindow: 60})
+	out, warnings, err := postAction[CheckoutSessionResult](ctx, r.http, "/v1/actions/checkout/create-session", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -75,11 +75,11 @@ func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSe
 //	    ChangeCreditAmount: pancake.Ptr("8.00"),
 //	})
 //	// Send the customer to session.CheckoutURL.
-func (r *CheckoutResource) CreatePlanChangeSession(ctx context.Context, p CreatePlanChangeSessionParams) (*CheckoutSessionResult, error) {
+func (r *CheckoutResource) CreatePlanChangeSession(ctx context.Context, p CreatePlanChangeSessionParams, opts ...RequestOption) (*CheckoutSessionResult, error) {
 	if err := validatePlanChangeCommon(&p); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[CheckoutSessionResult](ctx, r.http, "/v1/actions/checkout/create-session", p, &postOptions{IdempotencyWindow: 60})
+	out, warnings, err := postAction[CheckoutSessionResult](ctx, r.http, "/v1/actions/checkout/create-session", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -102,11 +102,11 @@ type CheckoutAnonymousResource struct {
 //	    ProductID: "PROD_...",
 //	    Currency:  "USD",
 //	})
-func (r *CheckoutAnonymousResource) Create(ctx context.Context, p AnonymousCheckoutParams) (*CheckoutSessionResult, error) {
+func (r *CheckoutAnonymousResource) Create(ctx context.Context, p AnonymousCheckoutParams, opts ...RequestOption) (*CheckoutSessionResult, error) {
 	if err := validateCheckoutCommon(&p); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[CheckoutSessionResult](ctx, r.http, "/v1/actions/checkout/create-session", p, &postOptions{IdempotencyWindow: 60})
+	out, warnings, err := postAction[CheckoutSessionResult](ctx, r.http, "/v1/actions/checkout/create-session", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -139,14 +139,14 @@ type CheckoutAuthenticatedResource struct {
 //	    },
 //	    BuyerIdentity: "user-123",
 //	})
-func (r *CheckoutAuthenticatedResource) Create(ctx context.Context, p AuthenticatedCheckoutParams) (*AuthenticatedCheckoutResult, error) {
+func (r *CheckoutAuthenticatedResource) Create(ctx context.Context, p AuthenticatedCheckoutParams, opts ...RequestOption) (*AuthenticatedCheckoutResult, error) {
 	if err := validateCheckoutCommon(&p.CreateCheckoutSessionParams); err != nil {
 		return nil, err
 	}
 	if err := validateRequired("buyerIdentity", p.BuyerIdentity); err != nil {
 		return nil, err
 	}
-	return r.issueTokenAndSession(ctx, p.ProductID, p.BuyerIdentity, p.CreateCheckoutSessionParams)
+	return r.issueTokenAndSession(ctx, p.ProductID, p.BuyerIdentity, p.CreateCheckoutSessionParams, opts)
 }
 
 // CreatePlanChange issues a plan change link for an existing subscription together
@@ -171,14 +171,14 @@ func (r *CheckoutAuthenticatedResource) Create(ctx context.Context, p Authentica
 //	    },
 //	    BuyerIdentity: "user-123",
 //	})
-func (r *CheckoutAuthenticatedResource) CreatePlanChange(ctx context.Context, p AuthenticatedPlanChangeParams) (*AuthenticatedCheckoutResult, error) {
+func (r *CheckoutAuthenticatedResource) CreatePlanChange(ctx context.Context, p AuthenticatedPlanChangeParams, opts ...RequestOption) (*AuthenticatedCheckoutResult, error) {
 	if err := validatePlanChangeCommon(&p.CreatePlanChangeSessionParams); err != nil {
 		return nil, err
 	}
 	if err := validateRequired("buyerIdentity", p.BuyerIdentity); err != nil {
 		return nil, err
 	}
-	return r.issueTokenAndSession(ctx, p.ProductID, p.BuyerIdentity, p.CreatePlanChangeSessionParams)
+	return r.issueTokenAndSession(ctx, p.ProductID, p.BuyerIdentity, p.CreatePlanChangeSessionParams, opts)
 }
 
 // issueTokenAndSession issues a session token and creates a checkout session
@@ -188,6 +188,7 @@ func (r *CheckoutAuthenticatedResource) issueTokenAndSession(
 	ctx context.Context,
 	productID, buyerIdentity string,
 	sessionBody any,
+	opts []RequestOption,
 ) (*AuthenticatedCheckoutResult, error) {
 	tokenBody := struct {
 		ProductID     string `json:"productId"`
@@ -208,10 +209,11 @@ func (r *CheckoutAuthenticatedResource) issueTokenAndSession(
 	)
 
 	wg.Add(2)
-	opts := &postOptions{IdempotencyWindow: 60}
 	go func() {
 		defer wg.Done()
-		tok, tokWarnings, errTok = postAction[SessionToken](ctx, r.http, "/v1/actions/auth/issue-session-token", tokenBody, opts)
+		// The caller's idempotency key addresses the session, not the token: one key
+		// cannot cover two endpoints, and re-issuing a token is harmless.
+		tok, tokWarnings, errTok = postAction[SessionToken](ctx, r.http, "/v1/actions/auth/issue-session-token", tokenBody, nil)
 	}()
 	go func() {
 		defer wg.Done()

@@ -10,7 +10,7 @@ type StoreMerchantsResource struct {
 }
 
 // Add invites a merchant to a store with the given role ("admin" or "member").
-func (r *StoreMerchantsResource) Add(ctx context.Context, p AddMerchantParams) (*AddMerchantResult, error) {
+func (r *StoreMerchantsResource) Add(ctx context.Context, p AddMerchantParams, opts ...RequestOption) (*AddMerchantResult, error) {
 	if err := validateShortID("storeId", p.StoreID, "STO"); err != nil {
 		return nil, err
 	}
@@ -20,7 +20,7 @@ func (r *StoreMerchantsResource) Add(ctx context.Context, p AddMerchantParams) (
 	if err := validateMerchantRole(p.Role); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[AddMerchantResult](ctx, r.http, "/v1/actions/store-merchant/add-merchant", p, nil)
+	out, warnings, err := postAction[AddMerchantResult](ctx, r.http, "/v1/actions/store-merchant/add-merchant", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -29,14 +29,14 @@ func (r *StoreMerchantsResource) Add(ctx context.Context, p AddMerchantParams) (
 }
 
 // Remove removes a merchant from a store.
-func (r *StoreMerchantsResource) Remove(ctx context.Context, p RemoveMerchantParams) (*RemoveMerchantResult, error) {
+func (r *StoreMerchantsResource) Remove(ctx context.Context, p RemoveMerchantParams, opts ...RequestOption) (*RemoveMerchantResult, error) {
 	if err := validateShortID("storeId", p.StoreID, "STO"); err != nil {
 		return nil, err
 	}
 	if err := validateShortID("merchantId", p.MerchantID, "MER"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[RemoveMerchantResult](ctx, r.http, "/v1/actions/store-merchant/remove-merchant", p, nil)
+	out, warnings, err := postAction[RemoveMerchantResult](ctx, r.http, "/v1/actions/store-merchant/remove-merchant", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (r *StoreMerchantsResource) Remove(ctx context.Context, p RemoveMerchantPar
 }
 
 // UpdateRole changes a merchant's role within a store.
-func (r *StoreMerchantsResource) UpdateRole(ctx context.Context, p UpdateRoleParams) (*UpdateRoleResult, error) {
+func (r *StoreMerchantsResource) UpdateRole(ctx context.Context, p UpdateRoleParams, opts ...RequestOption) (*UpdateRoleResult, error) {
 	if err := validateShortID("storeId", p.StoreID, "STO"); err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (r *StoreMerchantsResource) UpdateRole(ctx context.Context, p UpdateRolePar
 	if err := validateMerchantRole(p.Role); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[UpdateRoleResult](ctx, r.http, "/v1/actions/store-merchant/update-role", p, nil)
+	out, warnings, err := postAction[UpdateRoleResult](ctx, r.http, "/v1/actions/store-merchant/update-role", p, opts)
 	if err != nil {
 		return nil, err
 	}

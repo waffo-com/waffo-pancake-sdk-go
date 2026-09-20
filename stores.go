@@ -13,11 +13,11 @@ type StoresResource struct {
 //
 //	res, err := client.Stores.Create(ctx, pancake.CreateStoreParams{Name: "My Store"})
 //	fmt.Println(res.Store.ID) // "STO_..."
-func (r *StoresResource) Create(ctx context.Context, p CreateStoreParams) (*CreateStoreResult, error) {
+func (r *StoresResource) Create(ctx context.Context, p CreateStoreParams, opts ...RequestOption) (*CreateStoreResult, error) {
 	if err := validateRequired("name", p.Name); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[CreateStoreResult](ctx, r.http, "/v1/actions/store/create-store", p, nil)
+	out, warnings, err := postAction[CreateStoreResult](ctx, r.http, "/v1/actions/store/create-store", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -36,11 +36,11 @@ func (r *StoresResource) Create(ctx context.Context, p CreateStoreParams) (*Crea
 //	    Name: pancake.Ptr("Renamed store"),
 //	    Logo: pancake.ExplicitNullPtr[string](),
 //	})
-func (r *StoresResource) Update(ctx context.Context, p UpdateStoreParams) (*UpdateStoreResult, error) {
+func (r *StoresResource) Update(ctx context.Context, p UpdateStoreParams, opts ...RequestOption) (*UpdateStoreResult, error) {
 	if err := validateShortID("id", p.ID, "STO"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[UpdateStoreResult](ctx, r.http, "/v1/actions/store/update-store", p, nil)
+	out, warnings, err := postAction[UpdateStoreResult](ctx, r.http, "/v1/actions/store/update-store", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -53,11 +53,11 @@ func (r *StoresResource) Update(ctx context.Context, p UpdateStoreParams) (*Upda
 // Example:
 //
 //	res, err := client.Stores.Delete(ctx, pancake.DeleteStoreParams{ID: "STO_..."})
-func (r *StoresResource) Delete(ctx context.Context, p DeleteStoreParams) (*DeleteStoreResult, error) {
+func (r *StoresResource) Delete(ctx context.Context, p DeleteStoreParams, opts ...RequestOption) (*DeleteStoreResult, error) {
 	if err := validateShortID("id", p.ID, "STO"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[DeleteStoreResult](ctx, r.http, "/v1/actions/store/delete-store", p, nil)
+	out, warnings, err := postAction[DeleteStoreResult](ctx, r.http, "/v1/actions/store/delete-store", p, opts)
 	if err != nil {
 		return nil, err
 	}

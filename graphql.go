@@ -27,7 +27,8 @@ func (r *GraphQLResource) Query(ctx context.Context, p GraphQLParams) (*GraphQLR
 	if err := validateRequired("query", p.Query); err != nil {
 		return nil, err
 	}
-	_, env, err := r.http.post(ctx, "/v1/graphql", p, &postOptions{NoIdempotency: true})
+	// Reads take no idempotency key: a cached replay would serve stale data.
+	_, env, err := r.http.post(ctx, "/v1/graphql", p, requestOptions{})
 	if err != nil {
 		return nil, err
 	}

@@ -1,8 +1,9 @@
 // Package pancake is the official Go SDK for the Waffo Pancake Merchant of
 // Record (MoR) payment platform.
 //
-// All merchant API requests are auto-signed with RSA-SHA256 and carry
-// deterministic idempotency keys derived from the merchant ID, path, and body.
+// All merchant API requests are auto-signed with RSA-SHA256. Idempotency is
+// opt-in: pass pancake.WithIdempotencyKey to a write call and the key travels as
+// X-Idempotency-Key; without it no key is sent and nothing is deduplicated.
 // Webhook verification, GraphQL queries, and customer self-service flows are
 // supported out of the box. The SDK has zero external runtime dependencies —
 // only the Go standard library.

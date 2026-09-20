@@ -3,7 +3,7 @@
 Go SDK for the Waffo Pancake Merchant of Record (MoR) payment platform.
 
 - Zero runtime dependencies, Go >= 1.22
-- Automatic RSA-SHA256 request signing with deterministic idempotency keys
+- Automatic RSA-SHA256 request signing; opt-in idempotency keys per call
 - Full type definitions (20 enums, 40+ structs)
 - Webhook verification with embedded public keys (test/prod)
 - Feature parity with [`@waffo/pancake-ts@0.23.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
@@ -421,6 +421,33 @@ if verdict.Action != pancake.ScanActionAllow {
     // do not generate — verdict.Action is "review" or "block"
 }
 ```
+
+## Idempotency
+
+**No idempotency key is sent unless you ask for one.** The SDK does not derive keys, so a write that times out and gets retried executes a second time unless you supplied a key on the first attempt.
+
+Pass `WithIdempotencyKey` as a trailing option on any write:
+
+```go
+res, err := client.Stores.Create(ctx, pancake.CreateStoreParams{Name: "My Store"},
+    pancake.WithIdempotencyKey("MER_store-create-"+requestID))
+```
+
+What the platform does with it:
+
+| Situation | Result |
+| --------- | ------ |
+| First request with this key | Executes; the 2xx response is cached for **24 hours** |
+| Same key again, original finished | The cached response is returned, nothing re-executes |
+| Same key again, original still in flight | **409 Conflict** |
+| Original finished non-2xx | The key is free; the same key can be retried |
+| No key at all | Nothing is deduplicated |
+
+**Uniqueness is yours to guarantee.** At most 256 characters of letters, numbers, hyphens and underscores; a malformed key is rejected by the gateway with a 400. Use one key per logical operation, and never reuse a key across two different calls — the second would replay the first one's response.
+
+A key passed to `Checkout.Authenticated.Create` / `.CreatePlanChange` applies to the `create-session` call only: one key cannot address two endpoints, and re-issuing a session token is harmless.
+
+GraphQL queries take no options: they are reads, and a cached replay would serve stale data.
 
 ## Error Handling
 

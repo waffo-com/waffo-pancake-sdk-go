@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rsa"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -42,19 +40,19 @@ func newHTTPClient(merchantID string, key *rsa.PrivateKey, baseURL string, h *ht
 
 // post sends a signed POST and returns the full envelope plus HTTP status.
 //
-// Attaches X-Idempotency-Key unless opts.NoIdempotency is set (queries should
-// set it to bypass the gateway's 24h idempotency cache).
+// Attaches X-Idempotency-Key only when the caller supplied one via
+// WithIdempotencyKey. No key is derived here and none is sent otherwise, so a
+// request without one is not covered by the gateway's 24h dedup cache.
 //
 // Returns *Error only on transport failures (network reject, non-JSON body).
 // Never throws on errors[] — the resource layer inspects the envelope.
-func (c *httpClient) post(ctx context.Context, path string, body any, opts *postOptions) (int, *envelope, error) {
+func (c *httpClient) post(ctx context.Context, path string, body any, opts requestOptions) (int, *envelope, error) {
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return 0, nil, fmt.Errorf("marshal request body: %w", err)
 	}
 
-	tsSec := time.Now().Unix()
-	timestamp := strconv.FormatInt(tsSec, 10)
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	signature, err := signing.SignRequest("POST", path, timestamp, bodyBytes, c.privateKey)
 	if err != nil {
 		return 0, nil, fmt.Errorf("sign request: %w", err)
@@ -68,8 +66,8 @@ func (c *httpClient) post(ctx context.Context, path string, body any, opts *post
 	req.Header.Set("X-Merchant-Id", c.merchantID)
 	req.Header.Set("X-Timestamp", timestamp)
 	req.Header.Set("X-Signature", signature)
-	if opts == nil || !opts.NoIdempotency {
-		req.Header.Set("X-Idempotency-Key", computeIdempotencyKey(c.merchantID, path, bodyBytes, tsSec, opts))
+	if opts.idempotencyKey != "" {
+		req.Header.Set("X-Idempotency-Key", opts.idempotencyKey)
 	}
 
 	resp, err := c.client.Do(req)
@@ -98,14 +96,4 @@ func (c *httpClient) post(ctx context.Context, path string, body any, opts *post
 		}
 	}
 	return resp.StatusCode, &env, nil
-}
-
-func computeIdempotencyKey(merchantID, path string, bodyBytes []byte, tsSec int64, opts *postOptions) string {
-	input := merchantID + ":" + path + ":" + string(bodyBytes)
-	if opts != nil && opts.IdempotencyWindow > 0 {
-		window := int64(opts.IdempotencyWindow)
-		input = fmt.Sprintf("%s:%d", input, tsSec/window)
-	}
-	keyHash := sha256.Sum256([]byte(input))
-	return hex.EncodeToString(keyHash[:])
 }

@@ -8,7 +8,7 @@ type OnetimeProductsResource struct {
 }
 
 // Create creates a one-time product with multi-currency pricing.
-func (r *OnetimeProductsResource) Create(ctx context.Context, p CreateOnetimeProductParams) (*OnetimeProductResult, error) {
+func (r *OnetimeProductsResource) Create(ctx context.Context, p CreateOnetimeProductParams, opts ...RequestOption) (*OnetimeProductResult, error) {
 	if err := validateShortID("storeId", p.StoreID, "STO"); err != nil {
 		return nil, err
 	}
@@ -18,7 +18,7 @@ func (r *OnetimeProductsResource) Create(ctx context.Context, p CreateOnetimePro
 	if err := validatePrices("prices", p.Prices); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/create-product", p, nil)
+	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/create-product", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (r *OnetimeProductsResource) Create(ctx context.Context, p CreateOnetimePro
 
 // Update creates a new immutable version of the product and skips when the
 // request would not change anything.
-func (r *OnetimeProductsResource) Update(ctx context.Context, p UpdateOnetimeProductParams) (*OnetimeProductResult, error) {
+func (r *OnetimeProductsResource) Update(ctx context.Context, p UpdateOnetimeProductParams, opts ...RequestOption) (*OnetimeProductResult, error) {
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (r *OnetimeProductsResource) Update(ctx context.Context, p UpdateOnetimePro
 			return nil, err
 		}
 	}
-	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/update-product", p, nil)
+	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/update-product", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -51,11 +51,11 @@ func (r *OnetimeProductsResource) Update(ctx context.Context, p UpdateOnetimePro
 }
 
 // Publish promotes a one-time product's test version to production.
-func (r *OnetimeProductsResource) Publish(ctx context.Context, p PublishOnetimeProductParams) (*OnetimeProductResult, error) {
+func (r *OnetimeProductsResource) Publish(ctx context.Context, p PublishOnetimeProductParams, opts ...RequestOption) (*OnetimeProductResult, error) {
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/publish-product", p, nil)
+	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/publish-product", p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -64,14 +64,14 @@ func (r *OnetimeProductsResource) Publish(ctx context.Context, p PublishOnetimeP
 }
 
 // UpdateStatus flips a one-time product between active and inactive.
-func (r *OnetimeProductsResource) UpdateStatus(ctx context.Context, p UpdateOnetimeStatusParams) (*OnetimeProductResult, error) {
+func (r *OnetimeProductsResource) UpdateStatus(ctx context.Context, p UpdateOnetimeStatusParams, opts ...RequestOption) (*OnetimeProductResult, error) {
 	if err := validateShortID("id", p.ID, "PROD"); err != nil {
 		return nil, err
 	}
 	if err := validateProductStatus(p.Status); err != nil {
 		return nil, err
 	}
-	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/update-status", p, nil)
+	out, warnings, err := postAction[OnetimeProductResult](ctx, r.http, "/v1/actions/onetime-product/update-status", p, opts)
 	if err != nil {
 		return nil, err
 	}
