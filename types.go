@@ -851,6 +851,26 @@ type TypedGraphQLResponse[T any] struct {
 // Webhook
 // -----------------------------------------------------------------------------
 
+// WebhookAmountBreakdown is the amount breakdown of the object a webhook event
+// refers to: the list price behind a charge, the original payment behind a refund,
+// or the plan price behind a subscription status change.
+//
+// Money fields are display strings, already converted from minor units ("29.00" for
+// USD, "4500" for JPY). The block never uses the name Amount — that name belongs to
+// the event's own figure at the top level.
+type WebhookAmountBreakdown struct {
+	// Total is the amount after tax.
+	Total string `json:"total"`
+	// Subtotal is the amount before tax; nil when the snapshot carries no subtotal.
+	Subtotal *string `json:"subtotal,omitempty"`
+	// TaxAmount is the tax portion.
+	TaxAmount string `json:"taxAmount"`
+	// TaxRate is the tax rate as a percentage number (10 means 10%).
+	TaxRate *float64 `json:"taxRate,omitempty"`
+	// TaxName is the tax name (for example "Consumption Tax").
+	TaxName *string `json:"taxName,omitempty"`
+}
+
 // WebhookEventData is the canonical payload shape of a webhook event. Many
 // fields are conditional on the event type — for example refund.* events
 // populate the refund.* fields while leaving the subscription.* fields nil.
@@ -867,12 +887,55 @@ type WebhookEventData struct {
 	BillingDetail                  map[string]any    `json:"billingDetail,omitempty"`
 	OrderMetadata                  map[string]string `json:"orderMetadata,omitempty"`
 
-	Amount    string   `json:"amount"`
-	TaxAmount string   `json:"taxAmount"`
-	TaxRate   *float64 `json:"taxRate,omitempty"`
-	TaxName   *string  `json:"taxName,omitempty"`
-	Subtotal  *string  `json:"subtotal,omitempty"`
-	Total     *string  `json:"total,omitempty"`
+	// ChargedAmount is the amount the payment channel actually charged, as a display
+	// string. Present only on payment events (order.completed,
+	// subscription.payment_succeeded), and only when the channel reported an amount —
+	// nil otherwise, never zero-filled. It differs from ListPrice when a prorated
+	// credit or a zero-amount card check applies.
+	ChargedAmount *string `json:"chargedAmount,omitempty"`
+	// RefundedAmount is the amount the payment channel actually refunded, as a display
+	// string. Present only on refund events (refund.succeeded, refund.failed), and only
+	// when the channel reported an amount — nil otherwise, never zero-filled.
+	RefundedAmount *string `json:"refundedAmount,omitempty"`
+
+	// Deprecated: the same name carries a different subject per event family. Use
+	// ChargedAmount on payment events, RefundedAmount on refund events, and
+	// PlanPrice.Total on subscription status events. Removal is no earlier than 12
+	// months away and ships with the next major version. On payment events this field
+	// reports the amount actually charged; see the webhook API reference for the
+	// effective date of that change.
+	Amount string `json:"amount"`
+	// Deprecated: use ListPrice.TaxAmount on payment events, OriginalPayment.TaxAmount
+	// on refund events, and PlanPrice.TaxAmount on subscription status events. Removal
+	// is no earlier than 12 months away and ships with the next major version.
+	TaxAmount string `json:"taxAmount"`
+	// Deprecated: use ListPrice.TaxRate on payment events, OriginalPayment.TaxRate on
+	// refund events, and PlanPrice.TaxRate on subscription status events. Removal is no
+	// earlier than 12 months away and ships with the next major version.
+	TaxRate *float64 `json:"taxRate,omitempty"`
+	// Deprecated: use ListPrice.TaxName on payment events, OriginalPayment.TaxName on
+	// refund events, and PlanPrice.TaxName on subscription status events. Removal is no
+	// earlier than 12 months away and ships with the next major version.
+	TaxName *string `json:"taxName,omitempty"`
+	// Deprecated: use ListPrice.Subtotal on payment events, OriginalPayment.Subtotal on
+	// refund events, and PlanPrice.Subtotal on subscription status events. Removal is no
+	// earlier than 12 months away and ships with the next major version.
+	Subtotal *string `json:"subtotal,omitempty"`
+	// Deprecated: use ListPrice.Total on payment events, OriginalPayment.Total on refund
+	// events, and PlanPrice.Total on subscription status events. Removal is no earlier
+	// than 12 months away and ships with the next major version.
+	Total *string `json:"total,omitempty"`
+
+	// ListPrice is the list price snapshot taken when the order was placed. Present
+	// only on payment events; nil when the order carries no amount snapshot.
+	ListPrice *WebhookAmountBreakdown `json:"listPrice,omitempty"`
+	// OriginalPayment is the payment being refunded, as it was originally charged.
+	// Present only on refund events; nil when that payment carries no amount snapshot.
+	OriginalPayment *WebhookAmountBreakdown `json:"originalPayment,omitempty"`
+	// PlanPrice is the subscription's list price for the current phase. Present only on
+	// subscription status events (every subscription.* event except
+	// subscription.payment_succeeded); nil when the subscription carries no price snapshot.
+	PlanPrice *WebhookAmountBreakdown `json:"planPrice,omitempty"`
 
 	ProductName        string            `json:"productName"`
 	ProductDescription *string           `json:"productDescription,omitempty"`

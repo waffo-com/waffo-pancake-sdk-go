@@ -34,5 +34,5 @@
 //
 //	event, err := pancake.VerifyWebhook(rawBody, signatureHeader, nil)
 //
-// Feature parity with @waffo/pancake-ts@0.23.x.
+// Feature parity with @waffo/pancake-ts@0.24.x.
 package pancake

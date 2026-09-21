@@ -79,7 +79,9 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
     case string(pancake.WebhookEventTypeRefundSucceeded):
         var data pancake.WebhookEventData
         _ = json.Unmarshal(event.Data, &data)
-        log.Printf("Refund %s %s", data.Amount, data.Currency)
+        if data.RefundedAmount != nil {
+            log.Printf("Refund %s %s", *data.RefundedAmount, data.Currency)
+        }
     }
 }
 
@@ -492,16 +494,39 @@ All events include the **Order**, **Amount**, and **Product** sections. Addition
 | `BillingDetail`                  | `map[string]any`    | No       | Billing/shipping address (structured map)                                                                                                                |
 | `OrderMetadata`                  | `map[string]string` | No       | Order-level metadata from checkout session (flat key-value pairs)                                                                                        |
 
-**Amount fields** (always present):
+**Amount fields** — this event's own figure:
 
-| Field       | Type       | Required | Description                                                                       |
-| ----------- | ---------- | -------- | --------------------------------------------------------------------------------- |
-| `Amount`    | `string`   | Yes      | Amount in display format (e.g., `"29.00"` for $29.00 USD, `"4500"` for ¥4500 JPY) |
-| `TaxAmount` | `string`   | Yes      | Tax amount in display format (e.g., `"2.90"`)                                     |
-| `TaxRate`   | `*float64` | No       | Tax rate as decimal (e.g., `0.1` for 10%)                                         |
-| `TaxName`   | `*string`  | No       | Tax name (e.g., `"Consumption Tax"`)                                              |
-| `Subtotal`  | `*string`  | No       | Subtotal as display string (before tax)                                           |
-| `Total`     | `*string`  | No       | Total as display string (after tax)                                               |
+| Field            | Type       | Required | Description                                                                                            |
+| ---------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| `ChargedAmount`  | `*string`  | No       | Amount actually charged, in display format. Payment events only; nil when the channel reported none     |
+| `RefundedAmount` | `*string`  | No       | Amount actually refunded, in display format. Refund events only; nil when the channel reported none     |
+| `Amount`         | `string`   | Yes      | **Deprecated** — see the deprecation table below                                                       |
+| `TaxAmount`      | `string`   | Yes      | **Deprecated** — see the deprecation table below                                                       |
+| `TaxRate`        | `*float64` | No       | **Deprecated** — see the deprecation table below                                                       |
+| `TaxName`        | `*string`  | No       | **Deprecated** — see the deprecation table below                                                       |
+| `Subtotal`       | `*string`  | No       | **Deprecated** — see the deprecation table below                                                       |
+| `Total`          | `*string`  | No       | **Deprecated** — see the deprecation table below                                                       |
+
+**Amount fields** — the object this event's figure refers to. Each block is a `*WebhookAmountBreakdown` (`Total`, `Subtotal`, `TaxAmount`, `TaxRate`, `TaxName`), and at most one of them is non-nil on a given event:
+
+| Field             | Type                      | Present on                                                               |
+| ----------------- | ------------------------- | ------------------------------------------------------------------------ |
+| `ListPrice`       | `*WebhookAmountBreakdown` | Payment events — the list price snapshot taken when the order was placed  |
+| `OriginalPayment` | `*WebhookAmountBreakdown` | Refund events — the payment being refunded, as originally charged         |
+| `PlanPrice`       | `*WebhookAmountBreakdown` | Subscription status events — the plan's list price for the current phase  |
+
+**Deprecated amount fields.** These six keep being sent and their types do not change, but their meaning drifts across event families, so each has a subject-specific replacement. Removal is no earlier than 12 months away and ships with the next major version.
+
+| Deprecated  | Payment events        | Refund events               | Subscription status events |
+| ----------- | --------------------- | --------------------------- | -------------------------- |
+| `Amount`    | `ChargedAmount`       | `RefundedAmount`            | `PlanPrice.Total`          |
+| `Total`     | `ListPrice.Total`     | `OriginalPayment.Total`     | `PlanPrice.Total`          |
+| `Subtotal`  | `ListPrice.Subtotal`  | `OriginalPayment.Subtotal`  | `PlanPrice.Subtotal`       |
+| `TaxAmount` | `ListPrice.TaxAmount` | `OriginalPayment.TaxAmount` | `PlanPrice.TaxAmount`      |
+| `TaxRate`   | `ListPrice.TaxRate`   | `OriginalPayment.TaxRate`   | `PlanPrice.TaxRate`        |
+| `TaxName`   | `ListPrice.TaxName`   | `OriginalPayment.TaxName`   | `PlanPrice.TaxName`        |
+
+On payment events `Amount` is the amount actually charged, equal to `ChargedAmount`; when the channel reported no amount it falls back to the list price total. On every other event its value is unchanged, as are all five other deprecated fields.
 
 **Product fields** (always present):
 
