@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] — 2026-09-22
+
+Refund payloads carry what the refunded payment actually collected. Matches `@waffo/pancake-ts@0.25.0`.
+
+### Added
+
+- **`WebhookEventData.OriginalChargedAmount` (`*string`)** — what the payment being refunded actually collected, as reported by the payment channel. Present only on refund events (`refund.succeeded`, `refund.failed`), and **nil** when the channel reported no amount for that payment — never zero-filled. It is the ceiling a refund can reach; `OriginalPayment.Total` next to it is the list price snapshot taken when the order was placed. The two differ when a prorated credit or a zero-amount card check applied to that payment, and refunding up to the list price is then rejected by the channel.
+
+### Changed
+
+- Nothing in the refund payload changes value or shape: `Amount`, `RefundedAmount`, the `OriginalPayment` block and the six deprecated fields are byte-for-byte what they were.
+
 ## [0.15.0] — 2026-09-20
 
 Webhook amount fields now say whose amount they are, and the six generic ones are deprecated. Matches `@waffo/pancake-ts@0.24.0`.
