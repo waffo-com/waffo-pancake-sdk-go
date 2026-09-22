@@ -929,6 +929,14 @@ type WebhookEventData struct {
 	// ListPrice is the list price snapshot taken when the order was placed. Present
 	// only on payment events; nil when the order carries no amount snapshot.
 	ListPrice *WebhookAmountBreakdown `json:"listPrice,omitempty"`
+	// OriginalChargedAmount is what the payment being refunded actually collected, as a
+	// display string. Present only on refund events, and only when the channel reported an
+	// amount for that payment — nil otherwise, never zero-filled. It is the ceiling a refund
+	// can reach; OriginalPayment.Total next to it is the list price snapshot taken when the
+	// order was placed. The two differ when a prorated credit or a zero-amount card check
+	// applied to that payment, and refunding up to the list price is then rejected by the
+	// channel.
+	OriginalChargedAmount *string `json:"originalChargedAmount,omitempty"`
 	// OriginalPayment is the payment being refunded, as it was originally charged.
 	// Present only on refund events; nil when that payment carries no amount snapshot.
 	OriginalPayment *WebhookAmountBreakdown `json:"originalPayment,omitempty"`

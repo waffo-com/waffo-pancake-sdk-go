@@ -515,6 +515,12 @@ All events include the **Order**, **Amount**, and **Product** sections. Addition
 | `OriginalPayment` | `*WebhookAmountBreakdown` | Refund events — the payment being refunded, as originally charged         |
 | `PlanPrice`       | `*WebhookAmountBreakdown` | Subscription status events — the plan's list price for the current phase  |
 
+Alongside the block, refund events carry the same subject as a flat display string:
+
+| Field                   | Type      | Required | Description                                                                                                                                                                                                                                                                 |
+| ----------------------- | --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OriginalChargedAmount` | `*string` | No       | What the payment being refunded actually collected. Refund events only; nil when the channel reported no amount for that payment. Use it as the refundable ceiling — `OriginalPayment.Total` is the list price and refunding up to it is rejected when the two differ |
+
 **Deprecated amount fields.** These six keep being sent and their types do not change, but their meaning drifts across event families, so each has a subject-specific replacement. Removal is no earlier than 12 months away and ships with the next major version.
 
 | Deprecated  | Payment events        | Refund events               | Subscription status events |
