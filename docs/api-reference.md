@@ -52,6 +52,38 @@ fmt.Println(tok.Token, tok.ExpiresAt)
 | `ExpiresAt` | `string`          | Token expiration time |
 | `Warnings`  | `[]pancake.Notice` | Migration notices     |
 
+### `client.Auth.CreateCustomerPortalLink(ctx, params)`
+
+Create a link that signs a customer into your store's Pancake customer portal without email verification. Calls `issue-session-token` with `purpose: "portal"` and appends the returned token to the portal URL as a fragment (`#token=...`).
+
+```go
+link, err := client.Auth.CreateCustomerPortalLink(ctx, pancake.CreateCustomerPortalLinkParams{
+    StoreID:       "STO_xxx",
+    BuyerIdentity: user.ID, // from YOUR authenticated session
+})
+// 302-redirect the browser to link.PortalURL
+// => "https://pancake.waffo.ai/consumer/portal/store/STO_xxx#token=eyJ..."
+```
+
+**Parameters `CreateCustomerPortalLinkParams`**:
+
+| Field           | Type     | Required | Description                                                                                    |
+| --------------- | -------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `StoreID`       | `string` | Yes      | Store ID (`STO_xxx`)                                                                           |
+| `BuyerIdentity` | `string` | Yes      | Customer identity in your system — the same value used for `Checkout.Authenticated.Create`     |
+
+**Returns `*CustomerPortalLink`**:
+
+| Field       | Type               | Description                                                             |
+| ----------- | ------------------ | ----------------------------------------------------------------------- |
+| `PortalURL` | `string`           | Portal URL with the session token appended as a fragment (`#token=...`) |
+| `ExpiresAt` | `string`           | Session token expiration time                                           |
+| `Warnings`  | `[]pancake.Notice` | Migration notices                                                       |
+
+- **Environment** is the API Key's environment (test key → test portal, prod key → prod portal); it is not a parameter.
+- **Security**: `StoreID` and `BuyerIdentity` must come from your backend's authenticated session, never from browser input. `PortalURL` carries a bearer token — redirect immediately, send `Cache-Control: no-store` and `Referrer-Policy: no-referrer` on the redirect, and do not log it.
+- **Errors**: invalid `StoreID` / empty `BuyerIdentity` return `*pancake.Error` (400, `ErrorLayerSDK`) before any request; a response without `portalUrl` returns `*pancake.Error` with `ErrorLayerSDK`.
+
 ---
 
 ## Stores

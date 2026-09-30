@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Customers signed in to a merchant's site can enter the store's customer portal without email verification. Matches the unreleased `@waffo/pancake-ts` `createCustomerPortalLink`.
+
+### Added
+
+- **`Auth.CreateCustomerPortalLink(ctx, CreateCustomerPortalLinkParams{StoreID, BuyerIdentity}, opts...)`** → `*CustomerPortalLink{PortalURL, ExpiresAt, Warnings}`. Calls `issue-session-token` with `purpose: "portal"` and returns the portal URL with the session token appended as a fragment (`#token=...`), the same convention as `CheckoutURL` from authenticated checkout. The portal environment is the API Key's environment. Returns `*Error` (`ErrorLayerSDK`) when the platform response has no `portalUrl`.
+
+### Changed
+
+- Nothing: `IssueSessionToken` keeps its signature, request body and response.
+
 ## [0.16.0] — 2026-09-22
 
 Refund payloads carry what the refunded payment actually collected. Matches `@waffo/pancake-ts@0.25.0`.

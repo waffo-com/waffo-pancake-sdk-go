@@ -73,6 +73,35 @@ type SessionToken struct {
 	Warnings  []Notice `json:"warnings,omitempty"`
 }
 
+// CreateCustomerPortalLinkParams names the store and customer for a customer
+// portal link. Both fields must come from your backend's own authenticated
+// session for the signed-in customer, never from browser input: whoever
+// controls BuyerIdentity gets that customer's portal.
+//
+// There is no environment field. The portal environment is the environment of
+// the API Key the client signs with (test key → test portal, prod key → prod
+// portal).
+type CreateCustomerPortalLinkParams struct {
+	// StoreID is the Store Short ID (STO_...) whose portal the customer enters.
+	StoreID string `json:"storeId"`
+	// BuyerIdentity is the customer identity in your system — the same value
+	// passed as BuyerIdentity to Checkout.Authenticated.Create, so the portal
+	// shows the orders placed under it.
+	BuyerIdentity string `json:"buyerIdentity"`
+}
+
+// CustomerPortalLink is a ready-to-redirect customer portal URL.
+type CustomerPortalLink struct {
+	// PortalURL is the portal page URL with the session token appended as a
+	// URL fragment ("#token=..."). It is a bearer credential: issue it per
+	// request, redirect to it right away, and do not log or cache it.
+	PortalURL string `json:"portalUrl"`
+	// ExpiresAt is the session token expiration (ISO 8601 UTC). After it,
+	// issue a new link.
+	ExpiresAt string   `json:"expiresAt"`
+	Warnings  []Notice `json:"warnings,omitempty"`
+}
+
 // -----------------------------------------------------------------------------
 // Store
 // -----------------------------------------------------------------------------
