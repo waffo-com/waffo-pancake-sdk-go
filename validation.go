@@ -1,6 +1,9 @@
 package pancake
 
-import "regexp"
+import (
+	"regexp"
+	"strings"
+)
 
 var (
 	shortIDRe     = regexp.MustCompile(`^[A-Z]{2,5}_[0-9A-Za-z]{22}$`)
@@ -19,9 +22,10 @@ var shortIDLabels = map[string]string{
 	"MER":  "Merchant",
 }
 
-// validateRequired returns an SDK-layer error when v is the empty string.
+// validateRequired returns an SDK-layer error when v is empty or contains only
+// whitespace.
 func validateRequired(field, v string) error {
-	if v == "" {
+	if strings.TrimSpace(v) == "" {
 		return newSDKError("Missing required field: %s", field)
 	}
 	return nil

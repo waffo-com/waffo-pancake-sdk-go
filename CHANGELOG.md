@@ -4,17 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.17.0] — 2026-10-09
 
-Customers signed in to a merchant's site can enter the store's customer portal without email verification. Matches the unreleased `@waffo/pancake-ts` `createCustomerPortalLink`.
+Customers signed in to a merchant's site can enter the store's customer portal without email verification. Matches `@waffo/pancake-ts@0.26.0`.
 
 ### Added
 
-- **`Auth.CreateCustomerPortalLink(ctx, CreateCustomerPortalLinkParams{StoreID, BuyerIdentity}, opts...)`** → `*CustomerPortalLink{PortalURL, ExpiresAt, Warnings}`. Calls `issue-session-token` with `purpose: "portal"` and returns the portal URL with the session token appended as a fragment (`#token=...`), the same convention as `CheckoutURL` from authenticated checkout. The portal environment is the API Key's environment. Returns `*Error` (`ErrorLayerSDK`) when the platform response has no `portalUrl`.
+- **`Auth.CreateCustomerPortalLink(ctx, CreateCustomerPortalLinkParams{StoreID, BuyerIdentity}, opts...)`** → `*CustomerPortalLink{PortalURL, ExpiresAt, Warnings}`. Calls `issue-session-token` with `purpose: "portal"` and returns the portal URL with the session token appended as a fragment (`#token=...`), the same convention as `CheckoutURL` from authenticated checkout. The portal environment is the API Key's environment. Returns `*Error` (`ErrorLayerSDK`) when the platform response has no `portalUrl` or no `token`.
 
 ### Changed
 
-- Nothing: `IssueSessionToken` keeps its signature, request body and response.
+- **Required string fields reject whitespace-only values.** Every check that rejected `""` with `Missing required field: <field>` (`*Error`, 400, `ErrorLayerSDK`) now also rejects strings that are only whitespace, before any request is sent — e.g. `BuyerIdentity: "  "`, a blank `Name`, `Reason` or GraphQL `Query`. This matches `@waffo/pancake-ts`, which trims before checking. A call that passed such a value and relied on the platform to answer now gets the SDK error instead. Non-blank values are sent unchanged (no trimming).
+- `IssueSessionToken` keeps its signature, request body and response.
 
 ## [0.16.0] — 2026-09-22
 

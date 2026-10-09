@@ -68,9 +68,9 @@ func (r *AuthResource) IssueSessionToken(ctx context.Context, p IssueSessionToke
 // HTTP requests or Referer headers. The portal environment is the environment
 // of the API Key this client signs with; there is no environment parameter.
 //
-// StoreID must be a Store Short ID and BuyerIdentity non-empty; both are
+// StoreID must be a Store Short ID and BuyerIdentity non-blank; both are
 // checked before any request (*Error, 400, ErrorLayerSDK). A platform response
-// without portalUrl returns *Error with ErrorLayerSDK.
+// without portalUrl or token returns *Error with ErrorLayerSDK.
 //
 // Take StoreID and BuyerIdentity from your backend's authenticated session,
 // never from request parameters the browser controls. Redirect to PortalURL
@@ -102,6 +102,8 @@ func (r *AuthResource) CreateCustomerPortalLink(ctx context.Context, p CreateCus
 		return nil, err
 	}
 	body := portalSessionTokenBody{StoreID: p.StoreID, BuyerIdentity: p.BuyerIdentity, Purpose: "portal"}
+	// Not postAction: the missing-field errors below carry the response's HTTP
+	// status, which postAction does not return.
 	status, env, err := r.http.post(ctx, "/v1/actions/auth/issue-session-token", body, newRequestOptions(opts))
 	if err != nil {
 		return nil, err
@@ -114,6 +116,12 @@ func (r *AuthResource) CreateCustomerPortalLink(ctx context.Context, p CreateCus
 		return nil, &Error{
 			Status: status,
 			Errors: []APIError{{Message: `Missing portalUrl in issue-session-token response for purpose "portal"`, Layer: ErrorLayerSDK}},
+		}
+	}
+	if tok.Token == "" {
+		return nil, &Error{
+			Status: status,
+			Errors: []APIError{{Message: `Missing token in issue-session-token response for purpose "portal"`, Layer: ErrorLayerSDK}},
 		}
 	}
 	return &CustomerPortalLink{

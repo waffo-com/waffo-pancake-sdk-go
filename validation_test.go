@@ -23,6 +23,20 @@ func TestValidateShortID(t *testing.T) {
 	}
 }
 
+func TestValidateRequired(t *testing.T) {
+	for _, v := range []string{"", "  ", "\t\n"} {
+		perr, ok := validateRequired("name", v).(*Error)
+		if !ok || perr.Status != 400 || perr.Errors[0].Layer != ErrorLayerSDK {
+			t.Errorf("validateRequired(%q) = %v, want SDK 400", v, perr)
+		}
+	}
+	for _, v := range []string{"x", " x "} {
+		if err := validateRequired("name", v); err != nil {
+			t.Errorf("validateRequired(%q) = %v, want nil", v, err)
+		}
+	}
+}
+
 func TestValidateCurrencyCode(t *testing.T) {
 	if err := validateCurrencyCode("currency", "USD"); err != nil {
 		t.Errorf("USD: %v", err)

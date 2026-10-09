@@ -3,6 +3,7 @@ package pancake
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -90,6 +91,30 @@ func TestAuthCreateCustomerPortalLink_MissingPortalURL(t *testing.T) {
 	}
 }
 
+func TestAuthCreateCustomerPortalLink_MissingToken(t *testing.T) {
+	client, _, server := newSignedTestClient(t)
+	server.respond = portalResponder(map[string]any{
+		"token":     "",
+		"expiresAt": "z",
+		"portalUrl": "https://p.example/consumer/portal/store/" + testPortalStoreID,
+	})
+
+	link, err := client.Auth.CreateCustomerPortalLink(context.Background(), CreateCustomerPortalLinkParams{
+		StoreID:       testPortalStoreID,
+		BuyerIdentity: "u-1",
+	})
+	if link != nil {
+		t.Errorf("expected no link, got %+v", link)
+	}
+	var perr *Error
+	if !errors.As(err, &perr) {
+		t.Fatalf("expected *Error, got %v", err)
+	}
+	if perr.Status != 200 || perr.Errors[0].Layer != ErrorLayerSDK || !strings.Contains(perr.Errors[0].Message, "token") {
+		t.Errorf("unexpected error: %+v", perr)
+	}
+}
+
 func TestAuthCreateCustomerPortalLink_APIError(t *testing.T) {
 	client, _, server := newSignedTestClient(t)
 	server.respond = func(_ recordedRequest) (int, any) {
@@ -117,6 +142,7 @@ func TestAuthCreateCustomerPortalLink_ValidatesBeforeSending(t *testing.T) {
 		"non-store short ID":  {StoreID: "PROD_AbCdEfGhIjKlMnOpQrStUv", BuyerIdentity: "u-1"},
 		"malformed storeId":   {StoreID: "bad", BuyerIdentity: "u-1"},
 		"empty buyerIdentity": {StoreID: testPortalStoreID},
+		"blank buyerIdentity": {StoreID: testPortalStoreID, BuyerIdentity: "  "},
 	}
 	for name, p := range cases {
 		t.Run(name, func(t *testing.T) {

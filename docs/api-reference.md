@@ -82,7 +82,7 @@ link, err := client.Auth.CreateCustomerPortalLink(ctx, pancake.CreateCustomerPor
 
 - **Environment** is the API Key's environment (test key → test portal, prod key → prod portal); it is not a parameter.
 - **Security**: `StoreID` and `BuyerIdentity` must come from your backend's authenticated session, never from browser input. `PortalURL` carries a bearer token — redirect immediately, send `Cache-Control: no-store` and `Referrer-Policy: no-referrer` on the redirect, and do not log it.
-- **Errors**: invalid `StoreID` / empty `BuyerIdentity` return `*pancake.Error` (400, `ErrorLayerSDK`) before any request; a response without `portalUrl` returns `*pancake.Error` with `ErrorLayerSDK`.
+- **Errors**: invalid `StoreID` / empty or blank `BuyerIdentity` return `*pancake.Error` (400, `ErrorLayerSDK`) before any request; a response without `portalUrl` or `token` returns `*pancake.Error` with `ErrorLayerSDK`.
 
 ---
 
