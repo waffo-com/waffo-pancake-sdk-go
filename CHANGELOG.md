@@ -16,6 +16,7 @@ Customers signed in to a merchant's site can enter the store's customer portal w
 
 - **Required string fields reject whitespace-only values.** Every check that rejected `""` with `Missing required field: <field>` (`*Error`, 400, `ErrorLayerSDK`) now also rejects strings that are only whitespace, before any request is sent — e.g. `BuyerIdentity: "  "`, a blank `Name`, `Reason` or GraphQL `Query`. This matches `@waffo/pancake-ts`, which trims before checking. A call that passed such a value and relied on the platform to answer now gets the SDK error instead. Non-blank values are sent unchanged (no trimming).
 - `IssueSessionToken` keeps its signature, request body and response.
+- **Documentation only — `ExpiresInSeconds` in `docs/api-reference.md`.** The API reference now states the platform's current rule: the default session TTL is 24 hours (it was documented as 45 minutes), and the recommended range is 60 to 604800 seconds (1 minute to 7 days). Out-of-range values are accepted and logged by the platform today and may be rejected by a future platform release; the SDK forwards what you pass, as before.
 
 ## [0.16.0] — 2026-09-22
 
