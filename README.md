@@ -6,7 +6,7 @@ Go SDK for the Waffo Pancake Merchant of Record (MoR) payment platform.
 - Automatic RSA-SHA256 request signing; opt-in idempotency keys per call
 - Full type definitions (20 enums, 40+ structs)
 - Webhook verification with embedded public keys (test/prod)
-- Feature parity with [`@waffo/pancake-ts@0.25.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
+- Feature parity with [`@waffo/pancake-ts@0.26.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
 
 ## Installation
 
@@ -283,6 +283,44 @@ refund, err := customer.CreateRefundTicket(ctx, pancake.CreateRefundTicketParams
 The token is scoped to the issuing store and customer identity. TTL is 5
 minutes and auto-refreshes on each call.
 
+## Customer Portal (SSO)
+
+Send a customer who is signed in to **your** site straight into your store's
+Pancake customer portal — orders, subscriptions and payments — without the
+portal's email verification step.
+
+```go
+func portalHandler(w http.ResponseWriter, r *http.Request) {
+    user, ok := requireSignedInUser(r) // your session, not request parameters
+    if !ok {
+        http.Redirect(w, r, "/login", http.StatusFound)
+        return
+    }
+    link, err := client.Auth.CreateCustomerPortalLink(r.Context(), pancake.CreateCustomerPortalLinkParams{
+        StoreID:       "STO_xxx",
+        BuyerIdentity: user.ID, // same value you pass to Checkout.Authenticated.Create
+    })
+    if err != nil {
+        http.Error(w, "portal unavailable", http.StatusBadGateway)
+        return
+    }
+    w.Header().Set("Cache-Control", "no-store")
+    w.Header().Set("Referrer-Policy", "no-referrer")
+    http.Redirect(w, r, link.PortalURL, http.StatusFound)
+}
+```
+
+- `PortalURL` already carries the session token as a URL fragment (`#token=...`),
+  like `CheckoutURL` from authenticated checkout. It is a bearer credential:
+  create it per request, redirect right away, and never log or cache it.
+- **Take `BuyerIdentity` and `StoreID` from your own authenticated session**,
+  never from query strings, form fields or headers the browser controls. Anyone
+  who can choose `BuyerIdentity` can open that customer's portal.
+- The portal environment follows the API Key: a test key opens the test portal,
+  a prod key the prod portal. There is no environment parameter.
+- The link expires at `ExpiresAt`. When the portal session ends, the customer
+  returns to your site and your backend creates a new link.
+
 ## Business-Side Identifiers
 
 Attach your own internal references to a checkout or a refund ticket so cross-system reconciliation does not require Waffo IDs. Two flat keys, both optional (max 128 chars):
@@ -471,7 +509,7 @@ distinguished from server-returned errors.
 
 | Field                                | Methods                                                                                                                                  |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `client.Auth`                        | `IssueSessionToken`                                                                                                                      |
+| `client.Auth`                        | `IssueSessionToken`, `CreateCustomerPortalLink`                                                                                          |
 | `client.Stores`                      | `Create`, `Update`, `Delete`                                                                                                             |
 | `client.StoreMerchants`              | `Add`, `Remove`, `UpdateRole` (coming soon — endpoints return 501)                                                                       |
 | `client.OnetimeProducts`             | `Create`, `Update`, `Publish`, `UpdateStatus`                                                                                            |

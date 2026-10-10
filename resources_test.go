@@ -394,6 +394,17 @@ func TestResources_ValidationFailures(t *testing.T) {
 			})
 			return err
 		}},
+		{"Auth.IssueSessionToken blank buyerIdentity", func() error {
+			_, err := client.Auth.IssueSessionToken(ctx, IssueSessionTokenParams{
+				StoreID:       Ptr("STO_AbCdEfGhIjKlMnOpQrStUv"),
+				BuyerIdentity: "  ",
+			})
+			return err
+		}},
+		{"Stores.Create blank name", func() error {
+			_, err := client.Stores.Create(ctx, CreateStoreParams{Name: " \t"})
+			return err
+		}},
 		{"Stores.Create empty name", func() error {
 			_, err := client.Stores.Create(ctx, CreateStoreParams{})
 			return err
