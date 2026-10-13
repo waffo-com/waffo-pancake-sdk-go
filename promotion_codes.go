@@ -56,8 +56,11 @@ func (r *PromotionCodesResource) Generate(ctx context.Context, p GeneratePromoti
 	if p.Count < 1 || p.Count > 500 {
 		return nil, newSDKError("Invalid count: expected integer between 1 and 500, got %d", p.Count)
 	}
-	if err := validateMaxLength("prefix", p.Prefix, 12); err != nil {
-		return nil, err
+	if p.Prefix != nil && !codePrefixRe.MatchString(*p.Prefix) {
+		return nil, newSDKError("Invalid prefix: expected 1-12 letters, digits or '-', got %q", *p.Prefix)
+	}
+	if p.Length != nil && (*p.Length < 8 || *p.Length > 16) {
+		return nil, newSDKError("Invalid length: expected integer between 8 and 16, got %d", *p.Length)
 	}
 	out, warnings, err := postAction[GeneratePromotionCodesResult](ctx, r.http, "/v1/actions/promotion-code/generate-promotion-codes", p, opts)
 	if err != nil {

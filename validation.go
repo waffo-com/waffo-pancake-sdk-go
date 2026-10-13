@@ -11,6 +11,7 @@ var (
 	countryCodeRe  = regexp.MustCompile(`^[A-Z]{2}$`)
 	amountRe       = regexp.MustCompile(`^\d+(\.\d+)?$`)
 	discountCodeRe = regexp.MustCompile(`^[A-Za-z0-9-]{3,32}$`)
+	codePrefixRe   = regexp.MustCompile(`^[A-Za-z0-9-]{1,12}$`)
 )
 
 var shortIDLabels = map[string]string{

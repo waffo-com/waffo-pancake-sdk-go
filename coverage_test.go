@@ -77,6 +77,29 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 			_, err := c.PromotionCodes.Generate(ctx, GeneratePromotionCodesParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Count: 501})
 			return err
 		}},
+		{"Coupons.Create percentOff above 100 rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(101.0)},
+			})
+			return err
+		}},
+		{"Coupons.Create periods without repeating rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				Discount:          CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+				DurationInPeriods: Ptr(3),
+			})
+			return err
+		}},
+		{"PromotionCodes.Generate bad prefix charset rejected", func(c *Client) error {
+			_, err := c.PromotionCodes.Generate(ctx, GeneratePromotionCodesParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Count: 1, Prefix: Ptr("KOL_")})
+			return err
+		}},
+		{"PromotionCodes.Generate length out of range rejected", func(c *Client) error {
+			_, err := c.PromotionCodes.Generate(ctx, GeneratePromotionCodesParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Count: 1, Length: Ptr(7)})
+			return err
+		}},
 		{"PromotionCodes.Generate long prefix rejected", func(c *Client) error {
 			_, err := c.PromotionCodes.Generate(ctx, GeneratePromotionCodesParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Count: 1, Prefix: Ptr("ABCDEFGHIJKLM")})
 			return err

@@ -40,6 +40,9 @@ func (r *CouponsResource) Create(ctx context.Context, p CreateCouponParams, opts
 		if p.Discount.PercentOff == nil {
 			return nil, newSDKError("Missing required field: discount.percentOff")
 		}
+		if *p.Discount.PercentOff <= 0 || *p.Discount.PercentOff > 100 {
+			return nil, newSDKError("Invalid discount.percentOff: expected a value above 0 and up to 100, got %v", *p.Discount.PercentOff)
+		}
 	case CouponDiscountTypeFixedAmount:
 		if len(p.Discount.AmountOff) == 0 {
 			return nil, newSDKError("Missing required field: discount.amountOff")
@@ -62,6 +65,8 @@ func (r *CouponsResource) Create(ctx context.Context, p CreateCouponParams, opts
 		if err := validatePositiveInt("durationInPeriods", *p.DurationInPeriods); err != nil {
 			return nil, err
 		}
+	} else if p.DurationInPeriods != nil {
+		return nil, newSDKError("durationInPeriods is only allowed when duration is repeating")
 	}
 	for _, productID := range p.ProductIDs {
 		if err := validateShortID("productIds[]", productID, "PROD"); err != nil {
