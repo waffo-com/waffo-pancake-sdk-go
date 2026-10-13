@@ -72,6 +72,33 @@ func TestResources_ErrorPropagation(t *testing.T) {
 			})
 			return err
 		}},
+		{"Coupons.Create", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				Discount: CouponDiscount{Type: CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "5.00"}},
+			})
+			return err
+		}},
+		{"Coupons.Update", func(c *Client) error {
+			_, err := c.Coupons.Update(ctx, UpdateCouponParams{ID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Name: "X"})
+			return err
+		}},
+		{"Coupons.Deactivate", func(c *Client) error {
+			_, err := c.Coupons.Deactivate(ctx, DeactivateCouponParams{ID: "CPN_AbCdEfGhIjKlMnOpQrStUv"})
+			return err
+		}},
+		{"PromotionCodes.Create", func(c *Client) error {
+			_, err := c.PromotionCodes.Create(ctx, CreatePromotionCodeParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv"})
+			return err
+		}},
+		{"PromotionCodes.Generate", func(c *Client) error {
+			_, err := c.PromotionCodes.Generate(ctx, GeneratePromotionCodesParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Count: 5})
+			return err
+		}},
+		{"PromotionCodes.Deactivate", func(c *Client) error {
+			_, err := c.PromotionCodes.Deactivate(ctx, DeactivatePromotionCodeParams{ID: "PMC_AbCdEfGhIjKlMnOpQrStUv"})
+			return err
+		}},
 		{"OnetimeProducts.Create", func(c *Client) error {
 			_, err := c.OnetimeProducts.Create(ctx, CreateOnetimeProductParams{
 				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",

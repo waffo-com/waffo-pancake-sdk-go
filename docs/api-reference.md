@@ -553,6 +553,73 @@ res, err := client.SubscriptionProductGroups.Publish(ctx, pancake.PublishSubscri
 
 ---
 
+
+## Coupons
+
+A coupon defines a discount; the `Code` you set becomes its default promotion code, the code buyers type. Codes are 3–32 letters, digits or `-`, case-insensitive (stored uppercase), and unique among the store's **active** codes in the same environment; a deactivated code is released and can be reused. Deactivation is permanent, and only the name of a coupon can change. List and read coupons with `GraphQL.Query` (`coupons`, `couponsCount`, `coupon`).
+
+### `Coupons.Create(ctx, CreateCouponParams, opts...)`
+
+```go
+res, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
+	StoreID:           "STO_xxx",
+	Name:              "Black Friday 20% off",
+	Code:              "BF2026",
+	Discount:          pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
+	Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
+	DurationInPeriods: pancake.Ptr(3),
+}, pancake.WithIdempotencyKey("coupon-bf2026"))
+// res.Coupon.Status is CouponStatusActive, or CouponStatusPending while the payment provider is confirming.
+```
+
+Fixed-amount coupons set `Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "5.00"}}`. Other fields: `ProductIDs`, `MaxRedemptions`, `DailyRedemptionLimit` (per buyer per UTC day), `RedeemBy` (ISO 8601; also ends discounts already attached to subscriptions), `Restrictions` (`FirstTimeOnly`, `CustomerEmails`, `PerCustomerLimit`).
+
+Errors: 409 when the code is taken (also when retrying **without** the idempotency key), 502 when the payment provider rejects the coupon.
+
+### `Coupons.Update(ctx, UpdateCouponParams, opts...)`
+
+Rename a coupon — the only field that can change.
+
+### `Coupons.Deactivate(ctx, DeactivateCouponParams, opts...)`
+
+Deactivate permanently. All its promotion codes are deactivated and their codes released. Discounts already attached to subscriptions continue until the subscription's next plan change.
+
+---
+
+## Promotion Codes
+
+### `PromotionCodes.Create(ctx, CreatePromotionCodeParams, opts...)`
+
+```go
+res, err := client.PromotionCodes.Create(ctx, pancake.CreatePromotionCodeParams{
+	CouponID: "CPN_xxx",
+	Code:     pancake.Ptr("KOL-ALICE"), // nil generates a random code
+	Restrictions: &pancake.PromotionCodeRestrictions{
+		MaxRedemptions: pancake.Ptr(100),
+		MinimumAmount:  map[string]string{"USD": "50.00"},
+	},
+})
+```
+
+`PromotionCodeRestrictions` adds `MaxRedemptions` (≤ the coupon's), `ExpiresAt` (≤ the coupon's `RedeemBy`; defaults to it) and `MinimumAmount` (pre-discount, pre-tax amount per currency) to the buyer restrictions.
+
+### `PromotionCodes.Generate(ctx, GeneratePromotionCodesParams, opts...)`
+
+Generate 1–500 random codes in one call. **Always retry with the same idempotency key** — a retry without it generates another batch.
+
+```go
+res, err := client.PromotionCodes.Generate(ctx, pancake.GeneratePromotionCodesParams{
+	CouponID: "CPN_xxx", Count: 100, Prefix: pancake.Ptr("KOL-"),
+}, pancake.WithIdempotencyKey("kol-batch-2026-11"))
+// res.BatchID, res.PromotionCodes
+```
+
+### `PromotionCodes.Deactivate(ctx, DeactivatePromotionCodeParams, opts...)`
+
+Deactivate permanently and release the code. The coupon's own code can only be deactivated together with the coupon (409).
+
+---
+
 ## Orders
 
 ### `client.Orders.CancelSubscription(ctx, params)`

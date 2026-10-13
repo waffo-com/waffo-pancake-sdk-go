@@ -211,6 +211,81 @@ func TestResources_HappyPaths(t *testing.T) {
 			},
 		},
 
+		// ---- Coupons ----
+		{
+			name:     "Coupons.Create",
+			path:     "/v1/actions/coupon/create-coupon",
+			response: map[string]any{"coupon": map[string]any{"id": "CPN_AbCdEfGhIjKlMnOpQrStUv", "code": "BF2026", "status": "active"}},
+			call: func(c *Client) error {
+				res, err := c.Coupons.Create(ctx, CreateCouponParams{
+					StoreID:           "STO_AbCdEfGhIjKlMnOpQrStUv",
+					Name:              "BF",
+					Code:              "bf2026",
+					Discount:          CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(20.0)},
+					Duration:          Ptr(CouponDurationRepeating),
+					DurationInPeriods: Ptr(3),
+				})
+				if err == nil && res.Coupon.Status != CouponStatusActive {
+					t.Errorf("status = %q", res.Coupon.Status)
+				}
+				return err
+			},
+		},
+		{
+			name:     "Coupons.Update",
+			path:     "/v1/actions/coupon/update-coupon",
+			response: map[string]any{"coupon": map[string]any{"id": "CPN_AbCdEfGhIjKlMnOpQrStUv", "name": "New"}},
+			call: func(c *Client) error {
+				_, err := c.Coupons.Update(ctx, UpdateCouponParams{ID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Name: "New"})
+				return err
+			},
+		},
+		{
+			name:     "Coupons.Deactivate",
+			path:     "/v1/actions/coupon/deactivate-coupon",
+			response: map[string]any{"coupon": map[string]any{"id": "CPN_AbCdEfGhIjKlMnOpQrStUv", "status": "inactive"}},
+			call: func(c *Client) error {
+				_, err := c.Coupons.Deactivate(ctx, DeactivateCouponParams{ID: "CPN_AbCdEfGhIjKlMnOpQrStUv"})
+				return err
+			},
+		},
+
+		// ---- PromotionCodes ----
+		{
+			name:     "PromotionCodes.Create",
+			path:     "/v1/actions/promotion-code/create-promotion-code",
+			response: map[string]any{"promotionCode": map[string]any{"id": "PMC_AbCdEfGhIjKlMnOpQrStUv", "couponId": "CPN_AbCdEfGhIjKlMnOpQrStUv", "code": "KOL-ALICE"}},
+			call: func(c *Client) error {
+				_, err := c.PromotionCodes.Create(ctx, CreatePromotionCodeParams{
+					CouponID:     "CPN_AbCdEfGhIjKlMnOpQrStUv",
+					Code:         Ptr("KOL-ALICE"),
+					Restrictions: &PromotionCodeRestrictions{MaxRedemptions: Ptr(100), MinimumAmount: map[string]string{"USD": "50.00"}},
+				})
+				return err
+			},
+		},
+		{
+			name:     "PromotionCodes.Generate",
+			path:     "/v1/actions/promotion-code/generate-promotion-codes",
+			response: map[string]any{"batchId": "batch-1", "promotionCodes": []any{map[string]any{"id": "PMC_AbCdEfGhIjKlMnOpQrStUv"}}},
+			call: func(c *Client) error {
+				res, err := c.PromotionCodes.Generate(ctx, GeneratePromotionCodesParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Count: 1, Prefix: Ptr("KOL-")})
+				if err == nil && (res.BatchID != "batch-1" || len(res.PromotionCodes) != 1) {
+					t.Errorf("unexpected result %+v", res)
+				}
+				return err
+			},
+		},
+		{
+			name:     "PromotionCodes.Deactivate",
+			path:     "/v1/actions/promotion-code/deactivate-promotion-code",
+			response: map[string]any{"promotionCode": map[string]any{"id": "PMC_AbCdEfGhIjKlMnOpQrStUv", "status": "inactive"}},
+			call: func(c *Client) error {
+				_, err := c.PromotionCodes.Deactivate(ctx, DeactivatePromotionCodeParams{ID: "PMC_AbCdEfGhIjKlMnOpQrStUv"})
+				return err
+			},
+		},
+
 		// ---- SubscriptionProductGroups ----
 		{
 			name:     "SubscriptionProductGroups.Create",

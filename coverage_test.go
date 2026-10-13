@@ -37,6 +37,50 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 		name string
 		call func(c *Client) error
 	}{
+		{"Coupons.Create bad code rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "a_b",
+				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+			})
+			return err
+		}},
+		{"Coupons.Create percentage without percentOff rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC", Discount: CouponDiscount{Type: CouponDiscountTypePercentage},
+			})
+			return err
+		}},
+		{"Coupons.Create repeating without periods rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+				Duration: Ptr(CouponDurationRepeating),
+			})
+			return err
+		}},
+		{"Coupons.Create bad amount rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				Discount: CouponDiscount{Type: CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "abc"}},
+			})
+			return err
+		}},
+		{"Coupons.Deactivate wrong prefix rejected", func(c *Client) error {
+			_, err := c.Coupons.Deactivate(ctx, DeactivateCouponParams{ID: "PMC_AbCdEfGhIjKlMnOpQrStUv"})
+			return err
+		}},
+		{"PromotionCodes.Create bad code rejected", func(c *Client) error {
+			_, err := c.PromotionCodes.Create(ctx, CreatePromotionCodeParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Code: Ptr("ab")})
+			return err
+		}},
+		{"PromotionCodes.Generate count out of range rejected", func(c *Client) error {
+			_, err := c.PromotionCodes.Generate(ctx, GeneratePromotionCodesParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Count: 501})
+			return err
+		}},
+		{"PromotionCodes.Generate long prefix rejected", func(c *Client) error {
+			_, err := c.PromotionCodes.Generate(ctx, GeneratePromotionCodesParams{CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Count: 1, Prefix: Ptr("ABCDEFGHIJKLM")})
+			return err
+		}},
 		{"OnetimeProducts.Update empty name rejected", func(c *Client) error {
 			_, err := c.OnetimeProducts.Update(ctx, UpdateOnetimeProductParams{
 				ID:   "PROD_AbCdEfGhIjKlMnOpQrStUv",

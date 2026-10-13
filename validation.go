@@ -6,10 +6,11 @@ import (
 )
 
 var (
-	shortIDRe     = regexp.MustCompile(`^[A-Z]{2,5}_[0-9A-Za-z]{22}$`)
-	currencyRe    = regexp.MustCompile(`^[A-Z]{3}$`)
-	countryCodeRe = regexp.MustCompile(`^[A-Z]{2}$`)
-	amountRe      = regexp.MustCompile(`^\d+(\.\d+)?$`)
+	shortIDRe      = regexp.MustCompile(`^[A-Z]{2,5}_[0-9A-Za-z]{22}$`)
+	currencyRe     = regexp.MustCompile(`^[A-Z]{3}$`)
+	countryCodeRe  = regexp.MustCompile(`^[A-Z]{2}$`)
+	amountRe       = regexp.MustCompile(`^\d+(\.\d+)?$`)
+	discountCodeRe = regexp.MustCompile(`^[A-Za-z0-9-]{3,32}$`)
 )
 
 var shortIDLabels = map[string]string{
@@ -20,6 +21,8 @@ var shortIDLabels = map[string]string{
 	"REF":  "Refund",
 	"TKT":  "Ticket",
 	"MER":  "Merchant",
+	"CPN":  "Coupon",
+	"PMC":  "Promotion Code",
 }
 
 // validateRequired returns an SDK-layer error when v is empty or contains only
@@ -195,6 +198,18 @@ func validatePlanChangeCommon(p *CreatePlanChangeSessionParams) error {
 		if err := validateAmountString("changeCreditAmount", *p.ChangeCreditAmount); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// validateDiscountCode checks the code format shared by coupons and promotion
+// codes: 3-32 letters, digits or '-'.
+func validateDiscountCode(field, v string) error {
+	if err := validateRequired(field, v); err != nil {
+		return err
+	}
+	if !discountCodeRe.MatchString(v) {
+		return newSDKError("Invalid %s: expected 3-32 letters, digits or '-', got %q", field, v)
 	}
 	return nil
 }
