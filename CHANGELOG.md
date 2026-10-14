@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Alipay is available for one-time checkouts. Matches `@waffo/pancake-ts` (unreleased).
+
+### Added
+
+- **`PaymentMethodAlipay` (`"alipay"`) and `PaymentMethodAlipayHK` (`"alipayhk"`).** `PaymentMethodAlipay` is Alipay for mainland China, offered for `CNY` and `USD`; `PaymentMethodAlipayHK` is AlipayHK, offered for `HKD` and `USD`. Both are one-time only. Use them in `IncludePaymentMethods` / `ExcludePaymentMethods` like any other method. A checkout that sets neither now offers them wherever its currency supports them (`USD` offers both); list them in `ExcludePaymentMethods` to opt out.
+
 ## [0.17.0] — 2026-10-10
 
 Customers signed in to a merchant's site can enter the store's customer portal without email verification. Matches `@waffo/pancake-ts@0.26.0`.

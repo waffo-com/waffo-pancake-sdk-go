@@ -822,7 +822,7 @@ subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCh
 | `Metadata`                | `map[string]string`       | No       | Custom metadata                                                                                                                                                            |
 | `OrderMerchantExternalID` | `*string`                 | No       | Your business-side order identifier (max 128 chars). Surfaces under the same name on `Order` / `Payment` / `Refund` GraphQL types and in webhook payload (`data.orderMerchantExternalId`). |
 | `Language`                | `*pancake.CashierLanguage` | No      | Default language of the hosted checkout page (IETF BCP 47). The customer can switch it on the page; omit to let the provider infer. |
-| `IncludePaymentMethods`   | `[]pancake.PaymentMethod` | No       | Whitelist — offer only these (`card` / `applepay` / `googlepay` / `wechat`). Every value must be supported by the product type × currency pair. Mutually exclusive with `ExcludePaymentMethods`. |
+| `IncludePaymentMethods`   | `[]pancake.PaymentMethod` | No       | Whitelist — offer only these (`card` / `applepay` / `googlepay` / `wechat` / `alipay` / `alipayhk`). Every value must be supported by the product type × currency pair. Mutually exclusive with `ExcludePaymentMethods`. |
 | `ExcludePaymentMethods`   | `[]pancake.PaymentMethod` | No       | Blacklist — offer everything the currency supports except these. Values the currency does not offer are ignored. Mutually exclusive with `IncludePaymentMethods`. |
 
 **Returns `*AuthenticatedCheckoutResult`**:
@@ -1195,7 +1195,7 @@ All exported types:
 | `Environment`                           | `EnvironmentTest` / `EnvironmentProd`                      |
 | `TaxCategory`                           | `TaxCategoryDigitalGoods` / `SaaS` / `Software` / `Ebook` / `OnlineCourse` / `Consulting` / `ProfessionalService` |
 | `BillingPeriod`                         | `Weekly` / `Monthly` / `Quarterly` / `Yearly`              |
-| `PaymentMethod`                         | `Card` / `ApplePay` / `GooglePay` / `WeChat`               |
+| `PaymentMethod`                         | `Card` / `ApplePay` / `GooglePay` / `WeChat` / `Alipay` / `AlipayHK` |
 | `CashierLanguage`                       | `En` / `PtBR` / `EsMX` / `IDID` / `ViVN` / `RuRU` / `EnKE` / `EsPE` / `EsCO` / `EsCL` / `ZhHantTW` / `ZhHantHK` / `ThTH` / `JaJP` / `EnNG` / `KoKR` / `EnHK` / `ZhHansHK` / `PlPL` / `TrTR` / `ZhHans` / `MsMY` |
 | `ProductVersionStatus`                  | `Active` / `Inactive`                                      |
 | `EntityStatus`                          | `Active` / `Inactive` / `Suspended`                        |

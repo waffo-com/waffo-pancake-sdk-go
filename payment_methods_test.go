@@ -58,6 +58,8 @@ func TestPaymentMethodConstants(t *testing.T) {
 		PaymentMethodApplePay:  "applepay",
 		PaymentMethodGooglePay: "googlepay",
 		PaymentMethodWeChat:    "wechat",
+		PaymentMethodAlipay:    "alipay",
+		PaymentMethodAlipayHK:  "alipayhk",
 	}
 	for got, want := range cases {
 		if string(got) != want {
