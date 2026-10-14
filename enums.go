@@ -55,11 +55,15 @@ const (
 
 // PaymentMethod is a payment method offered on the hosted checkout page.
 //
+// [PaymentMethodAlipay] is Alipay for mainland China and [PaymentMethodAlipayHK]
+// is AlipayHK; they are separate methods.
+//
 // Availability depends on the product type x currency pair. One-time: USD supports
-// all four; EUR, GBP, HKD and JPY support card, applepay and googlepay; CNY supports
-// wechat. Subscription: USD, EUR, GBP, HKD and JPY support card, applepay and
-// googlepay. Currencies outside this matrix cannot be charged at all — checkout
-// session creation is rejected with a 400.
+// all six; HKD supports card, applepay, googlepay and alipayhk; CNY supports wechat
+// and alipay; EUR, GBP and JPY support card, applepay and googlepay. Subscription:
+// USD, EUR, GBP, HKD and JPY support card, applepay and googlepay. Currencies
+// outside this matrix cannot be charged at all — checkout session creation is
+// rejected with a 400.
 type PaymentMethod string
 
 const (
@@ -67,6 +71,8 @@ const (
 	PaymentMethodApplePay  PaymentMethod = "applepay"
 	PaymentMethodGooglePay PaymentMethod = "googlepay"
 	PaymentMethodWeChat    PaymentMethod = "wechat"
+	PaymentMethodAlipay    PaymentMethod = "alipay"
+	PaymentMethodAlipayHK  PaymentMethod = "alipayhk"
 )
 
 // BillingPeriod is the recurrence cadence of a subscription product.
