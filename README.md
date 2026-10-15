@@ -447,6 +447,40 @@ _, _ = client.Webhooks.Add(ctx, pancake.AddWebhookParams{
 To list configured webhooks, query GraphQL `Store.storeWebhooks` via
 `client.GraphQL.Query`.
 
+### Coupons & Promotion Codes
+
+A coupon defines the discount; its `Code` is the code buyers type. Add more codes with `PromotionCodes`. Deactivation is permanent and releases the codes for reuse. Read coupons with `client.GraphQL.Query` (`coupons`, `coupon`, `promotionCodes`).
+
+```go
+couponRes, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
+    StoreID:           "STO_xxx",
+    Name:              "Black Friday 20% off",
+    Code:              "BF2026",
+    Discount:          pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
+    Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
+    DurationInPeriods: pancake.Ptr(3),
+}, pancake.WithIdempotencyKey("coupon-bf2026"))
+if err != nil {
+    return err
+}
+
+// 1-500 random single-use codes; always retry with the same idempotency key
+batch, err := client.PromotionCodes.Generate(ctx, pancake.GeneratePromotionCodesParams{
+    CouponID:     couponRes.Coupon.ID,
+    Count:        100,
+    Prefix:       pancake.Ptr("KOL-"),
+    Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(1)},
+}, pancake.WithIdempotencyKey("kol-batch-2026-11"))
+if err != nil {
+    return err
+}
+fmt.Println(batch.BatchID, len(batch.PromotionCodes))
+
+if _, err := client.Coupons.Deactivate(ctx, pancake.DeactivateCouponParams{ID: couponRes.Coupon.ID}); err != nil {
+    return err
+}
+```
+
 ## Content Safety
 
 Scan a user's prompt for content-safety compliance before AIGC generation — continue only when `Action` is `pancake.ScanActionAllow`. The check is stateless (prompt text is never stored); it fails closed to `pancake.ScanActionReview` if the safety service is briefly unavailable.
@@ -504,31 +538,6 @@ if _, err := client.Stores.Create(ctx, pancake.CreateStoreParams{Name: ""}); err
 
 Client-side validation failures use `Layer: ErrorLayerSDK` so they can be
 distinguished from server-returned errors.
-
-## Coupons & Promotion Codes
-
-A coupon defines the discount; its `Code` is the code buyers type. Add more codes with `PromotionCodes`. Deactivation is permanent and releases the codes for reuse. Read coupons with `client.GraphQL.Query` (`coupons`, `coupon`, `promotionCodes`).
-
-```go
-couponRes, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
-    StoreID:           "STO_xxx",
-    Name:              "Black Friday 20% off",
-    Code:              "BF2026",
-    Discount:          pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
-    Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
-    DurationInPeriods: pancake.Ptr(3),
-}, pancake.WithIdempotencyKey("coupon-bf2026"))
-
-// 1-500 random single-use codes; always retry with the same idempotency key
-batch, err := client.PromotionCodes.Generate(ctx, pancake.GeneratePromotionCodesParams{
-    CouponID:     couponRes.Coupon.ID,
-    Count:        100,
-    Prefix:       pancake.Ptr("KOL-"),
-    Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(1)},
-}, pancake.WithIdempotencyKey("kol-batch-2026-11"))
-
-_, err = client.Coupons.Deactivate(ctx, pancake.DeactivateCouponParams{ID: couponRes.Coupon.ID})
-```
 
 ## Resource Reference
 

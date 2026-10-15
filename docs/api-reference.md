@@ -553,12 +553,11 @@ res, err := client.SubscriptionProductGroups.Publish(ctx, pancake.PublishSubscri
 
 ---
 
-
 ## Coupons
 
 A coupon defines a discount; the `Code` you set becomes its default promotion code, the code buyers type. Codes are 3–32 letters, digits or `-`, case-insensitive (stored uppercase), and unique among the store's **active** codes in the same environment; a deactivated code is released and can be reused. Deactivation is permanent, and only the name of a coupon can change. List and read coupons with `GraphQL.Query` (`coupons`, `couponsCount`, `coupon`).
 
-### `Coupons.Create(ctx, CreateCouponParams, opts...)`
+### `client.Coupons.Create(ctx, params)`
 
 ```go
 res, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
@@ -572,23 +571,36 @@ res, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
 // res.Coupon.Status is CouponStatusActive, or CouponStatusPending while the payment provider is confirming.
 ```
 
-Fixed-amount coupons set `Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "5.00"}}`. Other fields: `ProductIDs`, `MaxRedemptions`, `DailyRedemptionLimit` (per buyer per UTC day), `RedeemBy` (ISO 8601; also ends discounts already attached to subscriptions), `Restrictions` (`FirstTimeOnly`, `CustomerEmails`, `PerCustomerLimit`).
+Fixed-amount coupons set `Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "5.00"}}` (each amount greater than 0). `Name` is at most 64 characters, counted in UTF-16 code units after trimming. Other fields: `ProductIDs`, `MaxRedemptions`, `DailyRedemptionLimit` (per buyer per UTC day), `RedeemBy` (ISO 8601; also ends discounts already attached to subscriptions), `Restrictions` (`FirstTimeOnly`, `CustomerEmails`, `PerCustomerLimit`).
 
-Errors: 409 when the code is taken (also when retrying **without** the idempotency key), 502 when the payment provider rejects the coupon.
+**Returns `*CouponResult`**: `{ Coupon, Warnings }`. Errors: 409 when the code is taken (also when retrying **without** the idempotency key), 502 when the payment provider rejects the coupon.
 
-### `Coupons.Update(ctx, UpdateCouponParams, opts...)`
+### `client.Coupons.Update(ctx, params)`
 
 Rename a coupon — the only field that can change.
 
-### `Coupons.Deactivate(ctx, DeactivateCouponParams, opts...)`
+```go
+res, err := client.Coupons.Update(ctx, pancake.UpdateCouponParams{ID: "CPN_xxx", Name: "Black Friday (extended)"})
+```
+
+**Returns `*CouponResult`**: `{ Coupon, Warnings }`
+
+### `client.Coupons.Deactivate(ctx, params)`
 
 Deactivate permanently. All its promotion codes are deactivated and their codes released. Discounts already attached to subscriptions continue until the subscription's next plan change.
+
+```go
+res, err := client.Coupons.Deactivate(ctx, pancake.DeactivateCouponParams{ID: "CPN_xxx"})
+// res.Coupon.Status == pancake.CouponStatusInactive
+```
+
+**Returns `*CouponResult`**: `{ Coupon, Warnings }`
 
 ---
 
 ## Promotion Codes
 
-### `PromotionCodes.Create(ctx, CreatePromotionCodeParams, opts...)`
+### `client.PromotionCodes.Create(ctx, params)`
 
 ```go
 res, err := client.PromotionCodes.Create(ctx, pancake.CreatePromotionCodeParams{
@@ -603,7 +615,9 @@ res, err := client.PromotionCodes.Create(ctx, pancake.CreatePromotionCodeParams{
 
 `PromotionCodeRestrictions` adds `MaxRedemptions` (≤ the coupon's), `ExpiresAt` (≤ the coupon's `RedeemBy`; defaults to it) and `MinimumAmount` (pre-discount, pre-tax amount per currency) to the buyer restrictions.
 
-### `PromotionCodes.Generate(ctx, GeneratePromotionCodesParams, opts...)`
+**Returns `*PromotionCodeResult`**: `{ PromotionCode, Warnings }`
+
+### `client.PromotionCodes.Generate(ctx, params)`
 
 Generate 1–500 random codes in one call. **Always retry with the same idempotency key** — a retry without it generates another batch.
 
@@ -614,9 +628,17 @@ res, err := client.PromotionCodes.Generate(ctx, pancake.GeneratePromotionCodesPa
 // res.BatchID, res.PromotionCodes
 ```
 
-### `PromotionCodes.Deactivate(ctx, DeactivatePromotionCodeParams, opts...)`
+**Returns `*GeneratePromotionCodesResult`**: `{ BatchID, PromotionCodes, Warnings }`
+
+### `client.PromotionCodes.Deactivate(ctx, params)`
 
 Deactivate permanently and release the code. The coupon's own code can only be deactivated together with the coupon (409).
+
+```go
+res, err := client.PromotionCodes.Deactivate(ctx, pancake.DeactivatePromotionCodeParams{ID: "PMC_xxx"})
+```
+
+**Returns `*PromotionCodeResult`**: `{ PromotionCode, Warnings }`
 
 ---
 
@@ -1213,6 +1235,23 @@ All exported types:
 | `UpdateSubscriptionProductGroupParams`  | Update request (`ProductIDs` = full replacement)           |
 | `DeleteSubscriptionProductGroupParams`  | Delete request                                             |
 | `PublishSubscriptionProductGroupParams` | Publish test → prod                                        |
+| **Coupon & Promotion Code**             |                                                            |
+| `CouponDiscount`                        | Discount of a coupon (`Type` + `PercentOff` or `AmountOff`) |
+| `DiscountRestrictions`                  | Buyer restrictions accepted on create                      |
+| `CouponRestrictionsDetail`              | Buyer restrictions as returned on a coupon                 |
+| `CouponDetail`                          | Coupon entity                                              |
+| `CreateCouponParams`                    | Create request (`Code` becomes the default promotion code) |
+| `UpdateCouponParams`                    | Rename request                                             |
+| `DeactivateCouponParams`                | Deactivate request (permanent)                             |
+| `CouponResult`                          | Envelope `{Coupon, Warnings}`                              |
+| `PromotionCodeRestrictions`             | Promotion code restrictions accepted on create / generate  |
+| `PromotionCodeRestrictionsDetail`       | Promotion code restrictions as returned on a promotion code |
+| `PromotionCodeDetail`                   | Promotion code entity                                      |
+| `CreatePromotionCodeParams`             | Create request (`Code` optional)                           |
+| `GeneratePromotionCodesParams`          | Bulk generate request (1–500 codes)                        |
+| `DeactivatePromotionCodeParams`         | Deactivate request (permanent)                             |
+| `PromotionCodeResult`                   | Envelope `{PromotionCode, Warnings}`                       |
+| `GeneratePromotionCodesResult`          | Envelope `{BatchID, PromotionCodes, Warnings}`             |
 | **Order**                               |                                                            |
 | `CancelSubscriptionParams`              | Cancel subscription request                                |
 | `CancelSubscriptionResult`              | Cancel subscription response                               |
@@ -1276,3 +1315,7 @@ All exported types:
 | `ErrorLayer`                            | `Gateway` / `User` / `Store` / `Product` / `Order` / `Ticket` / `GraphQL` / `Resource` / `Email` / `SDK` |
 | `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` |
 | `WebhookChannel`                        | `HTTP` / `Feishu` / `Discord` / `Telegram` / `Slack`       |
+| `CouponStatus`                          | `Pending` / `Active` / `Inactive` / `Failed`               |
+| `CouponDiscountType`                    | `Percentage` / `FixedAmount`                               |
+| `CouponDuration`                        | `Once` / `Repeating` / `Forever`                           |
+| `PromotionCodeStatus`                   | `Active` / `Inactive`                                      |
