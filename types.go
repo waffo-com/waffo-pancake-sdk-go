@@ -769,6 +769,19 @@ type CreateCheckoutSessionParams struct {
 	// Values the currency does not offer are ignored, so one blacklist can be reused across currencies.
 	// Mutually exclusive with IncludePaymentMethods.
 	ExcludePaymentMethods []PaymentMethod `json:"excludePaymentMethods,omitempty"`
+	// CouponID applies a coupon to the session (Short ID, CPN_xxx — the Pancake coupon ID, not
+	// the payment provider's). The discount is locked: the customer sees it applied but cannot
+	// change or remove it, and no code entry field is shown. One-time products only for now — a
+	// subscription product is rejected with a 409. The platform also answers 409 for a coupon
+	// from another store or environment, one that is not active or expires within 60 seconds,
+	// one not covering the product, and a fixed amount coupon with no amount in Currency.
+	// Rules tied to the customer are checked when the order is placed.
+	// Mutually exclusive with AllowPromotionCodes.
+	CouponID *string `json:"couponId,omitempty"`
+	// AllowPromotionCodes shows a code entry field on the checkout page, where the customer can
+	// enter a coupon code or promotion code. The platform defaults it to false for sessions
+	// created with the API Key. Mutually exclusive with CouponID.
+	AllowPromotionCodes *bool `json:"allowPromotionCodes,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and

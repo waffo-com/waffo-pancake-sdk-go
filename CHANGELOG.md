@@ -6,7 +6,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Merchants can create and manage coupons and promotion codes from their server.
+Merchants can create and manage coupons and promotion codes from their server, and apply them to checkout sessions for one-time products.
 
 ### Added
 
@@ -14,9 +14,13 @@ Merchants can create and manage coupons and promotion codes from their server.
 - **`Client.PromotionCodes`** — `Create` (code optional, generated when nil), `Generate` (1–500 random codes; retry with the same idempotency key), `Deactivate` (permanent; the code is released for reuse).
 - Types `CouponDetail`, `CouponDiscount`, `CouponRestrictionsDetail`, `CreateCouponParams`, `UpdateCouponParams`, `DeactivateCouponParams`, `CouponResult`, `DiscountRestrictions`, `PromotionCodeDetail`, `PromotionCodeRestrictions`, `PromotionCodeRestrictionsDetail`, `CreatePromotionCodeParams`, `GeneratePromotionCodesParams`, `DeactivatePromotionCodeParams`, `PromotionCodeResult`, `GeneratePromotionCodesResult`; enums `CouponStatus`, `CouponDiscountType`, `CouponDuration`, `PromotionCodeStatus`.
 - Local validation of `CPN_` / `PMC_` IDs, of the code format (3–32 letters, digits or `-`), of `Duration`, and that fixed amounts are greater than 0.
+- **`CreateCheckoutSessionParams.CouponID` (`*string`)** — apply a coupon (`CPN_xxx`) to the session; the discount is locked and the customer cannot change or remove it. Also available on `AnonymousCheckoutParams` and `AuthenticatedCheckoutParams`. One-time products only for now; the platform answers 409 for a subscription product, and for a coupon that is not usable in this store, environment, product or currency.
+- **`CreateCheckoutSessionParams.AllowPromotionCodes` (`*bool`)** — show a code entry field on the checkout page. The platform defaults it to `false` for API Key sessions.
+- Local validation: `CouponID` must be a `CPN_` Short ID, and `CouponID` together with `AllowPromotionCodes` (either value) returns `*Error` (400, `ErrorLayerSDK`) before the request is sent — the platform rejects the combination with a 400.
 
 ### Changed
 
+- **`CheckoutResource` type comment corrected.** It said `CreateSession` runs no client-side validation; it already ran the same checks as `Anonymous.Create`, which now include the two discount checks above.
 - Local max-length checks count UTF-16 code units (the server's JavaScript string length) instead of bytes, so text in non-Latin scripts is no longer rejected early. Coupon names are measured after trimming, as the server does.
 
 ## [0.17.0] — 2026-10-10

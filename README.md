@@ -117,6 +117,43 @@ res, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParam
 Opening the URL in a new tab is recommended so customers can return to your site
 without losing page state.
 
+### Discounts at checkout
+
+A session either carries a coupon you chose, or lets the customer enter one — never
+both. Both fields work with `CreateSession`, `Anonymous.Create` and
+`Authenticated.Create`, for one-time products.
+
+```go
+// Apply a coupon (CPN_ ID from Coupons.Create): the customer sees "discount applied"
+// and the discounted amount, but cannot see, change or remove the code.
+res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheckoutParams{
+    CreateCheckoutSessionParams: pancake.CreateCheckoutSessionParams{
+        ProductID: "PROD_...",
+        Currency:  "USD",
+        CouponID:  pancake.Ptr("CPN_..."),
+    },
+    BuyerIdentity: "user-123",
+})
+
+// Or show a code entry field where the customer types a coupon or promotion code.
+session, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParams{
+    ProductID:           "PROD_...",
+    Currency:            "USD",
+    AllowPromotionCodes: pancake.Ptr(true),
+})
+```
+
+- `AllowPromotionCodes` defaults to `false` for sessions created with your API Key.
+- Setting `CouponID` together with `AllowPromotionCodes` (either value), or a `CouponID`
+  without the `CPN_` prefix, returns `*pancake.Error` (400, `ErrorLayerSDK`) before any
+  request is sent.
+- The platform rejects a coupon that belongs to another store or environment, is not
+  `active`, expires within 60 seconds, does not cover the product, or is a fixed amount
+  with no amount in the session currency, with a 409 whose message names the reason.
+  Rules tied to the customer are checked when the order is placed.
+- Subscription products do not take discounts yet: `CouponID` on a subscription product
+  is rejected with a 409.
+
 ### Plan change links
 
 Switching an existing subscription to another plan uses the same endpoint in a

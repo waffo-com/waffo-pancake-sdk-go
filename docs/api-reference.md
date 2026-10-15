@@ -913,6 +913,8 @@ subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCh
 | `Language`                | `*pancake.CashierLanguage` | No      | Default language of the hosted checkout page (IETF BCP 47). The customer can switch it on the page; omit to let the provider infer. |
 | `IncludePaymentMethods`   | `[]pancake.PaymentMethod` | No       | Whitelist — offer only these (`card` / `applepay` / `googlepay` / `wechat`). Every value must be supported by the product type × currency pair. Mutually exclusive with `ExcludePaymentMethods`. |
 | `ExcludePaymentMethods`   | `[]pancake.PaymentMethod` | No       | Blacklist — offer everything the currency supports except these. Values the currency does not offer are ignored. Mutually exclusive with `IncludePaymentMethods`. |
+| `CouponID`                | `*string`                 | No       | Coupon to apply (`CPN_xxx`, from `Coupons.Create`). Locked: the customer sees the discount but cannot change or remove it, and no code entry field is shown. One-time products only (a subscription product gets a 409). Mutually exclusive with `AllowPromotionCodes` |
+| `AllowPromotionCodes`     | `*bool`                   | No       | Show a code entry field where the customer can enter a coupon or promotion code. The platform defaults it to `false` for API Key sessions. Mutually exclusive with `CouponID` |
 
 **Returns `*AuthenticatedCheckoutResult`**:
 
@@ -966,6 +968,8 @@ snapshotRes, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheck
 | `DarkMode`                | `*bool`                   | No       | Dark mode override                                                                                                                                                                                         |
 | `Metadata`                | `map[string]string`       | No       | Custom metadata                                                                                                                                                                                            |
 | `OrderMerchantExternalID` | `*string`                 | No       | Your business-side order identifier (max 128 chars). Honored on the API Key path; visitor / store-slug flows silently drop it. Same field name in webhook payload and GraphQL `Order` / `Payment` / `Refund`. |
+| `CouponID`                | `*string`                 | No       | Coupon to apply (`CPN_xxx`, from `Coupons.Create`). Locked: the customer sees the discount but cannot change or remove it, and no code entry field is shown. One-time products only (a subscription product gets a 409). Mutually exclusive with `AllowPromotionCodes` |
+| `AllowPromotionCodes`     | `*bool`                   | No       | Show a code entry field where the customer can enter a coupon or promotion code. The platform defaults it to `false` for API Key sessions. Mutually exclusive with `CouponID` |
 
 **Returns `*CheckoutSessionResult`**:
 
@@ -1053,6 +1057,24 @@ session, err := client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSession
 ```
 
 **Parameters `CreateCheckoutSessionParams`**: same fields as `AnonymousCheckoutParams` above.
+
+`CouponID` and `AllowPromotionCodes` are checked by every checkout method: a `CouponID` without the `CPN_` prefix, or both fields set together (with either `AllowPromotionCodes` value), returns `*pancake.Error` (400, `ErrorLayerSDK`) before any request is sent. The platform answers 409 for a coupon from another store or environment, one that is not `active`, expires within 60 seconds, does not cover the product, or has no fixed amount in the session currency; the message names the reason. Rules tied to the customer are checked when the order is placed.
+
+```go
+// Locked coupon
+_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+    ProductID: "PROD_xxx",
+    Currency:  "USD",
+    CouponID:  pancake.Ptr("CPN_xxx"),
+})
+
+// Code entry field on the checkout page
+_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+    ProductID:           "PROD_xxx",
+    Currency:            "USD",
+    AllowPromotionCodes: pancake.Ptr(true),
+})
+```
 
 **`BillingDetail` fields**:
 

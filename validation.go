@@ -196,11 +196,27 @@ func validateSessionCommon(productID, currency string, priceSnapshot *PriceSnaps
 }
 
 // validateCheckoutCommon runs the shared checks for Checkout endpoints.
+//
+// CouponID and AllowPromotionCodes are mutually exclusive: a session either has a
+// coupon applied and locked by the merchant, or lets the customer enter a code.
+// Setting both (with any AllowPromotionCodes value) is rejected here, as the
+// platform would reject it with a 400.
 func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 	if err := validateSessionCommon(p.ProductID, p.Currency, p.PriceSnapshot, p.ExpiresInSeconds, p.OrderMerchantExternalID); err != nil {
 		return err
 	}
-	return validateBillingDetail(p.BillingDetail)
+	if err := validateBillingDetail(p.BillingDetail); err != nil {
+		return err
+	}
+	if p.CouponID != nil {
+		if err := validateShortID("couponId", *p.CouponID, "CPN"); err != nil {
+			return err
+		}
+		if p.AllowPromotionCodes != nil {
+			return newSDKError("couponId and allowPromotionCodes are mutually exclusive: pass couponId to apply a coupon, or allowPromotionCodes to let the customer enter a code")
+		}
+	}
+	return nil
 }
 
 // validatePlanChangeCommon runs the shared checks for plan change endpoints.
