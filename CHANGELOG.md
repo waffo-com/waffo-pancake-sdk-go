@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Merchants can create and manage coupons and promotion codes from their server.
+
+### Added
+
+- **`Client.Coupons`** — `Create`, `Update` (rename only), `Deactivate` (permanent). A coupon's `Code` becomes its default promotion code.
+- **`Client.PromotionCodes`** — `Create` (code optional, generated when nil), `Generate` (1–500 random codes; retry with the same idempotency key), `Deactivate` (permanent; the code is released for reuse).
+- Types `CouponDetail`, `CouponDiscount`, `CouponRestrictionsDetail`, `CreateCouponParams`, `UpdateCouponParams`, `DeactivateCouponParams`, `CouponResult`, `DiscountRestrictions`, `PromotionCodeDetail`, `PromotionCodeRestrictions`, `PromotionCodeRestrictionsDetail`, `CreatePromotionCodeParams`, `GeneratePromotionCodesParams`, `DeactivatePromotionCodeParams`, `PromotionCodeResult`, `GeneratePromotionCodesResult`; enums `CouponStatus`, `CouponDiscountType`, `CouponDuration`, `PromotionCodeStatus`.
+- Local validation of `CPN_` / `PMC_` IDs, of the code format (3–32 letters, digits or `-`), of `Duration`, and that fixed amounts are greater than 0.
+
+### Changed
+
+- Local max-length checks count UTF-16 code units (the server's JavaScript string length) instead of bytes, so text in non-Latin scripts is no longer rejected early. Coupon names are measured after trimming, as the server does.
+
 ## [0.17.0] — 2026-10-10
 
 Customers signed in to a merchant's site can enter the store's customer portal without email verification. Matches `@waffo/pancake-ts@0.26.0`.
