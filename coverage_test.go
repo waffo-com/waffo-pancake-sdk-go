@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -63,6 +64,32 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
 				Discount: CouponDiscount{Type: CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "abc"}},
 			})
+			return err
+		}},
+		{"Coupons.Create zero amount rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				Discount: CouponDiscount{Type: CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "0.00"}},
+			})
+			return err
+		}},
+		{"Coupons.Create unknown duration rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+				Duration: Ptr(CouponDuration("weekly")),
+			})
+			return err
+		}},
+		{"Coupons.Create 65-character multibyte name rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: strings.Repeat("优", 65), Code: "ABC",
+				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+			})
+			return err
+		}},
+		{"Coupons.Update 65-character multibyte name rejected", func(c *Client) error {
+			_, err := c.Coupons.Update(ctx, UpdateCouponParams{ID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Name: strings.Repeat("优", 65)})
 			return err
 		}},
 		{"Coupons.Deactivate wrong prefix rejected", func(c *Client) error {

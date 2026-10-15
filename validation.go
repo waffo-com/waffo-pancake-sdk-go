@@ -3,6 +3,7 @@ package pancake
 import (
 	"regexp"
 	"strings"
+	"unicode/utf16"
 )
 
 var (
@@ -109,10 +110,35 @@ func validatePositiveInt(field string, v int) error {
 	return nil
 }
 
-// validateMaxLength checks that an optional string does not exceed limit characters.
+// validateMaxLength checks that an optional string does not exceed limit
+// characters. Length is counted in UTF-16 code units, as the server's
+// JavaScript string length is, so multi-byte text is not over-counted.
 func validateMaxLength(field string, v *string, limit int) error {
-	if v != nil && len(*v) > limit {
-		return newSDKError("%s must be at most %d characters, got %d", field, limit, len(*v))
+	if v == nil {
+		return nil
+	}
+	if n := utf16Length(*v); n > limit {
+		return newSDKError("%s must be at most %d characters, got %d", field, limit, n)
+	}
+	return nil
+}
+
+// utf16Length returns the length of s in UTF-16 code units (JavaScript
+// String.prototype.length).
+func utf16Length(s string) int {
+	return len(utf16.Encode([]rune(s)))
+}
+
+// validatePositiveAmountString checks a display-format numeric string that
+// must be greater than zero ("0" and "0.00" are rejected).
+func validatePositiveAmountString(field, v string) error {
+	if err := validateAmountString(field, v); err != nil {
+		return err
+	}
+	// amountRe already allows only digits and one '.', so the amount is zero
+	// exactly when no digit other than '0' remains.
+	if strings.Trim(strings.Replace(v, ".", "", 1), "0") == "" {
+		return newSDKError("Invalid %s: expected an amount greater than 0, got %q", field, v)
 	}
 	return nil
 }
@@ -213,4 +239,14 @@ func validateDiscountCode(field, v string) error {
 		return newSDKError("Invalid %s: expected 3-32 letters, digits or '-', got %q", field, v)
 	}
 	return nil
+}
+
+// validateCouponName checks that a coupon name is present and at most 64
+// characters after trimming, counted in UTF-16 code units as the server does.
+func validateCouponName(name string) error {
+	if err := validateRequired("name", name); err != nil {
+		return err
+	}
+	trimmed := strings.TrimSpace(name)
+	return validateMaxLength("name", &trimmed, 64)
 }

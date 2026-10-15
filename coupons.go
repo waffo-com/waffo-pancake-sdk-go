@@ -26,10 +26,7 @@ func (r *CouponsResource) Create(ctx context.Context, p CreateCouponParams, opts
 	if err := validateShortID("storeId", p.StoreID, "STO"); err != nil {
 		return nil, err
 	}
-	if err := validateRequired("name", p.Name); err != nil {
-		return nil, err
-	}
-	if err := validateMaxLength("name", &p.Name, 64); err != nil {
+	if err := validateCouponName(p.Name); err != nil {
 		return nil, err
 	}
 	if err := validateDiscountCode("code", p.Code); err != nil {
@@ -51,12 +48,19 @@ func (r *CouponsResource) Create(ctx context.Context, p CreateCouponParams, opts
 			if err := validateCurrencyCode("discount.amountOff (key)", currency); err != nil {
 				return nil, err
 			}
-			if err := validateAmountString("discount.amountOff."+currency, amount); err != nil {
+			if err := validatePositiveAmountString("discount.amountOff."+currency, amount); err != nil {
 				return nil, err
 			}
 		}
 	default:
 		return nil, newSDKError("Invalid discount.type: expected one of [percentage, fixed_amount], got %q", p.Discount.Type)
+	}
+	if p.Duration != nil {
+		switch *p.Duration {
+		case CouponDurationOnce, CouponDurationRepeating, CouponDurationForever:
+		default:
+			return nil, newSDKError("Invalid duration: expected one of [once, repeating, forever], got %q", *p.Duration)
+		}
 	}
 	if p.Duration != nil && *p.Duration == CouponDurationRepeating {
 		if p.DurationInPeriods == nil {
@@ -90,10 +94,7 @@ func (r *CouponsResource) Update(ctx context.Context, p UpdateCouponParams, opts
 	if err := validateShortID("id", p.ID, "CPN"); err != nil {
 		return nil, err
 	}
-	if err := validateRequired("name", p.Name); err != nil {
-		return nil, err
-	}
-	if err := validateMaxLength("name", &p.Name, 64); err != nil {
+	if err := validateCouponName(p.Name); err != nil {
 		return nil, err
 	}
 	out, warnings, err := postAction[CouponResult](ctx, r.http, "/v1/actions/coupon/update-coupon", p, opts)

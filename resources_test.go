@@ -236,7 +236,7 @@ func TestResources_HappyPaths(t *testing.T) {
 			path:     "/v1/actions/coupon/update-coupon",
 			response: map[string]any{"coupon": map[string]any{"id": "CPN_AbCdEfGhIjKlMnOpQrStUv", "name": "New"}},
 			call: func(c *Client) error {
-				_, err := c.Coupons.Update(ctx, UpdateCouponParams{ID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Name: "New"})
+				_, err := c.Coupons.Update(ctx, UpdateCouponParams{ID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Name: strings.Repeat("优", 22)})
 				return err
 			},
 		},
