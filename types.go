@@ -992,6 +992,11 @@ type WebhookEventData struct {
 	CurrentPeriodStart *string `json:"currentPeriodStart,omitempty"`
 	CurrentPeriodEnd   *string `json:"currentPeriodEnd,omitempty"`
 	CanceledAt         *string `json:"canceledAt,omitempty"`
+	// CancelInitiator is who initiated the cancellation, present together with CanceledAt:
+	// "buyer", "customer", "merchant", "platform" (canceled by Waffo Pancake — the buyer cannot
+	// reactivate it, and re-enabling the store does not restore it) or "system". Nil on
+	// subscriptions canceled before the field existed. Treat unknown values as opaque.
+	CancelInitiator *string `json:"cancelInitiator,omitempty"`
 
 	RefundStatus    *string `json:"refundStatus,omitempty"`
 	RefundReason    *string `json:"refundReason,omitempty"`

@@ -561,6 +561,7 @@ On payment events `Amount` is the amount actually charged, equal to `ChargedAmou
 | `CurrentPeriodStart` | `*string` | Current billing period start date (ISO 8601)                          |
 | `CurrentPeriodEnd`   | `*string` | Current billing period end date (ISO 8601)                            |
 | `CanceledAt`         | `*string` | Subscription cancellation timestamp (ISO 8601, present when canceled) |
+| `CancelInitiator`    | `*string` | Who initiated the cancellation, present together with `CanceledAt`: `buyer`, `customer`, `merchant`, `platform` (canceled by Waffo Pancake; cannot be reactivated) or `system`. Nil on subscriptions canceled before the field existed |
 
 Which events carry that block:
 
