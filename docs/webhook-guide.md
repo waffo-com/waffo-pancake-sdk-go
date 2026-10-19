@@ -507,13 +507,22 @@ All events include the **Order**, **Amount**, and **Product** sections. Addition
 | `Subtotal`       | `*string`  | No       | **Deprecated** — see the deprecation table below                                                       |
 | `Total`          | `*string`  | No       | **Deprecated** — see the deprecation table below                                                       |
 
-**Amount fields** — the object this event's figure refers to. Each block is a `*WebhookAmountBreakdown` (`Total`, `Subtotal`, `TaxAmount`, `TaxRate`, `TaxName`), and at most one of them is non-nil on a given event:
+**Amount fields** — the object this event's figure refers to. Each block is a `*WebhookAmountBreakdown` (`Total`, `Subtotal`, `TaxAmount`, `TaxRate`, `TaxName`, `ListTotal`, `DiscountAmount`), and at most one of them is non-nil on a given event:
 
 | Field             | Type                      | Present on                                                               |
 | ----------------- | ------------------------- | ------------------------------------------------------------------------ |
 | `ListPrice`       | `*WebhookAmountBreakdown` | Payment events — the list price snapshot taken when the order was placed  |
 | `OriginalPayment` | `*WebhookAmountBreakdown` | Refund events — the payment being refunded, as originally charged         |
 | `PlanPrice`       | `*WebhookAmountBreakdown` | Subscription status events — the plan's list price for the current phase  |
+
+**Discounts in the block.** `ListPrice` and `OriginalPayment` carry `ListTotal` (price before the discount, tax included) and `DiscountAmount` (tax-inclusive discount) when the payment was recorded with them; both are nil for payments recorded before these keys were introduced. Without a discount `DiscountAmount` is zero and `ListTotal` equals `Total`. With a coupon or promotion code, `Total` and `TaxAmount` are the discounted amounts expected for that payment while `Subtotal` stays the pre-discount amount excluding tax, so `Subtotal + TaxAmount` does not equal `Total` — use `ListTotal - DiscountAmount = Total`. On a subscription each payment carries the amounts for its own period: `DiscountAmount` is zero once the coupon's duration has run out. `PlanPrice` never carries the two fields; it is always the list price before any discount.
+
+```go
+// event from pancake.VerifyWebhookTyped[pancake.WebhookEventData]
+if lp := event.Data.ListPrice; lp != nil && lp.ListTotal != nil && lp.DiscountAmount != nil {
+    fmt.Printf("list %s, discount %s, expected %s\n", *lp.ListTotal, *lp.DiscountAmount, lp.Total)
+}
+```
 
 Alongside the block, refund events carry the same subject as a flat display string:
 

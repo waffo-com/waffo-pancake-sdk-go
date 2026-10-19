@@ -177,6 +177,63 @@ func TestVerifyWebhookTyped_DeserializesData(t *testing.T) {
 	}
 }
 
+func TestWebhookAmountBreakdown_DiscountFields(t *testing.T) {
+	priv, pubPEM := generateRSAKeyPair(t)
+	payload, sig := makeSignedPayload(t, priv, map[string]any{
+		"id":        "evt_disc",
+		"eventType": "order.completed",
+		"data": map[string]any{
+			"orderId": "ORD_x", "amount": "86.40", "currency": "USD", "buyerEmail": "a@b.c", "productName": "P", "taxAmount": "6.40",
+			"listPrice": map[string]any{
+				"total": "86.40", "subtotal": "99.99", "taxAmount": "6.40", "taxRate": 8, "taxName": "JCT",
+				"listTotal": "107.99", "discountAmount": "21.59",
+			},
+		},
+	}, time.Now().UnixMilli())
+
+	evt, err := VerifyWebhookTyped[WebhookEventData](payload, sig, &VerifyWebhookOptions{PublicKey: pubPEM})
+	if err != nil {
+		t.Fatalf("typed: %v", err)
+	}
+	lp := evt.Data.ListPrice
+	if lp == nil {
+		t.Fatal("ListPrice is nil")
+	}
+	if lp.ListTotal == nil || *lp.ListTotal != "107.99" {
+		t.Errorf("ListTotal = %v, want 107.99", lp.ListTotal)
+	}
+	if lp.DiscountAmount == nil || *lp.DiscountAmount != "21.59" {
+		t.Errorf("DiscountAmount = %v, want 21.59", lp.DiscountAmount)
+	}
+	if lp.Total != "86.40" {
+		t.Errorf("Total = %q, want 86.40", lp.Total)
+	}
+}
+
+func TestWebhookAmountBreakdown_DiscountFieldsAbsent(t *testing.T) {
+	var data WebhookEventData
+	raw := `{"orderId":"ORD_x","amount":"3.12","currency":"USD","buyerEmail":"a@b.c","productName":"P","taxAmount":"0",` +
+		`"originalPayment":{"total":"4.08","subtotal":"3.20","taxAmount":"0.88"}}`
+	if err := json.Unmarshal([]byte(raw), &data); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	op := data.OriginalPayment
+	if op == nil {
+		t.Fatal("OriginalPayment is nil")
+	}
+	if op.ListTotal != nil || op.DiscountAmount != nil {
+		t.Errorf("discount fields should be nil on a legacy block: ListTotal=%v DiscountAmount=%v", op.ListTotal, op.DiscountAmount)
+	}
+
+	out, err := json.Marshal(op)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if got := string(out); got != `{"total":"4.08","subtotal":"3.20","taxAmount":"0.88"}` {
+		t.Errorf("marshal = %s, want discount keys omitted", got)
+	}
+}
+
 func TestParseSignatureHeader(t *testing.T) {
 	t1, v1, err := parseSignatureHeader("t=1700000,v1=abc")
 	if err != nil || t1 != "1700000" || v1 != "abc" {

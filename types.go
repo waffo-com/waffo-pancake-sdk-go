@@ -1080,6 +1080,19 @@ type WebhookAmountBreakdown struct {
 	TaxRate *float64 `json:"taxRate,omitempty"`
 	// TaxName is the tax name (for example "Consumption Tax").
 	TaxName *string `json:"taxName,omitempty"`
+	// ListTotal is the price before the discount, tax included. Present only in
+	// ListPrice and OriginalPayment, and only when that payment was recorded with the
+	// discount fields — nil for payments recorded before these keys were introduced.
+	// Never set in PlanPrice, which is always the list price before any discount. When
+	// present, ListTotal - DiscountAmount = Total: Total is the amount expected for that
+	// payment after the discount. Without a discount ListTotal equals Total.
+	ListTotal *string `json:"listTotal,omitempty"`
+	// DiscountAmount is the discount applied to that payment, tax included; zero in
+	// display format ("0.00" for USD, "0" for JPY) when no discount applies. Present
+	// under the same conditions as ListTotal. With a discount, Total and TaxAmount are
+	// the discounted amounts while Subtotal stays the pre-discount amount excluding tax,
+	// so Subtotal + TaxAmount does not equal Total — use ListTotal - DiscountAmount = Total.
+	DiscountAmount *string `json:"discountAmount,omitempty"`
 }
 
 // WebhookEventData is the canonical payload shape of a webhook event. Many
@@ -1137,8 +1150,11 @@ type WebhookEventData struct {
 	// than 12 months away and ships with the next major version.
 	Total *string `json:"total,omitempty"`
 
-	// ListPrice is the list price snapshot taken when the order was placed. Present
-	// only on payment events; nil when the order carries no amount snapshot.
+	// ListPrice is the price snapshot recorded for this payment. With a coupon or
+	// promotion code, Total is the discounted amount expected for the payment, and
+	// ListTotal / DiscountAmount give the price before the discount and the discount
+	// itself (when the payment was recorded with them). Present only on payment events;
+	// nil when the order carries no amount snapshot.
 	ListPrice *WebhookAmountBreakdown `json:"listPrice,omitempty"`
 	// OriginalChargedAmount is what the payment being refunded actually collected, as a
 	// display string. Present only on refund events, and only when the channel reported an
@@ -1148,10 +1164,14 @@ type WebhookEventData struct {
 	// applied to that payment, and refunding up to the list price is then rejected by the
 	// channel.
 	OriginalChargedAmount *string `json:"originalChargedAmount,omitempty"`
-	// OriginalPayment is the payment being refunded, as it was originally charged.
-	// Present only on refund events; nil when that payment carries no amount snapshot.
+	// OriginalPayment is the payment being refunded, as it was originally charged. It
+	// carries ListTotal / DiscountAmount when that payment was recorded with them, read
+	// the same way as in ListPrice. Present only on refund events; nil when that payment carries no amount snapshot.
 	OriginalPayment *WebhookAmountBreakdown `json:"originalPayment,omitempty"`
-	// PlanPrice is the subscription's list price for the current phase. Present only on
+	// PlanPrice is the subscription's list price for the current phase, always before
+	// any coupon discount — ListTotal / DiscountAmount are never set on it; the
+	// discounted amount of a charge is in ListPrice on subscription.payment_succeeded.
+	// Present only on
 	// subscription status events (every subscription.* event except
 	// subscription.payment_succeeded); nil when the subscription carries no price snapshot.
 	PlanPrice *WebhookAmountBreakdown `json:"planPrice,omitempty"`
