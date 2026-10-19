@@ -313,8 +313,13 @@ const (
 	CouponDiscountTypeFixedAmount CouponDiscountType = "fixed_amount"
 )
 
-// CouponDuration is how many subscription periods get the discount. One-time
-// orders always use a coupon once.
+// CouponDuration is how many subscription periods get the discount: Once one
+// billing period, Repeating the number of periods in DurationInPeriods, Forever
+// every period until the coupon's RedeemBy, after which renewals are charged the
+// full price. Only periods with a price above zero count: a free trial uses none
+// of them, and the discount starts with the first paid period; a paid trial is
+// discounted and counts as the first period. One-time orders always use a coupon
+// once.
 type CouponDuration string
 
 const (

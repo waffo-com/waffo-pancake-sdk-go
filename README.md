@@ -121,7 +121,7 @@ without losing page state.
 
 A session either carries a coupon you chose, or lets the customer enter one — never
 both. Both fields work with `CreateSession`, `Anonymous.Create` and
-`Authenticated.Create`, for one-time products.
+`Authenticated.Create`, for one-time products and new subscriptions.
 
 ```go
 // Apply a coupon (CPN_ ID from Coupons.Create): the customer sees "discount applied"
@@ -151,8 +151,14 @@ session, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutP
   `active`, expires within 60 seconds, does not cover the product, or is a fixed amount
   with no amount in the session currency, with a 409 whose message names the reason.
   Rules tied to the customer are checked when the order is placed.
-- Subscription products do not take discounts yet: `CouponID` on a subscription product
-  is rejected with a 409.
+- On a subscription, the coupon's `Duration` decides how many billing periods are
+  discounted: `once` one period, `repeating` `DurationInPeriods` periods, `forever` every
+  period. Only periods with a price above zero count — a free trial uses no discount and it
+  starts with the first paid period, while a paid trial is discounted and counts as the
+  first period. Renewals after the coupon's `RedeemBy` are charged the full price.
+- A use is counted once, when the first discounted charge succeeds; a subscription canceled
+  before that (for example during a free trial) gives the use back.
+- Plan changes do not take discounts yet: a plan change session shows no code entry field.
 
 ### Plan change links
 

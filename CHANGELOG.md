@@ -6,7 +6,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Merchants can create and manage coupons and promotion codes from their server, and apply them to checkout sessions for one-time products.
+Merchants can create and manage coupons and promotion codes from their server, and apply them to checkout sessions for one-time products and new subscriptions.
 
 ### Added
 
@@ -14,7 +14,7 @@ Merchants can create and manage coupons and promotion codes from their server, a
 - **`Client.PromotionCodes`** — `Create` (code optional, generated when nil), `Generate` (1–500 random codes; retry with the same idempotency key), `Deactivate` (permanent; the code is released for reuse).
 - Types `CouponDetail`, `CouponDiscount`, `CouponRestrictionsDetail`, `CreateCouponParams`, `UpdateCouponParams`, `DeactivateCouponParams`, `CouponResult`, `DiscountRestrictions`, `PromotionCodeDetail`, `PromotionCodeRestrictions`, `PromotionCodeRestrictionsDetail`, `CreatePromotionCodeParams`, `GeneratePromotionCodesParams`, `DeactivatePromotionCodeParams`, `PromotionCodeResult`, `GeneratePromotionCodesResult`; enums `CouponStatus`, `CouponDiscountType`, `CouponDuration`, `PromotionCodeStatus`.
 - Local validation of `CPN_` / `PMC_` IDs, of the code format (3–32 letters, digits or `-`), of `Duration`, and that fixed amounts are greater than 0.
-- **`CreateCheckoutSessionParams.CouponID` (`*string`)** — apply a coupon (`CPN_xxx`) to the session; the discount is locked and the customer cannot change or remove it. Also available on `AnonymousCheckoutParams` and `AuthenticatedCheckoutParams`. One-time products only for now; the platform answers 409 for a subscription product, and for a coupon that is not usable in this store, environment, product or currency.
+- **`CreateCheckoutSessionParams.CouponID` (`*string`)** — apply a coupon (`CPN_xxx`) to the session; the discount is locked and the customer cannot change or remove it. Also available on `AnonymousCheckoutParams` and `AuthenticatedCheckoutParams`. Works for one-time products and new subscriptions; the platform answers 409 for a coupon that is not usable in this store, environment, product or currency. On a subscription the coupon's `Duration` sets how many billing periods are discounted (`once` / `repeating` / `forever`, ending at the coupon's `RedeemBy`): a free trial uses no discount and it starts with the first paid period, a paid trial is discounted and counts as the first period. The use is counted when the first discounted charge succeeds. Plan changes do not take discounts yet.
 - **`CreateCheckoutSessionParams.AllowPromotionCodes` (`*bool`)** — show a code entry field on the checkout page. The platform defaults it to `false` for API Key sessions.
 - Local validation: `CouponID` must be a `CPN_` Short ID, and `CouponID` together with `AllowPromotionCodes` (either value) returns `*Error` (400, `ErrorLayerSDK`) before the request is sent — the platform rejects the combination with a 400.
 
