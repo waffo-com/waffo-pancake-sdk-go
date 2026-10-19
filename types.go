@@ -1063,8 +1063,8 @@ type TypedGraphQLResponse[T any] struct {
 // -----------------------------------------------------------------------------
 
 // WebhookAmountBreakdown is the amount breakdown of the object a webhook event
-// refers to: the list price behind a charge, the original payment behind a refund,
-// or the plan price behind a subscription status change.
+// refers to: the price snapshot behind a charge, the original payment behind a
+// refund, or the plan price behind a subscription status change.
 //
 // Money fields are display strings, already converted from minor units ("29.00" for
 // USD, "4500" for JPY). The block never uses the name Amount — that name belongs to
@@ -1159,21 +1159,22 @@ type WebhookEventData struct {
 	// OriginalChargedAmount is what the payment being refunded actually collected, as a
 	// display string. Present only on refund events, and only when the channel reported an
 	// amount for that payment — nil otherwise, never zero-filled. It is the ceiling a refund
-	// can reach; OriginalPayment.Total next to it is the list price snapshot taken when the
-	// order was placed. The two differ when a prorated credit or a zero-amount card check
-	// applied to that payment, and refunding up to the list price is then rejected by the
-	// channel.
+	// can reach; OriginalPayment.Total next to it is the amount expected for that payment,
+	// after any discount (the price before the discount is its ListTotal). The two differ
+	// when a prorated credit or a zero-amount card check applied to that payment, and
+	// refunding up to the expected amount is then rejected by the channel.
 	OriginalChargedAmount *string `json:"originalChargedAmount,omitempty"`
 	// OriginalPayment is the payment being refunded, as it was originally charged. It
 	// carries ListTotal / DiscountAmount when that payment was recorded with them, read
-	// the same way as in ListPrice. Present only on refund events; nil when that payment carries no amount snapshot.
+	// the same way as in ListPrice. Present only on refund events; nil when that payment
+	// carries no amount snapshot.
 	OriginalPayment *WebhookAmountBreakdown `json:"originalPayment,omitempty"`
 	// PlanPrice is the subscription's list price for the current phase, always before
 	// any coupon discount — ListTotal / DiscountAmount are never set on it; the
 	// discounted amount of a charge is in ListPrice on subscription.payment_succeeded.
-	// Present only on
-	// subscription status events (every subscription.* event except
-	// subscription.payment_succeeded); nil when the subscription carries no price snapshot.
+	// Present only on subscription status events (every subscription.* event except
+	// subscription.payment_succeeded); nil when the subscription carries no price
+	// snapshot.
 	PlanPrice *WebhookAmountBreakdown `json:"planPrice,omitempty"`
 
 	ProductName        string            `json:"productName"`

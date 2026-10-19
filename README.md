@@ -153,11 +153,16 @@ session, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutP
   Rules tied to the customer are checked when the order is placed.
 - On a subscription, the coupon's `Duration` decides how many billing periods are
   discounted: `once` one period, `repeating` `DurationInPeriods` periods, `forever` every
-  period. Only periods with a price above zero count — a free trial uses no discount and it
-  starts with the first paid period, while a paid trial is discounted and counts as the
-  first period. Renewals after the coupon's `RedeemBy` are charged the full price.
-- A use is counted once, when the first discounted charge succeeds; a subscription canceled
-  before that (for example during a free trial) gives the use back.
+  period until the subscription ends. Only periods with a price above zero count — a free
+  trial uses no discount and it starts with the first paid period, while a paid trial is
+  discounted and counts as the first period. With any duration, renewals charged after the
+  coupon's `RedeemBy` are charged the full price.
+- A promotion code's minimum amount is checked against the first charge that should be
+  discounted, before the discount and excluding tax: the trial price for a paid trial, the
+  regular price otherwise.
+- A use is counted once, when the first discounted charge succeeds. If the subscription is
+  canceled before that (for example during a free trial), it first moves to `canceling`, and
+  the use is given back when the subscription ends.
 - Plan changes do not take discounts yet: a plan change session shows no code entry field.
 
 ### Plan change links
