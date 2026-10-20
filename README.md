@@ -117,6 +117,54 @@ res, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParam
 Opening the URL in a new tab is recommended so customers can return to your site
 without losing page state.
 
+### Discounts at checkout
+
+A session either carries a coupon you chose, or lets the customer enter one — never
+both. Both fields work with `CreateSession`, `Anonymous.Create` and
+`Authenticated.Create`, for one-time products and new subscriptions.
+
+```go
+// Apply a coupon (CPN_ ID from Coupons.Create): the customer sees "discount applied"
+// and the discounted amount, but cannot see, change or remove the code.
+res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheckoutParams{
+    CreateCheckoutSessionParams: pancake.CreateCheckoutSessionParams{
+        ProductID: "PROD_...",
+        Currency:  "USD",
+        CouponID:  pancake.Ptr("CPN_..."),
+    },
+    BuyerIdentity: "user-123",
+})
+
+// Or show a code entry field where the customer types a coupon or promotion code.
+session, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParams{
+    ProductID:           "PROD_...",
+    Currency:            "USD",
+    AllowPromotionCodes: pancake.Ptr(true),
+})
+```
+
+- `AllowPromotionCodes` defaults to `false` for sessions created with your API Key.
+- Setting `CouponID` together with `AllowPromotionCodes` (either value), or a `CouponID`
+  without the `CPN_` prefix, returns `*pancake.Error` (400, `ErrorLayerSDK`) before any
+  request is sent.
+- The platform rejects a coupon that belongs to another store or environment, is not
+  `active`, expires within 60 seconds, does not cover the product, or is a fixed amount
+  with no amount in the session currency, with a 409 whose message names the reason.
+  Rules tied to the customer are checked when the order is placed.
+- On a subscription, the coupon's `Duration` decides how many billing periods are
+  discounted: `once` one period, `repeating` `DurationInPeriods` periods, `forever` every
+  period until the subscription ends. Only periods with a price above zero count — a free
+  trial uses no discount and it starts with the first paid period, while a paid trial is
+  discounted and counts as the first period. With any duration, renewals charged after the
+  coupon's `RedeemBy` are charged the full price.
+- A promotion code's minimum amount is checked against the first charge that should be
+  discounted, before the discount and excluding tax: the trial price for a paid trial, the
+  regular price otherwise.
+- A use is counted once, when the first discounted charge succeeds. If the subscription is
+  canceled before that (for example during a free trial), it first moves to `canceling`, and
+  the use is given back when the subscription ends.
+- Plan changes do not take discounts yet: a plan change session shows no code entry field.
+
 ### Plan change links
 
 Switching an existing subscription to another plan uses the same endpoint in a
@@ -447,6 +495,40 @@ _, _ = client.Webhooks.Add(ctx, pancake.AddWebhookParams{
 To list configured webhooks, query GraphQL `Store.storeWebhooks` via
 `client.GraphQL.Query`.
 
+### Coupons & Promotion Codes
+
+A coupon defines the discount; its `Code` is the code buyers type. Add more codes with `PromotionCodes`. Deactivation is permanent and releases the codes for reuse. Read coupons with `client.GraphQL.Query` (`coupons`, `coupon`, `promotionCodes`).
+
+```go
+couponRes, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
+    StoreID:           "STO_xxx",
+    Name:              "Black Friday 20% off",
+    Code:              "BF2026",
+    Discount:          pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
+    Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
+    DurationInPeriods: pancake.Ptr(3),
+}, pancake.WithIdempotencyKey("coupon-bf2026"))
+if err != nil {
+    return err
+}
+
+// 1-500 random single-use codes; always retry with the same idempotency key
+batch, err := client.PromotionCodes.Generate(ctx, pancake.GeneratePromotionCodesParams{
+    CouponID:     couponRes.Coupon.ID,
+    Count:        100,
+    Prefix:       pancake.Ptr("KOL-"),
+    Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(1)},
+}, pancake.WithIdempotencyKey("kol-batch-2026-11"))
+if err != nil {
+    return err
+}
+fmt.Println(batch.BatchID, len(batch.PromotionCodes))
+
+if _, err := client.Coupons.Deactivate(ctx, pancake.DeactivateCouponParams{ID: couponRes.Coupon.ID}); err != nil {
+    return err
+}
+```
+
 ## Content Safety
 
 Scan a user's prompt for content-safety compliance before AIGC generation — continue only when `Action` is `pancake.ScanActionAllow`. The check is stateless (prompt text is never stored); it fails closed to `pancake.ScanActionReview` if the safety service is briefly unavailable.
@@ -515,6 +597,8 @@ distinguished from server-returned errors.
 | `client.OnetimeProducts`             | `Create`, `Update`, `Publish`, `UpdateStatus`                                                                                            |
 | `client.SubscriptionProducts`        | `Create`, `Update`, `Publish`, `UpdateStatus`                                                                                            |
 | `client.SubscriptionProductGroups`   | `Create`, `Update`, `Delete`, `Publish`                                                                                                  |
+| `client.Coupons`                     | `Create`, `Update`, `Deactivate`                                                                                                         |
+| `client.PromotionCodes`              | `Create`, `Generate`, `Deactivate`                                                                                                       |
 | `client.Orders`                      | `CancelSubscription`                                                                                                                     |
 | `client.Checkout`                    | `CreateSession`, `CreatePlanChangeSession`, `Anonymous.Create`, `Authenticated.Create`, `Authenticated.CreatePlanChange`                  |
 | `client.GraphQL`                     | `Query` (also `pancake.GraphQLQuery[T]`)                                                                                                 |

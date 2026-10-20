@@ -292,3 +292,47 @@ const (
 	ScanSemanticStatusProviderTimeout   ScanSemanticStatus = "provider_timeout"
 	ScanSemanticStatusProviderError     ScanSemanticStatus = "provider_error"
 )
+
+// CouponStatus is the local status of a coupon. CouponStatusPending resolves
+// automatically once the payment provider confirms; CouponStatusInactive is
+// permanent (a deactivated coupon cannot be re-enabled).
+type CouponStatus string
+
+const (
+	CouponStatusPending  CouponStatus = "pending"
+	CouponStatusActive   CouponStatus = "active"
+	CouponStatusInactive CouponStatus = "inactive"
+	CouponStatusFailed   CouponStatus = "failed"
+)
+
+// CouponDiscountType is how a coupon discounts an order.
+type CouponDiscountType string
+
+const (
+	CouponDiscountTypePercentage  CouponDiscountType = "percentage"
+	CouponDiscountTypeFixedAmount CouponDiscountType = "fixed_amount"
+)
+
+// CouponDuration is how many subscription periods get the discount: Once one
+// billing period, Repeating the number of periods in DurationInPeriods, Forever
+// every period until the subscription ends. Only periods with a price above zero
+// count: a free trial uses none of them, and the discount starts with the first
+// paid period; a paid trial is discounted and counts as the first period. With any
+// duration, renewals charged after the coupon's RedeemBy are charged the full
+// price. One-time orders always use a coupon once.
+type CouponDuration string
+
+const (
+	CouponDurationOnce      CouponDuration = "once"
+	CouponDurationRepeating CouponDuration = "repeating"
+	CouponDurationForever   CouponDuration = "forever"
+)
+
+// PromotionCodeStatus is the status of a promotion code. Inactive is permanent;
+// the code is released and can be reused.
+type PromotionCodeStatus string
+
+const (
+	PromotionCodeStatusActive   PromotionCodeStatus = "active"
+	PromotionCodeStatusInactive PromotionCodeStatus = "inactive"
+)
