@@ -400,6 +400,174 @@ type OnetimeProductResult struct {
 }
 
 // -----------------------------------------------------------------------------
+// Coupon & Promotion Code
+// -----------------------------------------------------------------------------
+
+// CouponDiscount is the discount of a coupon: set PercentOff for
+// CouponDiscountTypePercentage, or AmountOff (display-format amounts per
+// currency, e.g. "5.00") for CouponDiscountTypeFixedAmount.
+type CouponDiscount struct {
+	Type       CouponDiscountType `json:"type"`
+	PercentOff *float64           `json:"percentOff,omitempty"`
+	AmountOff  map[string]string  `json:"amountOff,omitempty"`
+}
+
+// DiscountRestrictions are buyer restrictions enforced by Pancake.
+type DiscountRestrictions struct {
+	// FirstTimeOnly limits the code to buyers making their first purchase in the store.
+	FirstTimeOnly *bool `json:"firstTimeOnly,omitempty"`
+	// CustomerEmails limits the code to these buyer emails (case-insensitive).
+	CustomerEmails []string `json:"customerEmails,omitempty"`
+	// PerCustomerLimit is the lifetime uses per buyer.
+	PerCustomerLimit *int `json:"perCustomerLimit,omitempty"`
+}
+
+// PromotionCodeRestrictions are the additional restrictions of a promotion
+// code, enforced together with its coupon's rules.
+type PromotionCodeRestrictions struct {
+	DiscountRestrictions
+	// MaxRedemptions must not exceed the coupon's MaxRedemptions.
+	MaxRedemptions *int `json:"maxRedemptions,omitempty"`
+	// ExpiresAt (ISO 8601) must not be later than the coupon's RedeemBy; it
+	// defaults to the coupon's RedeemBy.
+	ExpiresAt *string `json:"expiresAt,omitempty"`
+	// MinimumAmount is the minimum pre-discount, pre-tax amount per currency
+	// (display format). Currencies not listed have no minimum.
+	MinimumAmount map[string]string `json:"minimumAmount,omitempty"`
+}
+
+// CouponRestrictionsDetail is the API shape of a coupon's buyer restrictions.
+type CouponRestrictionsDetail struct {
+	FirstTimeOnly    bool     `json:"firstTimeOnly"`
+	CustomerEmails   []string `json:"customerEmails"`
+	PerCustomerLimit *int     `json:"perCustomerLimit"`
+}
+
+// PromotionCodeRestrictionsDetail is the API shape of a promotion code's restrictions.
+type PromotionCodeRestrictionsDetail struct {
+	FirstTimeOnly    bool              `json:"firstTimeOnly"`
+	CustomerEmails   []string          `json:"customerEmails"`
+	PerCustomerLimit *int              `json:"perCustomerLimit"`
+	MaxRedemptions   *int              `json:"maxRedemptions"`
+	ExpiresAt        *string           `json:"expiresAt"`
+	MinimumAmount    map[string]string `json:"minimumAmount"`
+}
+
+// CouponDetail is the API shape of a coupon. Code is the buyer-facing code
+// carried by the coupon's default promotion code.
+type CouponDetail struct {
+	ID                   string                   `json:"id"`
+	StoreID              string                   `json:"storeId"`
+	Name                 string                   `json:"name"`
+	Code                 string                   `json:"code"`
+	Status               CouponStatus             `json:"status"`
+	DiscountType         CouponDiscountType       `json:"discountType"`
+	PercentOff           *float64                 `json:"percentOff"`
+	AmountOff            map[string]string        `json:"amountOff"`
+	Duration             CouponDuration           `json:"duration"`
+	DurationInPeriods    *int                     `json:"durationInPeriods"`
+	ProductIDs           []string                 `json:"productIds"`
+	MaxRedemptions       *int                     `json:"maxRedemptions"`
+	DailyRedemptionLimit *int                     `json:"dailyRedemptionLimit"`
+	RedeemBy             *string                  `json:"redeemBy"`
+	Restrictions         CouponRestrictionsDetail `json:"restrictions"`
+	CreatedAt            string                   `json:"createdAt"`
+	UpdatedAt            string                   `json:"updatedAt"`
+}
+
+// CreateCouponParams is the input to Coupons.Create. Code becomes the coupon's
+// default promotion code: 3-32 letters, digits or '-', case-insensitive, unique
+// among the store's active codes.
+type CreateCouponParams struct {
+	StoreID string `json:"storeId"`
+	// Name is an internal name (at most 64 characters), not visible to buyers.
+	Name     string         `json:"name"`
+	Code     string         `json:"code"`
+	Discount CouponDiscount `json:"discount"`
+	// Duration defaults to CouponDurationOnce.
+	Duration *CouponDuration `json:"duration,omitempty"`
+	// DurationInPeriods is required when Duration is CouponDurationRepeating.
+	DurationInPeriods *int `json:"durationInPeriods,omitempty"`
+	// ProductIDs restricts the coupon to these products; empty means the whole store.
+	ProductIDs []string `json:"productIds,omitempty"`
+	// MaxRedemptions is the global redemption limit; refunds do not give uses back.
+	MaxRedemptions *int `json:"maxRedemptions,omitempty"`
+	// DailyRedemptionLimit is the per-buyer limit per UTC day.
+	DailyRedemptionLimit *int `json:"dailyRedemptionLimit,omitempty"`
+	// RedeemBy (ISO 8601) also ends discounts already attached to subscriptions.
+	RedeemBy     *string               `json:"redeemBy,omitempty"`
+	Restrictions *DiscountRestrictions `json:"restrictions,omitempty"`
+}
+
+// UpdateCouponParams is the input to Coupons.Update. The name is the only field
+// that can change.
+type UpdateCouponParams struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// DeactivateCouponParams is the input to Coupons.Deactivate.
+type DeactivateCouponParams struct {
+	ID string `json:"id"`
+}
+
+// CouponResult wraps a coupon returned by the coupon actions.
+type CouponResult struct {
+	Coupon   CouponDetail `json:"coupon"`
+	Warnings []Notice     `json:"warnings,omitempty"`
+}
+
+// PromotionCodeDetail is the API shape of a promotion code.
+type PromotionCodeDetail struct {
+	ID           string                          `json:"id"`
+	CouponID     string                          `json:"couponId"`
+	Code         string                          `json:"code"`
+	Status       PromotionCodeStatus             `json:"status"`
+	Restrictions PromotionCodeRestrictionsDetail `json:"restrictions"`
+	BatchID      *string                         `json:"batchId"`
+	CreatedAt    string                          `json:"createdAt"`
+}
+
+// CreatePromotionCodeParams is the input to PromotionCodes.Create. A random
+// code is generated when Code is nil.
+type CreatePromotionCodeParams struct {
+	CouponID     string                     `json:"couponId"`
+	Code         *string                    `json:"code,omitempty"`
+	Restrictions *PromotionCodeRestrictions `json:"restrictions,omitempty"`
+}
+
+// GeneratePromotionCodesParams is the input to PromotionCodes.Generate
+// (1-500 codes, synchronous). Always retry with the same idempotency key: a
+// retry without it generates another batch.
+type GeneratePromotionCodesParams struct {
+	CouponID string `json:"couponId"`
+	Count    int    `json:"count"`
+	// Prefix is 1-12 letters, digits or '-'.
+	Prefix *string `json:"prefix,omitempty"`
+	// Length of the random part, 8-16; defaults to 10.
+	Length       *int                       `json:"length,omitempty"`
+	Restrictions *PromotionCodeRestrictions `json:"restrictions,omitempty"`
+}
+
+// DeactivatePromotionCodeParams is the input to PromotionCodes.Deactivate.
+type DeactivatePromotionCodeParams struct {
+	ID string `json:"id"`
+}
+
+// PromotionCodeResult wraps a promotion code returned by the promotion code actions.
+type PromotionCodeResult struct {
+	PromotionCode PromotionCodeDetail `json:"promotionCode"`
+	Warnings      []Notice            `json:"warnings,omitempty"`
+}
+
+// GeneratePromotionCodesResult is the result of PromotionCodes.Generate.
+type GeneratePromotionCodesResult struct {
+	BatchID        string                `json:"batchId"`
+	PromotionCodes []PromotionCodeDetail `json:"promotionCodes"`
+	Warnings       []Notice              `json:"warnings,omitempty"`
+}
+
+// -----------------------------------------------------------------------------
 // Subscription Product
 // -----------------------------------------------------------------------------
 
@@ -601,6 +769,19 @@ type CreateCheckoutSessionParams struct {
 	// Values the currency does not offer are ignored, so one blacklist can be reused across currencies.
 	// Mutually exclusive with IncludePaymentMethods.
 	ExcludePaymentMethods []PaymentMethod `json:"excludePaymentMethods,omitempty"`
+	// CouponID applies a coupon to the session (Short ID, CPN_xxx — the Pancake coupon ID, not
+	// the payment provider's). The discount is locked: the customer sees it applied but cannot
+	// change or remove it, and no code entry field is shown. One-time products only for now — a
+	// subscription product is rejected with a 409. The platform also answers 409 for a coupon
+	// from another store or environment, one that is not active or expires within 60 seconds,
+	// one not covering the product, and a fixed amount coupon with no amount in Currency.
+	// Rules tied to the customer are checked when the order is placed.
+	// Mutually exclusive with AllowPromotionCodes.
+	CouponID *string `json:"couponId,omitempty"`
+	// AllowPromotionCodes shows a code entry field on the checkout page, where the customer can
+	// enter a coupon code or promotion code. The platform defaults it to false for sessions
+	// created with the API Key. Mutually exclusive with CouponID.
+	AllowPromotionCodes *bool `json:"allowPromotionCodes,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and
