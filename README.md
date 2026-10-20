@@ -119,9 +119,11 @@ without losing page state.
 
 ### Discounts at checkout
 
-A session either carries a coupon you chose, or lets the customer enter one — never
-both. Both fields work with `CreateSession`, `Anonymous.Create` and
-`Authenticated.Create`, for one-time products and new subscriptions.
+A session either carries a coupon you chose (locked), or works with promotion codes —
+a code you prefill, a code entry field, or both. A coupon never comes with either. The
+fields work with `CreateSession`, `Anonymous.Create` and `Authenticated.Create`, and on
+plan changes with `CreatePlanChangeSession` and `Authenticated.CreatePlanChange`, for
+one-time products, new subscriptions and plan changes.
 
 ```go
 // Apply a coupon (CPN_ ID from Coupons.Create): the customer sees "discount applied"
@@ -141,15 +143,28 @@ session, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutP
     Currency:            "USD",
     AllowPromotionCodes: pancake.Ptr(true),
 })
+
+// Or prefill a promotion code (the code string). With AllowPromotionCodes true the
+// customer can replace it with another code or remove it; left nil the code is locked.
+session, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+    ProductID:           "PROD_...",
+    Currency:            "USD",
+    PromotionCode:       pancake.Ptr("SPRING-20"),
+    AllowPromotionCodes: pancake.Ptr(true),
+})
 ```
 
 - `AllowPromotionCodes` defaults to `false` for sessions created with your API Key.
-- Setting `CouponID` together with `AllowPromotionCodes` (either value), or a `CouponID`
-  without the `CPN_` prefix, returns `*pancake.Error` (400, `ErrorLayerSDK`) before any
-  request is sent.
-- The platform rejects a coupon that belongs to another store or environment, is not
-  `active`, expires within 60 seconds, does not cover the product, or is a fixed amount
-  with no amount in the session currency, with a 409 whose message names the reason.
+- `PromotionCode` takes the code string (case-insensitive) and needs your API Key. With
+  `AllowPromotionCodes` true the customer can replace the prefilled code or remove it and
+  enter another; left nil (or false) the code is locked.
+- Setting `CouponID` together with `PromotionCode` or `AllowPromotionCodes` (either
+  value), a `CouponID` without the `CPN_` prefix, or an empty `PromotionCode`, returns
+  `*pancake.Error` (400, `ErrorLayerSDK`) before any request is sent.
+- The platform rejects a coupon or prefilled promotion code that belongs to another store
+  or environment, is not `active`, expires within 60 seconds, does not cover the product,
+  or is a fixed amount with no amount in the session currency, with a 409 whose message
+  names the reason.
   Rules tied to the customer are checked when the order is placed.
 - On a subscription, the coupon's `Duration` decides how many billing periods are
   discounted: `once` one period, `repeating` `DurationInPeriods` periods, `forever` every
@@ -163,7 +178,14 @@ session, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutP
 - A use is counted once, when the first discounted charge succeeds. If the subscription is
   canceled before that (for example during a free trial), it first moves to `canceling`, and
   the use is given back when the subscription ends.
-- Plan changes do not take discounts yet: a plan change session shows no code entry field.
+- On a plan change, a coupon or code replaces the subscription's current discount and
+  counts its periods from the new subscription's first charge above zero; without one, the
+  current discount carries over to the new plan with the periods already used, unless it
+  has no periods left, its coupon's `RedeemBy` is within 60 seconds, or the coupon is
+  deactivated — then the new plan is charged the full price. A promotion code's minimum
+  amount is checked against the new plan's regular price before the discount, excluding
+  tax, without subtracting the credit for the current plan. See
+  [Discounts](https://docs.waffo.ai/guides/discounts#subscriptions).
 
 ### Plan change links
 
@@ -197,6 +219,10 @@ res, err := client.Checkout.Authenticated.CreatePlanChange(ctx, pancake.Authenti
 - `ChangeAmount` sets what you charge for this period, `ChangeCreditAmount` how
   much you credit against it. Same unit and tax basis, opposite meaning — they are
   mutually exclusive and sending both is rejected with a 400.
+- `CouponID`, `PromotionCode` and `AllowPromotionCodes` work as on a new purchase; a
+  coupon or code replaces the subscription's discount, and without one the current
+  discount carries over while it still applies (see
+  [Discounts at checkout](#discounts-at-checkout)).
 - `ChangeAmount`, `ChangeCreditAmount` and `WithTrial` are honored because these
   calls are signed with your API Key; a customer-session credential has them
   silently dropped.

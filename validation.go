@@ -195,12 +195,34 @@ func validateSessionCommon(productID, currency string, priceSnapshot *PriceSnaps
 	return validateMaxLength("orderMerchantExternalId", orderMerchantExternalID, 128)
 }
 
-// validateCheckoutCommon runs the shared checks for Checkout endpoints.
+// validateSessionDiscount checks the discount fields of a checkout or plan change
+// session.
 //
-// CouponID and AllowPromotionCodes are mutually exclusive: a session either has a
-// coupon applied and locked by the merchant, or lets the customer enter a code.
-// Setting both (with any AllowPromotionCodes value) is rejected here, as the
-// platform would reject it with a 400.
+// CouponID is mutually exclusive with both PromotionCode and AllowPromotionCodes: a
+// session either has a coupon applied and locked by the merchant, or carries a
+// prefilled promotion code and / or a code entry field. Setting CouponID with either
+// (with any AllowPromotionCodes value) is rejected here, as the platform would reject
+// it with a 400. PromotionCode must not be empty or whitespace only.
+func validateSessionDiscount(couponID, promotionCode *string, allowPromotionCodes *bool) error {
+	if promotionCode != nil && strings.TrimSpace(*promotionCode) == "" {
+		return newSDKError("promotionCode cannot be empty")
+	}
+	if couponID != nil {
+		if err := validateShortID("couponId", *couponID, "CPN"); err != nil {
+			return err
+		}
+		if promotionCode != nil {
+			return newSDKError("couponId and promotionCode are mutually exclusive: pass couponId to apply a coupon, or promotionCode to prefill a promotion code")
+		}
+		if allowPromotionCodes != nil {
+			return newSDKError("couponId and allowPromotionCodes are mutually exclusive: pass couponId to apply a coupon, or allowPromotionCodes to let the customer enter a code")
+		}
+	}
+	return nil
+}
+
+// validateCheckoutCommon runs the shared checks for Checkout endpoints, including
+// the discount fields (see validateSessionDiscount).
 func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 	if err := validateSessionCommon(p.ProductID, p.Currency, p.PriceSnapshot, p.ExpiresInSeconds, p.OrderMerchantExternalID); err != nil {
 		return err
@@ -208,23 +230,16 @@ func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 	if err := validateBillingDetail(p.BillingDetail); err != nil {
 		return err
 	}
-	if p.CouponID != nil {
-		if err := validateShortID("couponId", *p.CouponID, "CPN"); err != nil {
-			return err
-		}
-		if p.AllowPromotionCodes != nil {
-			return newSDKError("couponId and allowPromotionCodes are mutually exclusive: pass couponId to apply a coupon, or allowPromotionCodes to let the customer enter a code")
-		}
-	}
-	return nil
+	return validateSessionDiscount(p.CouponID, p.PromotionCode, p.AllowPromotionCodes)
 }
 
 // validatePlanChangeCommon runs the shared checks for plan change endpoints.
 //
-// It covers the same ground as validateCheckoutCommon minus BillingDetail (plan
-// change mode takes it from the origin subscription) plus the plan-change-only
-// fields. The mode rules themselves (which field may accompany which) belong to
-// the platform — this only catches malformed input before the request goes out.
+// It covers the same ground as validateCheckoutCommon — including the discount
+// fields — minus BillingDetail (plan change mode takes it from the origin
+// subscription) plus the plan-change-only fields. The other mode rules (which field
+// may accompany which) belong to the platform — this only catches malformed input
+// before the request goes out.
 func validatePlanChangeCommon(p *CreatePlanChangeSessionParams) error {
 	if err := validateSessionCommon(p.ProductID, p.Currency, p.PriceSnapshot, p.ExpiresInSeconds, p.OrderMerchantExternalID); err != nil {
 		return err
@@ -242,7 +257,7 @@ func validatePlanChangeCommon(p *CreatePlanChangeSessionParams) error {
 			return err
 		}
 	}
-	return nil
+	return validateSessionDiscount(p.CouponID, p.PromotionCode, p.AllowPromotionCodes)
 }
 
 // validateDiscountCode checks the code format shared by coupons and promotion

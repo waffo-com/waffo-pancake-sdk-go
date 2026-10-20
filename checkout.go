@@ -36,7 +36,8 @@ func newCheckoutResource(h *httpClient) *CheckoutResource {
 // should prefer Checkout.Anonymous.Create or Checkout.Authenticated.Create.
 //
 // It validates the same fields as those two methods, including that CouponID is
-// a CPN_ Short ID and is not combined with AllowPromotionCodes.
+// a CPN_ Short ID and is not combined with PromotionCode or AllowPromotionCodes,
+// and that PromotionCode is not empty.
 //
 // Example:
 //
@@ -56,6 +57,14 @@ func newCheckoutResource(h *httpClient) *CheckoutResource {
 //	_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
 //	    ProductID:           "PROD_...",
 //	    Currency:            "USD",
+//	    AllowPromotionCodes: pancake.Ptr(true),
+//	})
+//	// ...or prefill a promotion code; AllowPromotionCodes true lets the customer
+//	// change or remove it, leave it nil to lock the code.
+//	_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+//	    ProductID:           "PROD_...",
+//	    Currency:            "USD",
+//	    PromotionCode:       pancake.Ptr("SPRING-20"),
 //	    AllowPromotionCodes: pancake.Ptr(true),
 //	})
 func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSessionParams, opts ...RequestOption) (*CheckoutSessionResult, error) {
@@ -79,6 +88,14 @@ func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSe
 // platform silently drops them for any other credential. ChangeAmount and
 // ChangeCreditAmount are mutually exclusive and the platform rejects both-at-once
 // with a 400 — this method forwards what the caller passes.
+//
+// CouponID (locked), PromotionCode (prefilled; changeable only with
+// AllowPromotionCodes true) or AllowPromotionCodes alone (code entry field) set the
+// discount. A coupon or code replaces the subscription's current discount; without
+// one the current discount carries over with the periods already used, unless it has
+// no periods left, its coupon's RedeemBy is within 60 seconds, or the coupon is
+// deactivated. CouponID with PromotionCode or AllowPromotionCodes returns *Error
+// (400, ErrorLayerSDK) before the request is sent.
 //
 // Example:
 //

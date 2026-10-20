@@ -772,16 +772,25 @@ type CreateCheckoutSessionParams struct {
 	// CouponID applies a coupon to the session (Short ID, CPN_xxx — the Pancake coupon ID, not
 	// the payment provider's). The discount is locked: the customer sees it applied but cannot
 	// change or remove it, and no code entry field is shown. Works for one-time products and new
-	// subscriptions; plan changes do not take discounts yet. On a subscription the coupon's
-	// CouponDuration decides how many billing periods are discounted. The platform answers 409
-	// for a coupon from another store or environment, one that is not active or expires within
-	// 60 seconds, one not covering the product, and a fixed amount coupon with no amount in Currency.
-	// Rules tied to the customer are checked when the order is placed.
-	// Mutually exclusive with AllowPromotionCodes.
+	// subscriptions (plan changes take one through CreatePlanChangeSessionParams.CouponID). On a
+	// subscription the coupon's CouponDuration decides how many billing periods are discounted.
+	// The platform answers 409 for a coupon from another store or environment, one that is not
+	// active or expires within 60 seconds, one not covering the product, and a fixed amount coupon
+	// with no amount in Currency. Rules tied to the customer are checked when the order is placed.
+	// Mutually exclusive with PromotionCode and AllowPromotionCodes.
 	CouponID *string `json:"couponId,omitempty"`
+	// PromotionCode prefills a promotion code on the checkout page (the code string the customer
+	// would type, case-insensitive). Merchant credentials only. With AllowPromotionCodes set to
+	// true the customer can replace it with another code or remove it; left nil (or false) the
+	// code is locked. The platform looks the code up among currently usable promotion codes and
+	// answers 409 for one that cannot be used in this store, environment, product or currency,
+	// naming the reason. Rules tied to the customer are checked when the order is placed.
+	// Mutually exclusive with CouponID.
+	PromotionCode *string `json:"promotionCode,omitempty"`
 	// AllowPromotionCodes shows a code entry field on the checkout page, where the customer can
 	// enter a coupon code or promotion code. The platform defaults it to false for sessions
-	// created with the API Key. Mutually exclusive with CouponID.
+	// created with the API Key. Together with PromotionCode, true lets the customer change or
+	// remove the prefilled code. Mutually exclusive with CouponID.
 	AllowPromotionCodes *bool `json:"allowPromotionCodes,omitempty"`
 }
 
@@ -845,6 +854,32 @@ type CreatePlanChangeSessionParams struct {
 	IncludePaymentMethods []PaymentMethod `json:"includePaymentMethods,omitempty"`
 	// ExcludePaymentMethods is a blacklist, mutually exclusive with IncludePaymentMethods.
 	ExcludePaymentMethods []PaymentMethod `json:"excludePaymentMethods,omitempty"`
+	// CouponID applies a coupon to the new plan (Short ID, CPN_xxx). Locked: the customer
+	// cannot change or remove it, and no code entry field is shown. It replaces the
+	// subscription's current discount — the remaining periods of that discount are dropped
+	// and the new coupon's CouponDuration counts from the new subscription's first charge
+	// above zero. The platform checks it against the target plan's product, with the same
+	// 409 reasons as CreateCheckoutSessionParams.CouponID.
+	//
+	// Without a coupon or promotion code, the current discount carries over to the new plan
+	// with the periods already used, unless it has no periods left, its coupon's RedeemBy is
+	// within 60 seconds, or the coupon is deactivated — then the new plan is charged the full
+	// price. See https://docs.waffo.ai/guides/discounts#subscriptions.
+	//
+	// Mutually exclusive with PromotionCode and AllowPromotionCodes.
+	CouponID *string `json:"couponId,omitempty"`
+	// PromotionCode prefills a promotion code on the confirmation page (the code string,
+	// case-insensitive). Merchant credentials only. Like CouponID it replaces the
+	// subscription's current discount. With AllowPromotionCodes set to true the customer can
+	// replace it with another code or remove it; otherwise it is locked. The platform answers
+	// 409 when it cannot be used for the target plan. Mutually exclusive with CouponID.
+	PromotionCode *string `json:"promotionCode,omitempty"`
+	// AllowPromotionCodes shows a code entry field on the confirmation page, where the
+	// customer can enter a coupon code or promotion code for the new plan. The platform
+	// defaults it to false for sessions created with the API Key. Together with
+	// PromotionCode, true lets the customer change or remove the prefilled code. Mutually
+	// exclusive with CouponID.
+	AllowPromotionCodes *bool `json:"allowPromotionCodes,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
