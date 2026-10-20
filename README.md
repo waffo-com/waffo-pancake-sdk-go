@@ -185,7 +185,7 @@ session, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionP
   deactivated — then the new plan is charged the full price. A promotion code's minimum
   amount is checked against the new plan's regular price before the discount, excluding
   tax, without subtracting the credit for the current plan. See
-  [Discounts](https://docs.waffo.ai/guides/discounts#subscriptions).
+  [Discounts](https://docs.waffo.ai/guides/discounts#plan-changes).
 
 ### Plan change links
 

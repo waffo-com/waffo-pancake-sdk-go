@@ -864,7 +864,7 @@ type CreatePlanChangeSessionParams struct {
 	// Without a coupon or promotion code, the current discount carries over to the new plan
 	// with the periods already used, unless it has no periods left, its coupon's RedeemBy is
 	// within 60 seconds, or the coupon is deactivated — then the new plan is charged the full
-	// price. See https://docs.waffo.ai/guides/discounts#subscriptions.
+	// price. See https://docs.waffo.ai/guides/discounts#plan-changes.
 	//
 	// Mutually exclusive with PromotionCode and AllowPromotionCodes.
 	CouponID *string `json:"couponId,omitempty"`
