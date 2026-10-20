@@ -293,13 +293,12 @@ const (
 	ScanSemanticStatusProviderError     ScanSemanticStatus = "provider_error"
 )
 
-// CouponStatus is the local status of a coupon. CouponStatusPending resolves
-// automatically once the payment provider confirms; CouponStatusInactive is
-// permanent (a deactivated coupon cannot be re-enabled).
+// CouponStatus is the local status of a coupon. Creation either succeeds
+// (CouponStatusActive) or fails (CouponStatusFailed, the code is released);
+// CouponStatusInactive is permanent (a deactivated coupon cannot be re-enabled).
 type CouponStatus string
 
 const (
-	CouponStatusPending  CouponStatus = "pending"
 	CouponStatusActive   CouponStatus = "active"
 	CouponStatusInactive CouponStatus = "inactive"
 	CouponStatusFailed   CouponStatus = "failed"

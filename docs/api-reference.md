@@ -568,12 +568,12 @@ res, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
 	Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
 	DurationInPeriods: pancake.Ptr(3),
 }, pancake.WithIdempotencyKey("coupon-bf2026"))
-// res.Coupon.Status is CouponStatusActive, or CouponStatusPending while the payment provider is confirming.
+// res.Coupon.Status is CouponStatusActive (a successful creation is always active).
 ```
 
 Fixed-amount coupons set `Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "5.00"}}` (each amount greater than 0). `Name` is at most 64 characters, counted in UTF-16 code units after trimming. Other fields: `ProductIDs`, `MaxRedemptions`, `DailyRedemptionLimit` (per buyer per UTC day), `RedeemBy` (ISO 8601; also ends discounts already attached to subscriptions), `Restrictions` (`FirstTimeOnly`, `CustomerEmails`, `PerCustomerLimit`).
 
-**Returns `*CouponResult`**: `{ Coupon, Warnings }`. Errors: 409 when the code is taken (also when retrying **without** the idempotency key), 502 when the payment provider rejects the coupon.
+**Returns `*CouponResult`**: `{ Coupon, Warnings }`. Errors: 409 when the code is taken (also when retrying a request that succeeded **without** the idempotency key), 502 when the payment provider rejects the coupon or does not confirm the creation — the creation failed and its code is released, so retry with the same code.
 
 ### `client.Coupons.Update(ctx, params)`
 
@@ -1352,7 +1352,7 @@ All exported types:
 | `ErrorLayer`                            | `Gateway` / `User` / `Store` / `Product` / `Order` / `Ticket` / `GraphQL` / `Resource` / `Email` / `SDK` |
 | `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` |
 | `WebhookChannel`                        | `HTTP` / `Feishu` / `Discord` / `Telegram` / `Slack`       |
-| `CouponStatus`                          | `Pending` / `Active` / `Inactive` / `Failed`               |
+| `CouponStatus`                          | `Active` / `Inactive` / `Failed`                           |
 | `CouponDiscountType`                    | `Percentage` / `FixedAmount`                               |
 | `CouponDuration`                        | `Once` / `Repeating` / `Forever`                           |
 | `PromotionCodeStatus`                   | `Active` / `Inactive`                                      |
