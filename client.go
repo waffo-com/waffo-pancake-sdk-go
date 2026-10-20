@@ -22,6 +22,10 @@ type Client struct {
 	SubscriptionProducts *SubscriptionProductsResource
 	// SubscriptionProductGroups manages subscription groups.
 	SubscriptionProductGroups *SubscriptionProductGroupsResource
+	// Coupons manages coupons (discount codes).
+	Coupons *CouponsResource
+	// PromotionCodes manages promotion codes.
+	PromotionCodes *PromotionCodesResource
 	// Orders manages orders.
 	Orders *OrdersResource
 	// Checkout creates checkout sessions.
@@ -73,6 +77,8 @@ func New(c Config) (*Client, error) {
 	cl.OnetimeProducts = &OnetimeProductsResource{http: h}
 	cl.SubscriptionProducts = &SubscriptionProductsResource{http: h}
 	cl.SubscriptionProductGroups = &SubscriptionProductGroupsResource{http: h}
+	cl.Coupons = &CouponsResource{http: h}
+	cl.PromotionCodes = &PromotionCodesResource{http: h}
 	cl.Orders = &OrdersResource{http: h}
 	cl.Checkout = newCheckoutResource(h)
 	cl.GraphQL = &GraphQLResource{http: h}
