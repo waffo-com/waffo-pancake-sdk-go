@@ -555,7 +555,7 @@ res, err := client.SubscriptionProductGroups.Publish(ctx, pancake.PublishSubscri
 
 ## Coupons
 
-A coupon defines a discount. Buyers redeem it by entering one of its promotion codes; create up to 20 of them together with the coupon (`PromotionCodes`) and add more later with [`PromotionCodes`](#promotion-codes). A coupon applied with `CouponID` on a checkout or plan change session needs no code. Codes are 3–32 letters, digits or `-`, case-insensitive (stored uppercase), and unique among the store's **active** codes in the same environment; a deactivated code is released and can be reused. Deactivation is permanent, and only the name of a coupon can change. List and read coupons with `GraphQL.Query` (`coupons`, `couponsCount`, `coupon`).
+A coupon defines a discount and has its own `Code` that buyers can enter (random when nil). Its only redemption limits are `RedeemBy` and `MaxRedemptions` (total across all its codes); buyer restrictions belong to promotion codes — create up to 20 of them together with the coupon (`PromotionCodes`) and add more later with [`PromotionCodes`](#promotion-codes). A coupon applied with `CouponID` on a checkout or plan change session needs no code. Codes are 3–32 letters, digits or `-`, case-insensitive (stored uppercase), and unique among the store's **active** codes in the same environment; a deactivated code is released and can be reused. Deactivation is permanent, and only the name of a coupon can change. List and read coupons with `GraphQL.Query` (`coupons`, `couponsCount`, `coupon`).
 
 ### `client.Coupons.Create(ctx, params)`
 
@@ -566,18 +566,20 @@ res, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
 	Discount:          pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
 	Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
 	DurationInPeriods: pancake.Ptr(3),
+	Code:              pancake.Ptr("BF2026"), // nil generates a random code
+	MaxRedemptions:    pancake.Ptr(1000),
 	PromotionCodes: []pancake.CreateCouponPromotionCodeParams{
-		{Code: pancake.Ptr("BF2026")},
-		{Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(100)}}, // random code
+		{Code: pancake.Ptr("BF-VIP")},
+		{Restrictions: &pancake.PromotionCodeRestrictions{FirstTimeOnly: pancake.Ptr(true), DailyRedemptionLimit: pancake.Ptr(1)}}, // random code
 	},
 }, pancake.WithIdempotencyKey("coupon-bf2026"))
 // res.Coupon.Status is CouponStatusActive (a successful creation is always active).
-// res.Coupon.PromotionCodes lists the codes created with it, in request order.
+// res.Coupon.Code is "BF2026"; res.Coupon.PromotionCodes lists the codes created with it, in request order.
 ```
 
-Fixed-amount coupons set `Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "5.00"}}` (each amount greater than 0). `Name` is at most 64 characters, counted in UTF-16 code units after trimming. Other fields: `ProductIDs`, `MaxRedemptions`, `DailyRedemptionLimit` (per buyer per UTC day), `RedeemBy` (ISO 8601; also ends discounts already attached to subscriptions), `Restrictions` (`FirstTimeOnly`, `CustomerEmails`, `PerCustomerLimit`), `PromotionCodes` (0–20 `CreateCouponPromotionCodeParams`, each `{ Code, Restrictions }` with the same rules as `PromotionCodes.Create`; `Code` nil generates a random 10-character code, and codes must be unique within the request).
+Fixed-amount coupons set `Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "5.00"}}` (each amount greater than 0). `Name` is at most 64 characters, counted in UTF-16 code units after trimming. Other fields: `Code` (the coupon's own code; nil generates a random 10-character code), `ProductIDs`, `MaxRedemptions` (total across the coupon's code and all its promotion codes), `RedeemBy` (ISO 8601; also ends discounts already attached to subscriptions), `PromotionCodes` (0–20 `CreateCouponPromotionCodeParams`, each `{ Code, Restrictions }` with the same rules as `PromotionCodes.Create`; `Code` nil generates a random 10-character code, and codes — including the coupon's `Code` — must be unique within the request).
 
-**Returns `*CreateCouponResult`**: `{ Coupon, Warnings }`, where `Coupon` is a `CreatedCouponDetail` (`CouponDetail` plus `PromotionCodes`). Errors: 400 for duplicate codes in the request or a promotion code limit beyond the coupon's (the message names `promotionCodes[i]`), 409 when a code is taken — the message names it (also when retrying a request that succeeded **without** the idempotency key), 502 when the payment provider rejects the coupon or does not confirm the creation — the creation failed and every code is released, so retry with the same codes.
+**Returns `*CreateCouponResult`**: `{ Coupon, Warnings }`, where `Coupon` is a `CreatedCouponDetail` (`CouponDetail`, including its `Code`, plus `PromotionCodes`). Errors: 400 for duplicate codes in the request or a promotion code limit beyond the coupon's (the message names `promotionCodes[i]`), 409 when a code is taken — the message names it (also when retrying a request that succeeded **without** the idempotency key), 502 when the payment provider rejects the coupon or does not confirm the creation — the creation failed and every code is released, so retry with the same codes.
 
 ### `client.Coupons.Update(ctx, params)`
 
@@ -617,7 +619,7 @@ res, err := client.PromotionCodes.Create(ctx, pancake.CreatePromotionCodeParams{
 })
 ```
 
-`PromotionCodeRestrictions` adds `MaxRedemptions` (≤ the coupon's), `ExpiresAt` (≤ the coupon's `RedeemBy`; defaults to it) and `MinimumAmount` (pre-discount, pre-tax amount per currency) to the buyer restrictions.
+`PromotionCodeRestrictions` holds the buyer restrictions — `FirstTimeOnly`, `CustomerEmails`, `PerCustomerLimit`, `DailyRedemptionLimit` (uses per buyer per UTC day) — plus `MaxRedemptions` (≤ the coupon's), `ExpiresAt` (≤ the coupon's `RedeemBy`; defaults to it) and `MinimumAmount` (pre-discount, pre-tax amount per currency). The coupon's `RedeemBy` and `MaxRedemptions` apply to every code.
 
 **Returns `*PromotionCodeResult`**: `{ PromotionCode, Warnings }`
 
@@ -1278,10 +1280,8 @@ All exported types:
 | `PublishSubscriptionProductGroupParams` | Publish test → prod                                        |
 | **Coupon & Promotion Code**             |                                                            |
 | `CouponDiscount`                        | Discount of a coupon (`Type` + `PercentOff` or `AmountOff`) |
-| `DiscountRestrictions`                  | Buyer restrictions accepted on create                      |
-| `CouponRestrictionsDetail`              | Buyer restrictions as returned on a coupon                 |
 | `CouponDetail`                          | Coupon entity                                              |
-| `CreateCouponParams`                    | Create request (optional `PromotionCodes`, 0–20)           |
+| `CreateCouponParams`                    | Create request (optional `Code` and `PromotionCodes`, 0–20) |
 | `CreateCouponPromotionCodeParams`       | Promotion code created with the coupon (`Code` optional)   |
 | `CreatedCouponDetail` / `CreateCouponResult` | Coupon returned by `Create`, with `PromotionCodes`     |
 | `UpdateCouponParams`                    | Rename request                                             |

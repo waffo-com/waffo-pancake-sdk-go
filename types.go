@@ -412,20 +412,18 @@ type CouponDiscount struct {
 	AmountOff  map[string]string  `json:"amountOff,omitempty"`
 }
 
-// DiscountRestrictions are buyer restrictions enforced by Pancake.
-type DiscountRestrictions struct {
+// PromotionCodeRestrictions are the redemption restrictions of a promotion
+// code, enforced together with its coupon's RedeemBy and MaxRedemptions (the
+// only limits a coupon has).
+type PromotionCodeRestrictions struct {
 	// FirstTimeOnly limits the code to buyers making their first purchase in the store.
 	FirstTimeOnly *bool `json:"firstTimeOnly,omitempty"`
 	// CustomerEmails limits the code to these buyer emails (case-insensitive).
 	CustomerEmails []string `json:"customerEmails,omitempty"`
-	// PerCustomerLimit is the lifetime uses per buyer.
+	// PerCustomerLimit is the lifetime uses of this code per buyer.
 	PerCustomerLimit *int `json:"perCustomerLimit,omitempty"`
-}
-
-// PromotionCodeRestrictions are the additional restrictions of a promotion
-// code, enforced together with its coupon's rules.
-type PromotionCodeRestrictions struct {
-	DiscountRestrictions
+	// DailyRedemptionLimit is the uses of this code per buyer per UTC day.
+	DailyRedemptionLimit *int `json:"dailyRedemptionLimit,omitempty"`
 	// MaxRedemptions must not exceed the coupon's MaxRedemptions.
 	MaxRedemptions *int `json:"maxRedemptions,omitempty"`
 	// ExpiresAt (ISO 8601) must not be later than the coupon's RedeemBy; it
@@ -436,62 +434,62 @@ type PromotionCodeRestrictions struct {
 	MinimumAmount map[string]string `json:"minimumAmount,omitempty"`
 }
 
-// CouponRestrictionsDetail is the API shape of a coupon's buyer restrictions.
-type CouponRestrictionsDetail struct {
-	FirstTimeOnly    bool     `json:"firstTimeOnly"`
-	CustomerEmails   []string `json:"customerEmails"`
-	PerCustomerLimit *int     `json:"perCustomerLimit"`
-}
-
 // PromotionCodeRestrictionsDetail is the API shape of a promotion code's restrictions.
 type PromotionCodeRestrictionsDetail struct {
-	FirstTimeOnly    bool              `json:"firstTimeOnly"`
-	CustomerEmails   []string          `json:"customerEmails"`
-	PerCustomerLimit *int              `json:"perCustomerLimit"`
-	MaxRedemptions   *int              `json:"maxRedemptions"`
-	ExpiresAt        *string           `json:"expiresAt"`
-	MinimumAmount    map[string]string `json:"minimumAmount"`
+	FirstTimeOnly        bool              `json:"firstTimeOnly"`
+	CustomerEmails       []string          `json:"customerEmails"`
+	PerCustomerLimit     *int              `json:"perCustomerLimit"`
+	DailyRedemptionLimit *int              `json:"dailyRedemptionLimit"`
+	MaxRedemptions       *int              `json:"maxRedemptions"`
+	ExpiresAt            *string           `json:"expiresAt"`
+	MinimumAmount        map[string]string `json:"minimumAmount"`
 }
 
-// CouponDetail is the API shape of a coupon. Buyers redeem a coupon through its
-// promotion codes; a coupon applied by CouponID needs no code.
+// CouponDetail is the API shape of a coupon. Buyers redeem a coupon with its
+// own Code or one of its promotion codes; a coupon applied by CouponID needs no
+// code. Its only redemption limits are RedeemBy and MaxRedemptions.
 type CouponDetail struct {
-	ID                   string                   `json:"id"`
-	StoreID              string                   `json:"storeId"`
-	Name                 string                   `json:"name"`
-	Status               CouponStatus             `json:"status"`
-	DiscountType         CouponDiscountType       `json:"discountType"`
-	PercentOff           *float64                 `json:"percentOff"`
-	AmountOff            map[string]string        `json:"amountOff"`
-	Duration             CouponDuration           `json:"duration"`
-	DurationInPeriods    *int                     `json:"durationInPeriods"`
-	ProductIDs           []string                 `json:"productIds"`
-	MaxRedemptions       *int                     `json:"maxRedemptions"`
-	DailyRedemptionLimit *int                     `json:"dailyRedemptionLimit"`
-	RedeemBy             *string                  `json:"redeemBy"`
-	Restrictions         CouponRestrictionsDetail `json:"restrictions"`
-	CreatedAt            string                   `json:"createdAt"`
-	UpdatedAt            string                   `json:"updatedAt"`
+	ID      string `json:"id"`
+	StoreID string `json:"storeId"`
+	Name    string `json:"name"`
+	// Code is the coupon's own code (uppercase), usable by buyers at checkout.
+	Code              string             `json:"code"`
+	Status            CouponStatus       `json:"status"`
+	DiscountType      CouponDiscountType `json:"discountType"`
+	PercentOff        *float64           `json:"percentOff"`
+	AmountOff         map[string]string  `json:"amountOff"`
+	Duration          CouponDuration     `json:"duration"`
+	DurationInPeriods *int               `json:"durationInPeriods"`
+	ProductIDs        []string           `json:"productIds"`
+	MaxRedemptions    *int               `json:"maxRedemptions"`
+	RedeemBy          *string            `json:"redeemBy"`
+	CreatedAt         string             `json:"createdAt"`
+	UpdatedAt         string             `json:"updatedAt"`
 }
 
 // CreateCouponPromotionCodeParams is a promotion code created together with its
 // coupon. A random 10-character code is generated when Code is nil.
 type CreateCouponPromotionCodeParams struct {
 	// Code is 3-32 letters, digits or '-', case-insensitive, unique among the
-	// store's active codes and within the request.
+	// store's active codes and within the request (including the coupon's Code).
 	Code *string `json:"code,omitempty"`
 	// Restrictions follow the same rules as PromotionCodes.Create; MaxRedemptions
 	// and ExpiresAt must stay within the coupon's limits.
 	Restrictions *PromotionCodeRestrictions `json:"restrictions,omitempty"`
 }
 
-// CreateCouponParams is the input to Coupons.Create. Buyer-facing codes go in
-// PromotionCodes; without any, the coupon can only be applied by CouponID
-// (checkout and plan change sessions) until promotion codes are added.
+// CreateCouponParams is the input to Coupons.Create. A coupon only limits
+// redemptions by RedeemBy and MaxRedemptions; buyer restrictions (first
+// purchase, emails, per-buyer and daily limits, minimum amount) go on
+// PromotionCodes.
 type CreateCouponParams struct {
 	StoreID string `json:"storeId"`
 	// Name is an internal name (at most 64 characters), not visible to buyers.
-	Name     string         `json:"name"`
+	Name string `json:"name"`
+	// Code is the coupon's own code buyers can type: 3-32 letters, digits or
+	// '-', case-insensitive, unique among the store's active codes. A random
+	// 10-character code is generated when Code is nil.
+	Code     *string        `json:"code,omitempty"`
 	Discount CouponDiscount `json:"discount"`
 	// Duration defaults to CouponDurationOnce.
 	Duration *CouponDuration `json:"duration,omitempty"`
@@ -499,13 +497,11 @@ type CreateCouponParams struct {
 	DurationInPeriods *int `json:"durationInPeriods,omitempty"`
 	// ProductIDs restricts the coupon to these products; empty means the whole store.
 	ProductIDs []string `json:"productIds,omitempty"`
-	// MaxRedemptions is the global redemption limit; refunds do not give uses back.
+	// MaxRedemptions is the total redemption limit across the coupon's code and
+	// all its promotion codes; refunds do not give uses back.
 	MaxRedemptions *int `json:"maxRedemptions,omitempty"`
-	// DailyRedemptionLimit is the per-buyer limit per UTC day.
-	DailyRedemptionLimit *int `json:"dailyRedemptionLimit,omitempty"`
 	// RedeemBy (ISO 8601) also ends discounts already attached to subscriptions.
-	RedeemBy     *string               `json:"redeemBy,omitempty"`
-	Restrictions *DiscountRestrictions `json:"restrictions,omitempty"`
+	RedeemBy *string `json:"redeemBy,omitempty"`
 	// PromotionCodes are created in the same request (0-20) and become usable
 	// when the coupon is created.
 	PromotionCodes []CreateCouponPromotionCodeParams `json:"promotionCodes,omitempty"`

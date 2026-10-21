@@ -7,18 +7,21 @@ import (
 )
 
 // CouponsResource manages coupons (discount codes). Buyers redeem a coupon by
-// entering one of its promotion codes; CouponID applies it without a code. Only
+// entering its own code or one of its promotion codes; CouponID applies it
+// without a code. Only
 // the name of a coupon can change; deactivation is permanent.
 type CouponsResource struct {
 	http *httpClient
 }
 
-// Create creates a coupon, optionally with up to 20 promotion codes in the same
-// request. The returned status is always active and Coupon.PromotionCodes lists
-// the codes created with it. When the payment provider rejects the coupon or
+// Create creates a coupon with its own code (random when Code is nil),
+// optionally with up to 20 promotion codes in the same request. A coupon only
+// limits redemptions by RedeemBy and MaxRedemptions; buyer restrictions go on
+// promotion codes. The returned status is always active, Coupon.Code is the
+// coupon's code and Coupon.PromotionCodes lists the codes created with it. When the payment provider rejects the coupon or
 // does not confirm it, the request fails with 502 and every code is released,
 // so the coupon can be created again with the same codes. A code already used
-// by an active promotion code of the store fails with 409 and the message names
+// by an active code of the store fails with 409 and the message names
 // it. If the request itself fails on your side (timeout, network), retry with
 // the same idempotency key: a creation that succeeded is returned instead of a
 // 409 for the codes it already took.
@@ -28,13 +31,14 @@ type CouponsResource struct {
 //	res, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
 //		StoreID:  "STO_xxx",
 //		Name:     "Black Friday 20% off",
+//		Code:     pancake.Ptr("BF2026"),
 //		Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
 //		PromotionCodes: []pancake.CreateCouponPromotionCodeParams{
-//			{Code: pancake.Ptr("BF2026")},
-//			{Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(100)}},
+//			{Code: pancake.Ptr("BF-VIP")},
+//			{Restrictions: &pancake.PromotionCodeRestrictions{FirstTimeOnly: pancake.Ptr(true), DailyRedemptionLimit: pancake.Ptr(1)}},
 //		},
 //	}, pancake.WithIdempotencyKey("coupon-bf2026"))
-//	// res.Coupon.PromotionCodes[0].Code == "BF2026"; the second code is random
+//	// res.Coupon.Code == "BF2026"; res.Coupon.PromotionCodes[0].Code == "BF-VIP"; the second code is random
 func (r *CouponsResource) Create(ctx context.Context, p CreateCouponParams, opts ...RequestOption) (*CreateCouponResult, error) {
 	if err := validateShortID("storeId", p.StoreID, "STO"); err != nil {
 		return nil, err
@@ -45,7 +49,15 @@ func (r *CouponsResource) Create(ctx context.Context, p CreateCouponParams, opts
 	if len(p.PromotionCodes) > 20 {
 		return nil, newSDKError("Invalid promotionCodes: expected at most 20 entries, got %d", len(p.PromotionCodes))
 	}
-	seenCodes := make(map[string]bool, len(p.PromotionCodes))
+	// The coupon's code and its promotion codes share the store's code namespace,
+	// so they cannot repeat within a request.
+	seenCodes := make(map[string]bool, len(p.PromotionCodes)+1)
+	if p.Code != nil {
+		if err := validateDiscountCode("code", *p.Code); err != nil {
+			return nil, err
+		}
+		seenCodes[strings.ToUpper(strings.TrimSpace(*p.Code))] = true
+	}
 	for i, promotionCode := range p.PromotionCodes {
 		if promotionCode.Code == nil {
 			continue

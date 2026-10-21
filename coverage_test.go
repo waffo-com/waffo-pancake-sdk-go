@@ -46,6 +46,21 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 			})
 			return err
 		}},
+		{"Coupons.Create bad coupon code rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: Ptr("a_b"),
+				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+			})
+			return err
+		}},
+		{"Coupons.Create promotion code repeating the coupon code rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: Ptr("bf2026"),
+				Discount:       CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+				PromotionCodes: []CreateCouponPromotionCodeParams{{Code: Ptr("BF2026")}},
+			})
+			return err
+		}},
 		{"Coupons.Create duplicate promotion codes rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
 				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",

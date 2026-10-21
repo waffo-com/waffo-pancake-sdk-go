@@ -523,7 +523,7 @@ To list configured webhooks, query GraphQL `Store.storeWebhooks` via
 
 ### Coupons & Promotion Codes
 
-A coupon defines the discount; buyers type one of its promotion codes. Create codes together with the coupon (`PromotionCodes`, up to 20) or later with `client.PromotionCodes`; a coupon applied with `CouponID` needs no code. Deactivation is permanent and releases the codes for reuse. Read coupons with `client.GraphQL.Query` (`coupons`, `coupon`, `promotionCodes`).
+A coupon defines the discount and has its own `Code` (random when nil) that buyers can type; its only limits are `RedeemBy` and `MaxRedemptions`. Promotion codes carry buyer restrictions (first purchase, emails, per-buyer and daily limits, minimum amount): create them together with the coupon (`PromotionCodes`, up to 20) or later with `client.PromotionCodes`. A coupon applied with `CouponID` needs no code. Deactivation is permanent and releases the codes for reuse. Read coupons with `client.GraphQL.Query` (`coupons`, `coupon`, `promotionCodes`).
 
 ```go
 couponRes, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
@@ -532,7 +532,11 @@ couponRes, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
     Discount:          pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
     Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
     DurationInPeriods: pancake.Ptr(3),
-    PromotionCodes:    []pancake.CreateCouponPromotionCodeParams{{Code: pancake.Ptr("BF2026")}},
+    Code:              pancake.Ptr("BF2026"),
+    PromotionCodes: []pancake.CreateCouponPromotionCodeParams{{
+        Code:         pancake.Ptr("BF-NEW"),
+        Restrictions: &pancake.PromotionCodeRestrictions{FirstTimeOnly: pancake.Ptr(true), DailyRedemptionLimit: pancake.Ptr(1)},
+    }},
 }, pancake.WithIdempotencyKey("coupon-bf2026"))
 if err != nil {
     return err
