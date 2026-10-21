@@ -261,12 +261,13 @@ func validatePlanChangeCommon(p *CreatePlanChangeSessionParams) error {
 }
 
 // validateDiscountCode checks the code format shared by coupons and promotion
-// codes: 3-32 letters, digits or '-'.
+// codes: 3-32 letters, digits or '-'. Surrounding whitespace is trimmed before
+// the check, matching the server, which trims and upper-cases the code.
 func validateDiscountCode(field, v string) error {
 	if err := validateRequired(field, v); err != nil {
 		return err
 	}
-	if !discountCodeRe.MatchString(v) {
+	if !discountCodeRe.MatchString(strings.TrimSpace(v)) {
 		return newSDKError("Invalid %s: expected 3-32 letters, digits or '-', got %q", field, v)
 	}
 	return nil

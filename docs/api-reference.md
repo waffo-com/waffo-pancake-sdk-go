@@ -555,7 +555,7 @@ res, err := client.SubscriptionProductGroups.Publish(ctx, pancake.PublishSubscri
 
 ## Coupons
 
-A coupon defines a discount and has its own `Code` that buyers can enter (random when nil). Its only redemption limits are `RedeemBy` and `MaxRedemptions` (total across all its codes); buyer restrictions belong to promotion codes — create up to 20 of them together with the coupon (`PromotionCodes`) and add more later with [`PromotionCodes`](#promotion-codes). A coupon applied with `CouponID` on a checkout or plan change session needs no code. Codes are 3–32 letters, digits or `-`, case-insensitive (stored uppercase), and unique among the store's **active** codes in the same environment; a deactivated code is released and can be reused. Deactivation is permanent, and only the name of a coupon can change. List and read coupons with `GraphQL.Query` (`coupons`, `couponsCount`, `coupon`).
+A coupon defines a discount and has its own `Code` that buyers can enter (random when nil). Its only redemption limits are `RedeemBy` and `MaxRedemptions` (total across all its codes); buyer restrictions belong to promotion codes — create up to 20 of them together with the coupon (`PromotionCodes`) and add more later with [`PromotionCodes`](#promotion-codes). A coupon applied with `CouponID` on a checkout or plan change session needs no code. Codes are 3–32 letters, digits or `-`, case-insensitive (surrounding whitespace is trimmed and the code is stored uppercase), and unique among the store's **active** codes in the same environment; a deactivated code is released and can be reused. Deactivation is permanent, and only the name of a coupon can change. List and read coupons with `GraphQL.Query` (`coupons`, `couponsCount`, `coupon`).
 
 ### `client.Coupons.Create(ctx, params)`
 
@@ -621,7 +621,7 @@ res, err := client.PromotionCodes.Create(ctx, pancake.CreatePromotionCodeParams{
 
 `PromotionCodeRestrictions` holds the buyer restrictions — `FirstTimeOnly`, `CustomerEmails`, `PerCustomerLimit`, `DailyRedemptionLimit` (uses per buyer per UTC day) — plus `MaxRedemptions` (≤ the coupon's), `ExpiresAt` (≤ the coupon's `RedeemBy`; defaults to it) and `MinimumAmount` (pre-discount, pre-tax amount per currency). The coupon's `RedeemBy` and `MaxRedemptions` apply to every code.
 
-**Returns `*PromotionCodeResult`**: `{ PromotionCode, Warnings }`
+**Returns `*PromotionCodeResult`**: `{ PromotionCode, Warnings }`. Errors: 409 when the code is taken, the coupon is not `active`, or the coupon has expired (its `RedeemBy` is within 60 seconds) — no promotion code can be added to it.
 
 ### `client.PromotionCodes.Generate(ctx, params)`
 

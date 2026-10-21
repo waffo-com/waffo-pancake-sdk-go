@@ -3,6 +3,8 @@ package pancake
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 	"testing"
 )
 
@@ -95,5 +97,77 @@ func TestCoupons_CreateWithoutPromotionCodesOmitsField(t *testing.T) {
 	}
 	if _, ok := body["code"]; ok {
 		t.Errorf("expected code to be omitted so the platform generates one, got %s", srv.requests()[0].Body)
+	}
+}
+
+// TestCoupons_CodesAreTrimmedBeforeValidation checks that codes with
+// surrounding whitespace pass the format check, as the server trims them, that
+// duplicates are detected after trimming, and that the trimmed length counts.
+func TestCoupons_CodesAreTrimmedBeforeValidation(t *testing.T) {
+	ctx := context.Background()
+	client, _, srv := newSignedTestClient(t)
+	srv.respond = func(r recordedRequest) (int, any) {
+		if strings.Contains(r.Path, "promotion-code") {
+			return 200, map[string]any{"data": map[string]any{"promotionCode": map[string]any{"id": "PMC_AbCdEfGhIjKlMnOpQrStUv", "code": "KOL-ALICE"}}}
+		}
+		return 200, map[string]any{"data": map[string]any{"coupon": map[string]any{"id": "CPN_AbCdEfGhIjKlMnOpQrStUv", "promotionCodes": []any{}}}}
+	}
+	discount := CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)}
+
+	if _, err := client.Coupons.Create(ctx, CreateCouponParams{
+		StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "Trimmed", Discount: discount,
+		Code:           Ptr(" bf2026 "),
+		PromotionCodes: []CreateCouponPromotionCodeParams{{Code: Ptr("  VIP-01\t")}},
+	}); err != nil {
+		t.Fatalf("Coupons.Create with padded codes: %v", err)
+	}
+	if _, err := client.PromotionCodes.Create(ctx, CreatePromotionCodeParams{
+		CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Code: Ptr(" kol-alice "),
+	}); err != nil {
+		t.Fatalf("PromotionCodes.Create with a padded code: %v", err)
+	}
+	sent := len(srv.requests())
+
+	rejected := []struct {
+		name string
+		call func() error
+	}{
+		{"duplicate promotion codes after trimming", func() error {
+			_, err := client.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Discount: discount,
+				PromotionCodes: []CreateCouponPromotionCodeParams{{Code: Ptr(" vip-01 ")}, {Code: Ptr("VIP-01")}},
+			})
+			return err
+		}},
+		{"promotion code repeating the coupon code after trimming", func() error {
+			_, err := client.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Discount: discount,
+				Code: Ptr("bf2026 "), PromotionCodes: []CreateCouponPromotionCodeParams{{Code: Ptr(" BF2026")}},
+			})
+			return err
+		}},
+		{"coupon code too short after trimming", func() error {
+			_, err := client.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Discount: discount, Code: Ptr(" ab "),
+			})
+			return err
+		}},
+		{"promotion code too short after trimming", func() error {
+			_, err := client.PromotionCodes.Create(ctx, CreatePromotionCodeParams{
+				CouponID: "CPN_AbCdEfGhIjKlMnOpQrStUv", Code: Ptr(" ab "),
+			})
+			return err
+		}},
+	}
+	for _, tc := range rejected {
+		t.Run(tc.name, func(t *testing.T) {
+			var e *Error
+			if err := tc.call(); !errors.As(err, &e) || e.Status != 400 {
+				t.Fatalf("expected a 400 SDK error, got %v", err)
+			}
+		})
+	}
+	if got := len(srv.requests()); got != sent {
+		t.Errorf("expected rejected calls to send nothing, got %d extra requests", got-sent)
 	}
 }
