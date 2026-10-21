@@ -453,13 +453,12 @@ type PromotionCodeRestrictionsDetail struct {
 	MinimumAmount    map[string]string `json:"minimumAmount"`
 }
 
-// CouponDetail is the API shape of a coupon. Code is the buyer-facing code
-// carried by the coupon's default promotion code.
+// CouponDetail is the API shape of a coupon. Buyers redeem a coupon through its
+// promotion codes; a coupon applied by CouponID needs no code.
 type CouponDetail struct {
 	ID                   string                   `json:"id"`
 	StoreID              string                   `json:"storeId"`
 	Name                 string                   `json:"name"`
-	Code                 string                   `json:"code"`
 	Status               CouponStatus             `json:"status"`
 	DiscountType         CouponDiscountType       `json:"discountType"`
 	PercentOff           *float64                 `json:"percentOff"`
@@ -475,14 +474,24 @@ type CouponDetail struct {
 	UpdatedAt            string                   `json:"updatedAt"`
 }
 
-// CreateCouponParams is the input to Coupons.Create. Code becomes the coupon's
-// default promotion code: 3-32 letters, digits or '-', case-insensitive, unique
-// among the store's active codes.
+// CreateCouponPromotionCodeParams is a promotion code created together with its
+// coupon. A random 10-character code is generated when Code is nil.
+type CreateCouponPromotionCodeParams struct {
+	// Code is 3-32 letters, digits or '-', case-insensitive, unique among the
+	// store's active codes and within the request.
+	Code *string `json:"code,omitempty"`
+	// Restrictions follow the same rules as PromotionCodes.Create; MaxRedemptions
+	// and ExpiresAt must stay within the coupon's limits.
+	Restrictions *PromotionCodeRestrictions `json:"restrictions,omitempty"`
+}
+
+// CreateCouponParams is the input to Coupons.Create. Buyer-facing codes go in
+// PromotionCodes; without any, the coupon can only be applied by CouponID
+// (checkout and plan change sessions) until promotion codes are added.
 type CreateCouponParams struct {
 	StoreID string `json:"storeId"`
 	// Name is an internal name (at most 64 characters), not visible to buyers.
 	Name     string         `json:"name"`
-	Code     string         `json:"code"`
 	Discount CouponDiscount `json:"discount"`
 	// Duration defaults to CouponDurationOnce.
 	Duration *CouponDuration `json:"duration,omitempty"`
@@ -497,6 +506,9 @@ type CreateCouponParams struct {
 	// RedeemBy (ISO 8601) also ends discounts already attached to subscriptions.
 	RedeemBy     *string               `json:"redeemBy,omitempty"`
 	Restrictions *DiscountRestrictions `json:"restrictions,omitempty"`
+	// PromotionCodes are created in the same request (0-20) and become usable
+	// when the coupon is created.
+	PromotionCodes []CreateCouponPromotionCodeParams `json:"promotionCodes,omitempty"`
 }
 
 // UpdateCouponParams is the input to Coupons.Update. The name is the only field
@@ -515,6 +527,20 @@ type DeactivateCouponParams struct {
 type CouponResult struct {
 	Coupon   CouponDetail `json:"coupon"`
 	Warnings []Notice     `json:"warnings,omitempty"`
+}
+
+// CreatedCouponDetail is the coupon returned by Coupons.Create, with the
+// promotion codes created in the same request (in request order; empty when
+// none were requested).
+type CreatedCouponDetail struct {
+	CouponDetail
+	PromotionCodes []PromotionCodeDetail `json:"promotionCodes"`
+}
+
+// CreateCouponResult wraps the coupon returned by Coupons.Create.
+type CreateCouponResult struct {
+	Coupon   CreatedCouponDetail `json:"coupon"`
+	Warnings []Notice            `json:"warnings,omitempty"`
 }
 
 // PromotionCodeDetail is the API shape of a promotion code.

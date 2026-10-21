@@ -213,20 +213,29 @@ func TestResources_HappyPaths(t *testing.T) {
 
 		// ---- Coupons ----
 		{
-			name:     "Coupons.Create",
-			path:     "/v1/actions/coupon/create-coupon",
-			response: map[string]any{"coupon": map[string]any{"id": "CPN_AbCdEfGhIjKlMnOpQrStUv", "code": "BF2026", "status": "active"}},
+			name: "Coupons.Create",
+			path: "/v1/actions/coupon/create-coupon",
+			response: map[string]any{"coupon": map[string]any{
+				"id": "CPN_AbCdEfGhIjKlMnOpQrStUv", "status": "active",
+				"promotionCodes": []any{map[string]any{"id": "PMC_AbCdEfGhIjKlMnOpQrStUv", "code": "BF2026"}},
+			}},
 			call: func(c *Client) error {
 				res, err := c.Coupons.Create(ctx, CreateCouponParams{
 					StoreID:           "STO_AbCdEfGhIjKlMnOpQrStUv",
 					Name:              "BF",
-					Code:              "bf2026",
 					Discount:          CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(20.0)},
 					Duration:          Ptr(CouponDurationRepeating),
 					DurationInPeriods: Ptr(3),
+					PromotionCodes: []CreateCouponPromotionCodeParams{
+						{Code: Ptr("bf2026")},
+						{Restrictions: &PromotionCodeRestrictions{MaxRedemptions: Ptr(100)}},
+					},
 				})
 				if err == nil && res.Coupon.Status != CouponStatusActive {
 					t.Errorf("status = %q", res.Coupon.Status)
+				}
+				if err == nil && (len(res.Coupon.PromotionCodes) != 1 || res.Coupon.PromotionCodes[0].Code != "BF2026") {
+					t.Errorf("promotionCodes = %+v", res.Coupon.PromotionCodes)
 				}
 				return err
 			},

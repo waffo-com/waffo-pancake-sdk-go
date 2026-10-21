@@ -71,7 +71,7 @@ func (r *PromotionCodesResource) Generate(ctx context.Context, p GeneratePromoti
 }
 
 // Deactivate deactivates a promotion code permanently and releases its code.
-// The coupon's own code can only be deactivated together with the coupon.
+// The coupon itself stays active; deactivate the coupon to stop all of its codes.
 //
 // Example:
 //

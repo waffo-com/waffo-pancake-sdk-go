@@ -523,16 +523,16 @@ To list configured webhooks, query GraphQL `Store.storeWebhooks` via
 
 ### Coupons & Promotion Codes
 
-A coupon defines the discount; its `Code` is the code buyers type. Add more codes with `PromotionCodes`. Deactivation is permanent and releases the codes for reuse. Read coupons with `client.GraphQL.Query` (`coupons`, `coupon`, `promotionCodes`).
+A coupon defines the discount; buyers type one of its promotion codes. Create codes together with the coupon (`PromotionCodes`, up to 20) or later with `client.PromotionCodes`; a coupon applied with `CouponID` needs no code. Deactivation is permanent and releases the codes for reuse. Read coupons with `client.GraphQL.Query` (`coupons`, `coupon`, `promotionCodes`).
 
 ```go
 couponRes, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
     StoreID:           "STO_xxx",
     Name:              "Black Friday 20% off",
-    Code:              "BF2026",
     Discount:          pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
     Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
     DurationInPeriods: pancake.Ptr(3),
+    PromotionCodes:    []pancake.CreateCouponPromotionCodeParams{{Code: pancake.Ptr("BF2026")}},
 }, pancake.WithIdempotencyKey("coupon-bf2026"))
 if err != nil {
     return err

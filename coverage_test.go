@@ -38,22 +38,39 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 		name string
 		call func(c *Client) error
 	}{
-		{"Coupons.Create bad code rejected", func(c *Client) error {
+		{"Coupons.Create bad promotion code rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "a_b",
-				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
+				Discount:       CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+				PromotionCodes: []CreateCouponPromotionCodeParams{{Code: Ptr("a_b")}},
+			})
+			return err
+		}},
+		{"Coupons.Create duplicate promotion codes rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
+				Discount:       CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+				PromotionCodes: []CreateCouponPromotionCodeParams{{Code: Ptr("vip-01")}, {}, {Code: Ptr("VIP-01")}},
+			})
+			return err
+		}},
+		{"Coupons.Create more than 20 promotion codes rejected", func(c *Client) error {
+			_, err := c.Coupons.Create(ctx, CreateCouponParams{
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
+				Discount:       CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
+				PromotionCodes: make([]CreateCouponPromotionCodeParams, 21),
 			})
 			return err
 		}},
 		{"Coupons.Create percentage without percentOff rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC", Discount: CouponDiscount{Type: CouponDiscountTypePercentage},
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Discount: CouponDiscount{Type: CouponDiscountTypePercentage},
 			})
 			return err
 		}},
 		{"Coupons.Create repeating without periods rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
 				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
 				Duration: Ptr(CouponDurationRepeating),
 			})
@@ -61,21 +78,21 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 		}},
 		{"Coupons.Create bad amount rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
 				Discount: CouponDiscount{Type: CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "abc"}},
 			})
 			return err
 		}},
 		{"Coupons.Create zero amount rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
 				Discount: CouponDiscount{Type: CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "0.00"}},
 			})
 			return err
 		}},
 		{"Coupons.Create unknown duration rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
 				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
 				Duration: Ptr(CouponDuration("weekly")),
 			})
@@ -83,7 +100,7 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 		}},
 		{"Coupons.Create 65-character multibyte name rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: strings.Repeat("优", 65), Code: "ABC",
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: strings.Repeat("优", 65),
 				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
 			})
 			return err
@@ -106,14 +123,14 @@ func TestResources_OptionalFieldValidation(t *testing.T) {
 		}},
 		{"Coupons.Create percentOff above 100 rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
 				Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(101.0)},
 			})
 			return err
 		}},
 		{"Coupons.Create periods without repeating rejected", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
 				Discount:          CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(10.0)},
 				DurationInPeriods: Ptr(3),
 			})

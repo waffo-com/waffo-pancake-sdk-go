@@ -74,7 +74,7 @@ func TestResources_ErrorPropagation(t *testing.T) {
 		}},
 		{"Coupons.Create", func(c *Client) error {
 			_, err := c.Coupons.Create(ctx, CreateCouponParams{
-				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X", Code: "ABC",
+				StoreID: "STO_AbCdEfGhIjKlMnOpQrStUv", Name: "X",
 				Discount: CouponDiscount{Type: CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "5.00"}},
 			})
 			return err
