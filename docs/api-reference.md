@@ -553,6 +553,101 @@ res, err := client.SubscriptionProductGroups.Publish(ctx, pancake.PublishSubscri
 
 ---
 
+## Coupons
+
+A coupon defines a discount and has its own `Code` that buyers can enter (random when nil). Its only redemption limits are `RedeemBy` and `MaxRedemptions` (total across all its codes); buyer restrictions belong to promotion codes — create up to 20 of them together with the coupon (`PromotionCodes`) and add more later with [`PromotionCodes`](#promotion-codes). A coupon applied with `CouponID` on a checkout or plan change session needs no code. Codes are 3–32 letters, digits or `-`, case-insensitive (surrounding whitespace is trimmed and the code is stored uppercase), and unique among the store's **active** codes in the same environment; a deactivated code is released and can be reused. Deactivation is permanent, and only the name of a coupon can change. List and read coupons with `GraphQL.Query` (`coupons`, `couponsCount`, `coupon`).
+
+### `client.Coupons.Create(ctx, params)`
+
+```go
+res, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
+	StoreID:           "STO_xxx",
+	Name:              "Black Friday 20% off",
+	Discount:          pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
+	Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
+	DurationInPeriods: pancake.Ptr(3),
+	Code:              pancake.Ptr("BF2026"), // nil generates a random code
+	MaxRedemptions:    pancake.Ptr(1000),
+	PromotionCodes: []pancake.CreateCouponPromotionCodeParams{
+		{Code: pancake.Ptr("BF-VIP")},
+		{Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(100), PerCustomerLimit: pancake.Ptr(1)}}, // random code
+	},
+}, pancake.WithIdempotencyKey("coupon-bf2026"))
+// res.Coupon.Status is CouponStatusActive (a successful creation is always active).
+// res.Coupon.Code is "BF2026"; res.Coupon.PromotionCodes lists the codes created with it, in request order.
+```
+
+Fixed-amount coupons set `Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypeFixedAmount, AmountOff: map[string]string{"USD": "5.00"}}` (each amount greater than 0). `Name` is at most 64 characters, counted in UTF-16 code units after trimming. Other fields: `Code` (the coupon's own code; nil generates a random 10-character code), `ProductIDs`, `MaxRedemptions` (total across the coupon's code and all its promotion codes), `RedeemBy` (ISO 8601; also ends discounts already attached to subscriptions), `PromotionCodes` (0–20 `CreateCouponPromotionCodeParams`, each `{ Code, Restrictions }` with the same rules as `PromotionCodes.Create`; `Code` nil generates a random 10-character code, and codes — including the coupon's `Code` — must be unique within the request).
+
+**Returns `*CreateCouponResult`**: `{ Coupon, Warnings }`, where `Coupon` is a `CreatedCouponDetail` (`CouponDetail`, including its `Code`, plus `PromotionCodes`). Errors: 400 for duplicate codes in the request or a promotion code limit beyond the coupon's (the message names `promotionCodes[i]`), 409 when a code is taken — the message names it (also when retrying a request that succeeded **without** the idempotency key), 502 when the payment provider rejects the coupon or does not confirm the creation — the creation failed and every code is released, so retry with the same codes.
+
+### `client.Coupons.Update(ctx, params)`
+
+Rename a coupon — the only field that can change.
+
+```go
+res, err := client.Coupons.Update(ctx, pancake.UpdateCouponParams{ID: "CPN_xxx", Name: "Black Friday (extended)"})
+```
+
+**Returns `*CouponResult`**: `{ Coupon, Warnings }`
+
+### `client.Coupons.Deactivate(ctx, params)`
+
+Deactivate permanently. All its promotion codes are deactivated and their codes released. Discounts already attached to subscriptions continue until the subscription's next plan change.
+
+```go
+res, err := client.Coupons.Deactivate(ctx, pancake.DeactivateCouponParams{ID: "CPN_xxx"})
+// res.Coupon.Status == pancake.CouponStatusInactive
+```
+
+**Returns `*CouponResult`**: `{ Coupon, Warnings }`
+
+---
+
+## Promotion Codes
+
+### `client.PromotionCodes.Create(ctx, params)`
+
+```go
+res, err := client.PromotionCodes.Create(ctx, pancake.CreatePromotionCodeParams{
+	CouponID: "CPN_xxx",
+	Code:     pancake.Ptr("KOL-ALICE"), // nil generates a random code
+	Restrictions: &pancake.PromotionCodeRestrictions{
+		MaxRedemptions: pancake.Ptr(100),
+		MinimumAmount:  map[string]string{"USD": "50.00"},
+	},
+})
+```
+
+`PromotionCodeRestrictions` holds the buyer restrictions — `CustomerEmails`, `PerCustomerLimit` — plus `MaxRedemptions` (≤ the coupon's), `ExpiresAt` (≤ the coupon's `RedeemBy`; defaults to it) and `MinimumAmount` (pre-discount, pre-tax amount per currency). The coupon's `RedeemBy` and `MaxRedemptions` apply to every code.
+
+**Returns `*PromotionCodeResult`**: `{ PromotionCode, Warnings }`. Errors: 409 when the code is taken, the coupon is not `active`, or the coupon has expired (its `RedeemBy` is within 60 seconds) — no promotion code can be added to it.
+
+### `client.PromotionCodes.Generate(ctx, params)`
+
+Generate 1–500 random codes in one call. **Always retry with the same idempotency key** — a retry without it generates another batch.
+
+```go
+res, err := client.PromotionCodes.Generate(ctx, pancake.GeneratePromotionCodesParams{
+	CouponID: "CPN_xxx", Count: 100, Prefix: pancake.Ptr("KOL-"),
+}, pancake.WithIdempotencyKey("kol-batch-2026-11"))
+// res.BatchID, res.PromotionCodes
+```
+
+**Returns `*GeneratePromotionCodesResult`**: `{ BatchID, PromotionCodes, Warnings }`
+
+### `client.PromotionCodes.Deactivate(ctx, params)`
+
+Deactivate permanently and release the code. The coupon stays active; deactivate the coupon to stop it entirely.
+
+```go
+res, err := client.PromotionCodes.Deactivate(ctx, pancake.DeactivatePromotionCodeParams{ID: "PMC_xxx"})
+```
+
+**Returns `*PromotionCodeResult`**: `{ PromotionCode, Warnings }`
+
+---
+
 ## Orders
 
 ### `client.Orders.CancelSubscription(ctx, params)`
@@ -824,6 +919,9 @@ subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCh
 | `Language`                | `*pancake.CashierLanguage` | No      | Default language of the hosted checkout page (IETF BCP 47). The customer can switch it on the page; omit to let the provider infer. |
 | `IncludePaymentMethods`   | `[]pancake.PaymentMethod` | No       | Whitelist — offer only these (`card` / `applepay` / `googlepay` / `wechat`). Every value must be supported by the product type × currency pair. Mutually exclusive with `ExcludePaymentMethods`. |
 | `ExcludePaymentMethods`   | `[]pancake.PaymentMethod` | No       | Blacklist — offer everything the currency supports except these. Values the currency does not offer are ignored. Mutually exclusive with `IncludePaymentMethods`. |
+| `CouponID`                | `*string`                 | No       | Coupon to apply (`CPN_xxx`, from `Coupons.Create`). Locked: the customer sees the discount but cannot change or remove it, and no code entry field is shown. One-time products, new subscriptions (the coupon's `Duration` sets how many billing periods are discounted) and plan changes (see `CreatePlanChangeSession`). Mutually exclusive with `PromotionCode` and `AllowPromotionCodes` |
+| `PromotionCode`           | `*string`                 | No       | Promotion code to prefill (the code string, case-insensitive). Merchant credentials only. Changeable — the customer can replace or remove it — only with `AllowPromotionCodes` true; otherwise locked. Mutually exclusive with `CouponID` |
+| `AllowPromotionCodes`     | `*bool`                   | No       | Show a code entry field where the customer can enter a coupon or promotion code. The platform defaults it to `false` for API Key sessions. With `PromotionCode`, true lets the customer change or remove the prefilled code. Mutually exclusive with `CouponID` |
 
 **Returns `*AuthenticatedCheckoutResult`**:
 
@@ -877,6 +975,9 @@ snapshotRes, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheck
 | `DarkMode`                | `*bool`                   | No       | Dark mode override                                                                                                                                                                                         |
 | `Metadata`                | `map[string]string`       | No       | Custom metadata                                                                                                                                                                                            |
 | `OrderMerchantExternalID` | `*string`                 | No       | Your business-side order identifier (max 128 chars). Honored on the API Key path; visitor / store-slug flows silently drop it. Same field name in webhook payload and GraphQL `Order` / `Payment` / `Refund`. |
+| `CouponID`                | `*string`                 | No       | Coupon to apply (`CPN_xxx`, from `Coupons.Create`). Locked: the customer sees the discount but cannot change or remove it, and no code entry field is shown. One-time products, new subscriptions (the coupon's `Duration` sets how many billing periods are discounted) and plan changes (see `CreatePlanChangeSession`). Mutually exclusive with `PromotionCode` and `AllowPromotionCodes` |
+| `PromotionCode`           | `*string`                 | No       | Promotion code to prefill (the code string, case-insensitive). Merchant credentials only. Changeable — the customer can replace or remove it — only with `AllowPromotionCodes` true; otherwise locked. Mutually exclusive with `CouponID` |
+| `AllowPromotionCodes`     | `*bool`                   | No       | Show a code entry field where the customer can enter a coupon or promotion code. The platform defaults it to `false` for API Key sessions. With `PromotionCode`, true lets the customer change or remove the prefilled code. Mutually exclusive with `CouponID` |
 
 **Returns `*CheckoutSessionResult`**:
 
@@ -922,8 +1023,13 @@ session, err := client.Checkout.CreatePlanChangeSession(ctx, pancake.CreatePlanC
 | `OrderMerchantExternalID` | `*string`              | No       | Business-side order identifier (max 128 chars) |
 | `Language`                | `*pancake.CashierLanguage` | No   | Confirmation page language (IETF BCP 47) |
 | `IncludePaymentMethods` / `ExcludePaymentMethods` | `[]pancake.PaymentMethod` | No | Whitelist / blacklist, mutually exclusive |
+| `CouponID`                | `*string`              | No       | Coupon to apply to the new plan (`CPN_xxx`). Locked. Replaces the subscription's current discount. Mutually exclusive with `PromotionCode` and `AllowPromotionCodes` |
+| `PromotionCode`           | `*string`              | No       | Promotion code to prefill on the confirmation page (code string, case-insensitive). Replaces the subscription's current discount. Changeable only with `AllowPromotionCodes` true. Mutually exclusive with `CouponID` |
+| `AllowPromotionCodes`     | `*bool`                | No       | Show a code entry field on the confirmation page. The platform defaults it to `false` for API Key sessions. Mutually exclusive with `CouponID` |
 
 There is no `BuyerEmail` or `BillingDetail`: in plan change mode the customer email, billing details, and tax all come from the origin subscription.
+
+**Discounts on a plan change.** A `CouponID` or `PromotionCode` replaces the subscription's current discount: the remaining periods of the old one are dropped, and the new one counts its periods from the new subscription's first charge above zero (a first charge of $0, when the credit covers the new price, uses no period). Without one, the current discount carries over to the new plan with the periods already used, unless it has no periods left, its coupon's `RedeemBy` is within 60 seconds, or the coupon is deactivated — then the new plan is charged the full price. A promotion code's minimum amount is checked against the new plan's regular price before the discount, excluding tax. See [Discounts](https://docs.waffo.ai/guides/discounts#plan-changes).
 
 Two amount fields, two ways to price the same change: `ChangeAmount` says what to charge for this period, `ChangeCreditAmount` says how much to credit against it. Same unit and tax basis, opposite meaning — sending both is rejected with a 400, and the SDK forwards what you pass rather than picking one.
 
@@ -964,6 +1070,32 @@ session, err := client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSession
 ```
 
 **Parameters `CreateCheckoutSessionParams`**: same fields as `AnonymousCheckoutParams` above.
+
+`CouponID`, `PromotionCode` and `AllowPromotionCodes` are checked by every checkout and plan change method: a `CouponID` without the `CPN_` prefix, an empty `PromotionCode`, or `CouponID` set together with `PromotionCode` or `AllowPromotionCodes` (either value), returns `*pancake.Error` (400, `ErrorLayerSDK`) before any request is sent. The platform answers 409 for a coupon or prefilled promotion code from another store or environment, one that is not `active`, expires within 60 seconds, does not cover the product, or has no fixed amount in the session currency; the message names the reason. Rules tied to the customer are checked when the order is placed.
+
+```go
+// Locked coupon
+_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+    ProductID: "PROD_xxx",
+    Currency:  "USD",
+    CouponID:  pancake.Ptr("CPN_xxx"),
+})
+
+// Code entry field on the checkout page
+_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+    ProductID:           "PROD_xxx",
+    Currency:            "USD",
+    AllowPromotionCodes: pancake.Ptr(true),
+})
+
+// Prefilled promotion code the customer can change or remove (leave AllowPromotionCodes nil to lock it)
+_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+    ProductID:           "PROD_xxx",
+    Currency:            "USD",
+    PromotionCode:       pancake.Ptr("SPRING-20"),
+    AllowPromotionCodes: pancake.Ptr(true),
+})
+```
 
 **`BillingDetail` fields**:
 
@@ -1146,6 +1278,23 @@ All exported types:
 | `UpdateSubscriptionProductGroupParams`  | Update request (`ProductIDs` = full replacement)           |
 | `DeleteSubscriptionProductGroupParams`  | Delete request                                             |
 | `PublishSubscriptionProductGroupParams` | Publish test → prod                                        |
+| **Coupon & Promotion Code**             |                                                            |
+| `CouponDiscount`                        | Discount of a coupon (`Type` + `PercentOff` or `AmountOff`) |
+| `CouponDetail`                          | Coupon entity                                              |
+| `CreateCouponParams`                    | Create request (optional `Code` and `PromotionCodes`, 0–20) |
+| `CreateCouponPromotionCodeParams`       | Promotion code created with the coupon (`Code` optional)   |
+| `CreatedCouponDetail` / `CreateCouponResult` | Coupon returned by `Create`, with `PromotionCodes`     |
+| `UpdateCouponParams`                    | Rename request                                             |
+| `DeactivateCouponParams`                | Deactivate request (permanent)                             |
+| `CouponResult`                          | Envelope `{Coupon, Warnings}`                              |
+| `PromotionCodeRestrictions`             | Promotion code restrictions accepted on create / generate  |
+| `PromotionCodeRestrictionsDetail`       | Promotion code restrictions as returned on a promotion code |
+| `PromotionCodeDetail`                   | Promotion code entity                                      |
+| `CreatePromotionCodeParams`             | Create request (`Code` optional)                           |
+| `GeneratePromotionCodesParams`          | Bulk generate request (1–500 codes)                        |
+| `DeactivatePromotionCodeParams`         | Deactivate request (permanent)                             |
+| `PromotionCodeResult`                   | Envelope `{PromotionCode, Warnings}`                       |
+| `GeneratePromotionCodesResult`          | Envelope `{BatchID, PromotionCodes, Warnings}`             |
 | **Order**                               |                                                            |
 | `CancelSubscriptionParams`              | Cancel subscription request                                |
 | `CancelSubscriptionResult`              | Cancel subscription response                               |
@@ -1209,3 +1358,7 @@ All exported types:
 | `ErrorLayer`                            | `Gateway` / `User` / `Store` / `Product` / `Order` / `Ticket` / `GraphQL` / `Resource` / `Email` / `SDK` |
 | `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` |
 | `WebhookChannel`                        | `HTTP` / `Feishu` / `Discord` / `Telegram` / `Slack`       |
+| `CouponStatus`                          | `Active` / `Inactive` / `Failed`                           |
+| `CouponDiscountType`                    | `Percentage` / `FixedAmount`                               |
+| `CouponDuration`                        | `Once` / `Repeating` / `Forever`                           |
+| `PromotionCodeStatus`                   | `Active` / `Inactive`                                      |
