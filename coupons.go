@@ -35,7 +35,7 @@ type CouponsResource struct {
 //		Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
 //		PromotionCodes: []pancake.CreateCouponPromotionCodeParams{
 //			{Code: pancake.Ptr("BF-VIP")},
-//			{Restrictions: &pancake.PromotionCodeRestrictions{FirstTimeOnly: pancake.Ptr(true), DailyRedemptionLimit: pancake.Ptr(1)}},
+//			{Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(100), PerCustomerLimit: pancake.Ptr(1)}},
 //		},
 //	}, pancake.WithIdempotencyKey("coupon-bf2026"))
 //	// res.Coupon.Code == "BF2026"; res.Coupon.PromotionCodes[0].Code == "BF-VIP"; the second code is random

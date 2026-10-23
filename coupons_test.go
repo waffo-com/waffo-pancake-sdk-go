@@ -31,7 +31,7 @@ func TestCoupons_CreateSendsPromotionCodes(t *testing.T) {
 		Discount: CouponDiscount{Type: CouponDiscountTypePercentage, PercentOff: Ptr(20.0)},
 		PromotionCodes: []CreateCouponPromotionCodeParams{
 			{Code: Ptr("bf2026")},
-			{Restrictions: &PromotionCodeRestrictions{MaxRedemptions: Ptr(100), DailyRedemptionLimit: Ptr(1)}},
+			{Restrictions: &PromotionCodeRestrictions{MaxRedemptions: Ptr(100), PerCustomerLimit: Ptr(1)}},
 		},
 	})
 	if err != nil {
@@ -63,8 +63,16 @@ func TestCoupons_CreateSendsPromotionCodes(t *testing.T) {
 	if second["code"] != nil {
 		t.Errorf("expected the second entry to omit code, got %v", second["code"])
 	}
-	if restrictions, _ := second["restrictions"].(map[string]any); restrictions["dailyRedemptionLimit"] != float64(1) {
-		t.Errorf("expected restrictions.dailyRedemptionLimit 1, got %v", second["restrictions"])
+	restrictions, _ := second["restrictions"].(map[string]any)
+	if restrictions["perCustomerLimit"] != float64(1) || restrictions["maxRedemptions"] != float64(100) {
+		t.Errorf("expected restrictions.perCustomerLimit 1 and maxRedemptions 100, got %v", second["restrictions"])
+	}
+	// FirstTimeOnly / DailyRedemptionLimit are not exposed yet: the SDK never sends them.
+	if _, ok := restrictions["firstTimeOnly"]; ok {
+		t.Errorf("expected no restrictions.firstTimeOnly, got %v", second["restrictions"])
+	}
+	if _, ok := restrictions["dailyRedemptionLimit"]; ok {
+		t.Errorf("expected no restrictions.dailyRedemptionLimit, got %v", second["restrictions"])
 	}
 }
 

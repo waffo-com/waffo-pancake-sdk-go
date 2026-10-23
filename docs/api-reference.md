@@ -570,7 +570,7 @@ res, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
 	MaxRedemptions:    pancake.Ptr(1000),
 	PromotionCodes: []pancake.CreateCouponPromotionCodeParams{
 		{Code: pancake.Ptr("BF-VIP")},
-		{Restrictions: &pancake.PromotionCodeRestrictions{FirstTimeOnly: pancake.Ptr(true), DailyRedemptionLimit: pancake.Ptr(1)}}, // random code
+		{Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(100), PerCustomerLimit: pancake.Ptr(1)}}, // random code
 	},
 }, pancake.WithIdempotencyKey("coupon-bf2026"))
 // res.Coupon.Status is CouponStatusActive (a successful creation is always active).
@@ -619,7 +619,7 @@ res, err := client.PromotionCodes.Create(ctx, pancake.CreatePromotionCodeParams{
 })
 ```
 
-`PromotionCodeRestrictions` holds the buyer restrictions — `FirstTimeOnly`, `CustomerEmails`, `PerCustomerLimit`, `DailyRedemptionLimit` (uses per buyer per UTC day) — plus `MaxRedemptions` (≤ the coupon's), `ExpiresAt` (≤ the coupon's `RedeemBy`; defaults to it) and `MinimumAmount` (pre-discount, pre-tax amount per currency). The coupon's `RedeemBy` and `MaxRedemptions` apply to every code.
+`PromotionCodeRestrictions` holds the buyer restrictions — `CustomerEmails`, `PerCustomerLimit` — plus `MaxRedemptions` (≤ the coupon's), `ExpiresAt` (≤ the coupon's `RedeemBy`; defaults to it) and `MinimumAmount` (pre-discount, pre-tax amount per currency). The coupon's `RedeemBy` and `MaxRedemptions` apply to every code.
 
 **Returns `*PromotionCodeResult`**: `{ PromotionCode, Warnings }`. Errors: 409 when the code is taken, the coupon is not `active`, or the coupon has expired (its `RedeemBy` is within 60 seconds) — no promotion code can be added to it.
 
