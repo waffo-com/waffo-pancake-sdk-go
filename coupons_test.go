@@ -67,7 +67,7 @@ func TestCoupons_CreateSendsPromotionCodes(t *testing.T) {
 	if restrictions["perCustomerLimit"] != float64(1) || restrictions["maxRedemptions"] != float64(100) {
 		t.Errorf("expected restrictions.perCustomerLimit 1 and maxRedemptions 100, got %v", second["restrictions"])
 	}
-	// FirstTimeOnly / DailyRedemptionLimit are not exposed yet: the SDK never sends them.
+	// firstTimeOnly / dailyRedemptionLimit are not supported by the API (400 when present): the SDK never sends them.
 	if _, ok := restrictions["firstTimeOnly"]; ok {
 		t.Errorf("expected no restrictions.firstTimeOnly, got %v", second["restrictions"])
 	}
