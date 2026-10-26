@@ -6,9 +6,8 @@ import (
 	"strings"
 )
 
-// CouponsResource manages coupons (discount codes). Buyers redeem a coupon by
-// entering its own code or one of its promotion codes; CouponID applies it
-// without a code. Only
+// CouponsResource manages coupons. Buyers redeem a coupon by entering its own
+// code or one of its promotion codes; CouponID applies it without a code. Only
 // the name of a coupon can change; deactivation is permanent.
 type CouponsResource struct {
 	http *httpClient

@@ -22,7 +22,7 @@ type Client struct {
 	SubscriptionProducts *SubscriptionProductsResource
 	// SubscriptionProductGroups manages subscription groups.
 	SubscriptionProductGroups *SubscriptionProductGroupsResource
-	// Coupons manages coupons (discount codes).
+	// Coupons manages coupons.
 	Coupons *CouponsResource
 	// PromotionCodes manages promotion codes.
 	PromotionCodes *PromotionCodesResource
