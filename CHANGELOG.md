@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Store logos and product images are stored on the Waffo Pancake CDN. Doc comments and documentation only; no runtime change. Matches the `@waffo/pancake-ts` Unreleased entry.
+
+### Deprecated
+
+- **`CheckoutThemeSettings.CheckoutLogo`** — always nil. The platform ignores any value sent in `CheckoutSettings.Light` / `CheckoutSettings.Dark` (a non-nil value adds a `Warnings` entry to the `Stores.Update` response), and the checkout page shows the store's top-level `Logo`. Set the logo with `UpdateStoreParams.Logo`.
+
+### Documentation
+
+- **`UpdateStoreParams.Logo` / `Store.Logo`** — doc comments and `docs/api-reference.md` state the accepted values: an http(s) URL (stored as-is) or a base64 image data URI (`data:image/<type>;base64,...`, at most 3 MB decoded; PNG, JPEG, WebP, GIF, SVG or ICO). A data URI is uploaded to the CDN and the store returns a URL such as `https://media.waffo.ai/stores/{STO_xxx}/logo/{sha256}.{ext}`.
+- **`MediaItem.URL` / `MediaItem.Thumbnail`** — doc comments state the same accepted values for product media on create / update; data URIs come back as `https://media.waffo.ai/stores/{STO_xxx}/product/{sha256}.{ext}` URLs.
+
 ## [0.17.0] — 2026-10-10
 
 Customers signed in to a merchant's site can enter the store's customer portal without email verification. Matches `@waffo/pancake-ts@0.26.0`.
