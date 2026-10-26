@@ -786,7 +786,9 @@ type CreateCheckoutSessionParams struct {
 	ExcludePaymentMethods []PaymentMethod `json:"excludePaymentMethods,omitempty"`
 	// CouponID applies a coupon to the session (Short ID, CPN_xxx — the Pancake coupon ID, not
 	// the payment provider's). The discount is locked: the customer sees it applied but cannot
-	// change or remove it, and no code entry field is shown. Works for one-time products and new
+	// change or remove it, and no code entry field is shown. The customer sees the discount but
+	// not a code, even when the coupon has its own code — to show a code, prefill it with
+	// PromotionCode instead. Works for one-time products and new
 	// subscriptions (plan changes take one through CreatePlanChangeSessionParams.CouponID). On a
 	// subscription the coupon's CouponDuration decides how many billing periods are discounted.
 	// The platform answers 409 for a coupon from another store or environment, one that is not
@@ -795,7 +797,8 @@ type CreateCheckoutSessionParams struct {
 	// Mutually exclusive with PromotionCode and AllowPromotionCodes.
 	CouponID *string `json:"couponId,omitempty"`
 	// PromotionCode prefills a promotion code on the checkout page (the code string the customer
-	// would type, case-insensitive). Merchant credentials only. With AllowPromotionCodes set to
+	// would type, case-insensitive). Merchant credentials only. The customer sees the code, also
+	// when it is the coupon's own code. With AllowPromotionCodes set to
 	// true the customer can replace it with another code or remove it; left nil (or false) the
 	// code is locked. The platform looks the code up among currently usable promotion codes and
 	// answers 409 for one that cannot be used in this store, environment, product or currency,
@@ -870,7 +873,8 @@ type CreatePlanChangeSessionParams struct {
 	// ExcludePaymentMethods is a blacklist, mutually exclusive with IncludePaymentMethods.
 	ExcludePaymentMethods []PaymentMethod `json:"excludePaymentMethods,omitempty"`
 	// CouponID applies a coupon to the new plan (Short ID, CPN_xxx). Locked: the customer
-	// cannot change or remove it, and no code entry field is shown. It replaces the
+	// cannot change or remove it, and no code entry field is shown; they see the discount
+	// but not a code. It replaces the
 	// subscription's current discount — the remaining periods of that discount are dropped
 	// and the new coupon's CouponDuration counts from the new subscription's first charge
 	// above zero. The platform checks it against the target plan's product, with the same
