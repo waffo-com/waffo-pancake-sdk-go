@@ -252,10 +252,10 @@ type UpdateStoreParams struct {
 	// ("data:image/<type>;base64,...", at most 3 MB decoded; PNG, JPEG, WebP,
 	// GIF, SVG or ICO). A data URI is uploaded to the Waffo Pancake CDN and the
 	// stored value becomes a CDN URL such as
-	// https://media.waffo.ai/stores/{STO_xxx}/logo/{sha256}.{ext}. JPEG, WebP
-	// and PNG are re-encoded (metadata such as EXIF/GPS removed, longest edge
-	// capped at 2048px); SVG is converted to a 512px PNG; ICO is stored as its
-	// largest PNG frame or kept as ICO. ExplicitNullPtr clears it.
+	// https://media.waffo.ai/stores/{STO_xxx}/logo/{sha256}.{ext}. The logo is
+	// always stored as a PNG with the longest edge capped at 512px and metadata
+	// such as EXIF/GPS removed; an ICO without a PNG frame is kept as ICO.
+	// ExplicitNullPtr clears it.
 	Logo                 *Nullable[string]               `json:"logo,omitempty"`
 	NotificationSettings *Nullable[NotificationSettings] `json:"notificationSettings,omitempty"`
 	CheckoutSettings     *Nullable[CheckoutSettings]     `json:"checkoutSettings,omitempty"`
