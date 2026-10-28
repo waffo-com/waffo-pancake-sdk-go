@@ -507,19 +507,28 @@ All events include the **Order**, **Amount**, and **Product** sections. Addition
 | `Subtotal`       | `*string`  | No       | **Deprecated** — see the deprecation table below                                                       |
 | `Total`          | `*string`  | No       | **Deprecated** — see the deprecation table below                                                       |
 
-**Amount fields** — the object this event's figure refers to. Each block is a `*WebhookAmountBreakdown` (`Total`, `Subtotal`, `TaxAmount`, `TaxRate`, `TaxName`), and at most one of them is non-nil on a given event:
+**Amount fields** — the object this event's figure refers to. Each block is a `*WebhookAmountBreakdown` (`Total`, `Subtotal`, `TaxAmount`, `TaxRate`, `TaxName`, `ListTotal`, `DiscountAmount`), and at most one of them is non-nil on a given event:
 
-| Field             | Type                      | Present on                                                               |
-| ----------------- | ------------------------- | ------------------------------------------------------------------------ |
-| `ListPrice`       | `*WebhookAmountBreakdown` | Payment events — the list price snapshot taken when the order was placed  |
-| `OriginalPayment` | `*WebhookAmountBreakdown` | Refund events — the payment being refunded, as originally charged         |
-| `PlanPrice`       | `*WebhookAmountBreakdown` | Subscription status events — the plan's list price for the current phase  |
+| Field             | Type                      | Present on                                                                                                              |
+| ----------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `ListPrice`       | `*WebhookAmountBreakdown` | Payment events — the amount expected for this payment, after any discount; the price before the discount is `ListTotal` |
+| `OriginalPayment` | `*WebhookAmountBreakdown` | Refund events — the amount expected for the payment being refunded, after any discount                                  |
+| `PlanPrice`       | `*WebhookAmountBreakdown` | Subscription status events — the plan's list price for the current phase                                                |
+
+**Discounts in the block.** `ListPrice` and `OriginalPayment` carry `ListTotal` (price before the discount, tax included) and `DiscountAmount` (tax-inclusive discount) when the payment was recorded with them; both are nil for payments recorded before these keys were introduced. Without a discount `DiscountAmount` is zero and `ListTotal` equals `Total`. With a coupon or promotion code, `Total` and `TaxAmount` are the discounted amounts expected for that payment while `Subtotal` stays the pre-discount amount excluding tax, so `Subtotal + TaxAmount` does not equal `Total` — use `ListTotal - DiscountAmount = Total`. On a subscription each payment carries the amounts for its own period: `DiscountAmount` is zero once the coupon's duration has run out. `PlanPrice` never carries the two fields; it is always the list price before any discount.
+
+```go
+// event from pancake.VerifyWebhookTyped[pancake.WebhookEventData]
+if lp := event.Data.ListPrice; lp != nil && lp.ListTotal != nil && lp.DiscountAmount != nil {
+    fmt.Printf("list %s, discount %s, expected %s\n", *lp.ListTotal, *lp.DiscountAmount, lp.Total)
+}
+```
 
 Alongside the block, refund events carry the same subject as a flat display string:
 
-| Field                   | Type      | Required | Description                                                                                                                                                                                                                                                                 |
-| ----------------------- | --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OriginalChargedAmount` | `*string` | No       | What the payment being refunded actually collected. Refund events only; nil when the channel reported no amount for that payment. Use it as the refundable ceiling — `OriginalPayment.Total` is the list price and refunding up to it is rejected when the two differ |
+| Field                   | Type      | Required | Description                                                                                                                                                                                                                                                                                                      |
+| ----------------------- | --------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OriginalChargedAmount` | `*string` | No       | What the payment being refunded actually collected. Refund events only; nil when the channel reported no amount for that payment. Use it as the refundable ceiling — `OriginalPayment.Total` is the amount expected for that payment (after any discount) and refunding up to it is rejected when the two differ |
 
 **Deprecated amount fields.** These six keep being sent and their types do not change, but their meaning drifts across event families, so each has a subject-specific replacement. Removal is no earlier than 12 months away and ships with the next major version.
 
@@ -532,7 +541,7 @@ Alongside the block, refund events carry the same subject as a flat display stri
 | `TaxRate`   | `ListPrice.TaxRate`   | `OriginalPayment.TaxRate`   | `PlanPrice.TaxRate`        |
 | `TaxName`   | `ListPrice.TaxName`   | `OriginalPayment.TaxName`   | `PlanPrice.TaxName`        |
 
-On payment events `Amount` is the amount actually charged, equal to `ChargedAmount`; when the channel reported no amount it falls back to the list price total. On every other event its value is unchanged, as are all five other deprecated fields.
+On payment events `Amount` is the amount actually charged, equal to `ChargedAmount`; when the channel reported no amount it falls back to `ListPrice.Total`, the amount expected for the payment. On every other event its value is unchanged, as are all five other deprecated fields.
 
 **Product fields** (always present):
 

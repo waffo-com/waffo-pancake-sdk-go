@@ -3,13 +3,16 @@ package pancake
 import (
 	"regexp"
 	"strings"
+	"unicode/utf16"
 )
 
 var (
-	shortIDRe     = regexp.MustCompile(`^[A-Z]{2,5}_[0-9A-Za-z]{22}$`)
-	currencyRe    = regexp.MustCompile(`^[A-Z]{3}$`)
-	countryCodeRe = regexp.MustCompile(`^[A-Z]{2}$`)
-	amountRe      = regexp.MustCompile(`^\d+(\.\d+)?$`)
+	shortIDRe      = regexp.MustCompile(`^[A-Z]{2,5}_[0-9A-Za-z]{22}$`)
+	currencyRe     = regexp.MustCompile(`^[A-Z]{3}$`)
+	countryCodeRe  = regexp.MustCompile(`^[A-Z]{2}$`)
+	amountRe       = regexp.MustCompile(`^\d+(\.\d+)?$`)
+	discountCodeRe = regexp.MustCompile(`^[A-Za-z0-9-]{3,32}$`)
+	codePrefixRe   = regexp.MustCompile(`^[A-Za-z0-9-]{1,12}$`)
 )
 
 var shortIDLabels = map[string]string{
@@ -20,6 +23,8 @@ var shortIDLabels = map[string]string{
 	"REF":  "Refund",
 	"TKT":  "Ticket",
 	"MER":  "Merchant",
+	"CPN":  "Coupon",
+	"PMC":  "Promotion Code",
 }
 
 // validateRequired returns an SDK-layer error when v is empty or contains only
@@ -105,10 +110,35 @@ func validatePositiveInt(field string, v int) error {
 	return nil
 }
 
-// validateMaxLength checks that an optional string does not exceed limit characters.
+// validateMaxLength checks that an optional string does not exceed limit
+// characters. Length is counted in UTF-16 code units, as the server's
+// JavaScript string length is, so multi-byte text is not over-counted.
 func validateMaxLength(field string, v *string, limit int) error {
-	if v != nil && len(*v) > limit {
-		return newSDKError("%s must be at most %d characters, got %d", field, limit, len(*v))
+	if v == nil {
+		return nil
+	}
+	if n := utf16Length(*v); n > limit {
+		return newSDKError("%s must be at most %d characters, got %d", field, limit, n)
+	}
+	return nil
+}
+
+// utf16Length returns the length of s in UTF-16 code units (JavaScript
+// String.prototype.length).
+func utf16Length(s string) int {
+	return len(utf16.Encode([]rune(s)))
+}
+
+// validatePositiveAmountString checks a display-format numeric string that
+// must be greater than zero ("0" and "0.00" are rejected).
+func validatePositiveAmountString(field, v string) error {
+	if err := validateAmountString(field, v); err != nil {
+		return err
+	}
+	// amountRe already allows only digits and one '.', so the amount is zero
+	// exactly when no digit other than '0' remains.
+	if strings.Trim(strings.Replace(v, ".", "", 1), "0") == "" {
+		return newSDKError("Invalid %s: expected an amount greater than 0, got %q", field, v)
 	}
 	return nil
 }
@@ -165,20 +195,51 @@ func validateSessionCommon(productID, currency string, priceSnapshot *PriceSnaps
 	return validateMaxLength("orderMerchantExternalId", orderMerchantExternalID, 128)
 }
 
-// validateCheckoutCommon runs the shared checks for Checkout endpoints.
+// validateSessionDiscount checks the discount fields of a checkout or plan change
+// session.
+//
+// CouponID is mutually exclusive with both PromotionCode and AllowPromotionCodes: a
+// session either has a coupon applied and locked by the merchant, or carries a
+// prefilled promotion code and / or a code entry field. Setting CouponID with either
+// (with any AllowPromotionCodes value) is rejected here, as the platform would reject
+// it with a 400. PromotionCode must not be empty or whitespace only.
+func validateSessionDiscount(couponID, promotionCode *string, allowPromotionCodes *bool) error {
+	if promotionCode != nil && strings.TrimSpace(*promotionCode) == "" {
+		return newSDKError("promotionCode cannot be empty")
+	}
+	if couponID != nil {
+		if err := validateShortID("couponId", *couponID, "CPN"); err != nil {
+			return err
+		}
+		if promotionCode != nil {
+			return newSDKError("couponId and promotionCode are mutually exclusive: pass couponId to apply a coupon, or promotionCode to prefill a promotion code")
+		}
+		if allowPromotionCodes != nil {
+			return newSDKError("couponId and allowPromotionCodes are mutually exclusive: pass couponId to apply a coupon, or allowPromotionCodes to let the customer enter a code")
+		}
+	}
+	return nil
+}
+
+// validateCheckoutCommon runs the shared checks for Checkout endpoints, including
+// the discount fields (see validateSessionDiscount).
 func validateCheckoutCommon(p *CreateCheckoutSessionParams) error {
 	if err := validateSessionCommon(p.ProductID, p.Currency, p.PriceSnapshot, p.ExpiresInSeconds, p.OrderMerchantExternalID); err != nil {
 		return err
 	}
-	return validateBillingDetail(p.BillingDetail)
+	if err := validateBillingDetail(p.BillingDetail); err != nil {
+		return err
+	}
+	return validateSessionDiscount(p.CouponID, p.PromotionCode, p.AllowPromotionCodes)
 }
 
 // validatePlanChangeCommon runs the shared checks for plan change endpoints.
 //
-// It covers the same ground as validateCheckoutCommon minus BillingDetail (plan
-// change mode takes it from the origin subscription) plus the plan-change-only
-// fields. The mode rules themselves (which field may accompany which) belong to
-// the platform — this only catches malformed input before the request goes out.
+// It covers the same ground as validateCheckoutCommon — including the discount
+// fields — minus BillingDetail (plan change mode takes it from the origin
+// subscription) plus the plan-change-only fields. The other mode rules (which field
+// may accompany which) belong to the platform — this only catches malformed input
+// before the request goes out.
 func validatePlanChangeCommon(p *CreatePlanChangeSessionParams) error {
 	if err := validateSessionCommon(p.ProductID, p.Currency, p.PriceSnapshot, p.ExpiresInSeconds, p.OrderMerchantExternalID); err != nil {
 		return err
@@ -196,5 +257,28 @@ func validatePlanChangeCommon(p *CreatePlanChangeSessionParams) error {
 			return err
 		}
 	}
+	return validateSessionDiscount(p.CouponID, p.PromotionCode, p.AllowPromotionCodes)
+}
+
+// validateDiscountCode checks the code format shared by coupons and promotion
+// codes: 3-32 letters, digits or '-'. Surrounding whitespace is trimmed before
+// the check, matching the server, which trims and upper-cases the code.
+func validateDiscountCode(field, v string) error {
+	if err := validateRequired(field, v); err != nil {
+		return err
+	}
+	if !discountCodeRe.MatchString(strings.TrimSpace(v)) {
+		return newSDKError("Invalid %s: expected 3-32 letters, digits or '-', got %q", field, v)
+	}
 	return nil
+}
+
+// validateCouponName checks that a coupon name is present and at most 64
+// characters after trimming, counted in UTF-16 code units as the server does.
+func validateCouponName(name string) error {
+	if err := validateRequired("name", name); err != nil {
+		return err
+	}
+	trimmed := strings.TrimSpace(name)
+	return validateMaxLength("name", &trimmed, 64)
 }
