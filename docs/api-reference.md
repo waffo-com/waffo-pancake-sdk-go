@@ -921,7 +921,7 @@ subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCh
 | `ExcludePaymentMethods`   | `[]pancake.PaymentMethod` | No       | Blacklist — offer everything the currency supports except these. Values the currency does not offer are ignored. Mutually exclusive with `IncludePaymentMethods`. |
 | `CouponID`                | `*string`                 | No       | Coupon to apply (`CPN_xxx`, from `Coupons.Create`). Locked: the customer sees the discount but not a code (even when the coupon has its own code), cannot change or remove it, and no code entry field is shown. One-time products, new subscriptions (the coupon's `Duration` sets how many billing periods are discounted) and plan changes (see `CreatePlanChangeSession`). Mutually exclusive with `PromotionCode` and `AllowPromotionCodes` |
 | `PromotionCode`           | `*string`                 | No       | Promotion code to prefill (the code string, case-insensitive). Merchant credentials only. Changeable — the customer can replace or remove it — only with `AllowPromotionCodes` true; otherwise locked. Mutually exclusive with `CouponID` |
-| `AllowPromotionCodes`     | `*bool`                   | No       | Show a code entry field where the customer can enter a coupon or promotion code. The platform defaults it to `false` for API Key sessions. With `PromotionCode`, true lets the customer change or remove the prefilled code. Mutually exclusive with `CouponID` |
+| `AllowPromotionCodes`     | `*bool`                   | No       | Show a code entry field where the customer can enter a coupon or promotion code. Left nil, shown only if the store has a coupon or promotion code redeemable on the product. With `PromotionCode`, true lets the customer change or remove the prefilled code. Mutually exclusive with `CouponID` |
 
 **Returns `*AuthenticatedCheckoutResult`**:
 
@@ -977,7 +977,7 @@ snapshotRes, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheck
 | `OrderMerchantExternalID` | `*string`                 | No       | Your business-side order identifier (max 128 chars). Honored on the API Key path; visitor / store-slug flows silently drop it. Same field name in webhook payload and GraphQL `Order` / `Payment` / `Refund`. |
 | `CouponID`                | `*string`                 | No       | Coupon to apply (`CPN_xxx`, from `Coupons.Create`). Locked: the customer sees the discount but not a code (even when the coupon has its own code), cannot change or remove it, and no code entry field is shown. One-time products, new subscriptions (the coupon's `Duration` sets how many billing periods are discounted) and plan changes (see `CreatePlanChangeSession`). Mutually exclusive with `PromotionCode` and `AllowPromotionCodes` |
 | `PromotionCode`           | `*string`                 | No       | Promotion code to prefill (the code string, case-insensitive). Merchant credentials only. Changeable — the customer can replace or remove it — only with `AllowPromotionCodes` true; otherwise locked. Mutually exclusive with `CouponID` |
-| `AllowPromotionCodes`     | `*bool`                   | No       | Show a code entry field where the customer can enter a coupon or promotion code. The platform defaults it to `false` for API Key sessions. With `PromotionCode`, true lets the customer change or remove the prefilled code. Mutually exclusive with `CouponID` |
+| `AllowPromotionCodes`     | `*bool`                   | No       | Show a code entry field where the customer can enter a coupon or promotion code. Left nil, shown only if the store has a coupon or promotion code redeemable on the product. With `PromotionCode`, true lets the customer change or remove the prefilled code. Mutually exclusive with `CouponID` |
 
 **Returns `*CheckoutSessionResult`**:
 
@@ -1025,7 +1025,7 @@ session, err := client.Checkout.CreatePlanChangeSession(ctx, pancake.CreatePlanC
 | `IncludePaymentMethods` / `ExcludePaymentMethods` | `[]pancake.PaymentMethod` | No | Whitelist / blacklist, mutually exclusive |
 | `CouponID`                | `*string`              | No       | Coupon to apply to the new plan (`CPN_xxx`). Locked; the customer sees the discount but not a code. Replaces the subscription's current discount. Mutually exclusive with `PromotionCode` and `AllowPromotionCodes` |
 | `PromotionCode`           | `*string`              | No       | Promotion code to prefill on the confirmation page (code string, case-insensitive). Replaces the subscription's current discount. Changeable only with `AllowPromotionCodes` true. Mutually exclusive with `CouponID` |
-| `AllowPromotionCodes`     | `*bool`                | No       | Show a code entry field on the confirmation page. The platform defaults it to `false` for API Key sessions. Mutually exclusive with `CouponID` |
+| `AllowPromotionCodes`     | `*bool`                | No       | Show a code entry field on the confirmation page. Left nil, shown only if the store has a coupon or promotion code redeemable on the new plan's product. Mutually exclusive with `CouponID` |
 
 There is no `BuyerEmail` or `BillingDetail`: in plan change mode the customer email, billing details, and tax all come from the origin subscription.
 

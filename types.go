@@ -806,8 +806,9 @@ type CreateCheckoutSessionParams struct {
 	// Mutually exclusive with CouponID.
 	PromotionCode *string `json:"promotionCode,omitempty"`
 	// AllowPromotionCodes shows a code entry field on the checkout page, where the customer can
-	// enter a coupon code or promotion code. The platform defaults it to false for sessions
-	// created with the API Key. Together with PromotionCode, true lets the customer change or
+	// enter a coupon code or promotion code. Left nil, the platform shows the field only if
+	// the store has a coupon or promotion code that can be redeemed on this product (a locked
+	// coupon or prefilled code keeps it hidden). Together with PromotionCode, true lets the customer change or
 	// remove the prefilled code. Mutually exclusive with CouponID.
 	AllowPromotionCodes *bool `json:"allowPromotionCodes,omitempty"`
 }
@@ -894,8 +895,10 @@ type CreatePlanChangeSessionParams struct {
 	// 409 when it cannot be used for the target plan. Mutually exclusive with CouponID.
 	PromotionCode *string `json:"promotionCode,omitempty"`
 	// AllowPromotionCodes shows a code entry field on the confirmation page, where the
-	// customer can enter a coupon code or promotion code for the new plan. The platform
-	// defaults it to false for sessions created with the API Key. Together with
+	// customer can enter a coupon code or promotion code for the new plan. Left nil, the
+	// platform shows the field only if the store has a coupon or promotion code that can be
+	// redeemed on the new plan's product (a locked coupon or prefilled code keeps it
+	// hidden). Together with
 	// PromotionCode, true lets the customer change or remove the prefilled code. Mutually
 	// exclusive with CouponID.
 	AllowPromotionCodes *bool `json:"allowPromotionCodes,omitempty"`

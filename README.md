@@ -154,7 +154,10 @@ session, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionP
 })
 ```
 
-- `AllowPromotionCodes` defaults to `false` for sessions created with your API Key.
+- Left nil, `AllowPromotionCodes` shows the code entry field only if the store has a
+  coupon or promotion code that can be redeemed on the product; set it to decide yourself.
+  A `CouponID`, or a `PromotionCode` without `AllowPromotionCodes` true, locks the
+  discount and hides the field.
 - `PromotionCode` takes the code string (case-insensitive) and needs your API Key. With
   `AllowPromotionCodes` true the customer can replace the prefilled code or remove it and
   enter another; left nil (or false) the code is locked.
