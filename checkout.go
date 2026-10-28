@@ -12,9 +12,8 @@ import (
 // session is an anonymous credential with no subscription to attribute the change
 // to, and the platform answers 403 for it.
 //
-// CreateSession is the one method here that runs no client-side validation — that is
-// what "full control" buys, and it is the deliberate exception. Every other method on
-// this resource validates its input first, as resource methods do throughout the SDK.
+// Every method on this resource validates its input before sending, as resource
+// methods do throughout the SDK.
 type CheckoutResource struct {
 	// Anonymous creates checkout sessions without a customer identity.
 	Anonymous *CheckoutAnonymousResource
@@ -36,6 +35,10 @@ func newCheckoutResource(h *httpClient) *CheckoutResource {
 // CreateSession is the low-level checkout-session endpoint. Most callers
 // should prefer Checkout.Anonymous.Create or Checkout.Authenticated.Create.
 //
+// It validates the same fields as those two methods, including that CouponID is
+// a CPN_ Short ID and is not combined with PromotionCode or AllowPromotionCodes,
+// and that PromotionCode is not empty.
+//
 // Example:
 //
 //	session, err := client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
@@ -43,6 +46,27 @@ func newCheckoutResource(h *httpClient) *CheckoutResource {
 //	    Currency:  "USD",
 //	})
 //	// Redirect the customer to session.CheckoutURL.
+//
+//	// Apply a coupon the customer cannot change...
+//	_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+//	    ProductID: "PROD_...",
+//	    Currency:  "USD",
+//	    CouponID:  pancake.Ptr("CPN_..."),
+//	})
+//	// ...or let the customer enter a code on the checkout page.
+//	_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+//	    ProductID:           "PROD_...",
+//	    Currency:            "USD",
+//	    AllowPromotionCodes: pancake.Ptr(true),
+//	})
+//	// ...or prefill a promotion code; AllowPromotionCodes true lets the customer
+//	// change or remove it, leave it nil to lock the code.
+//	_, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+//	    ProductID:           "PROD_...",
+//	    Currency:            "USD",
+//	    PromotionCode:       pancake.Ptr("SPRING-20"),
+//	    AllowPromotionCodes: pancake.Ptr(true),
+//	})
 func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSessionParams, opts ...RequestOption) (*CheckoutSessionResult, error) {
 	if err := validateCheckoutCommon(&p); err != nil {
 		return nil, err
@@ -64,6 +88,14 @@ func (r *CheckoutResource) CreateSession(ctx context.Context, p CreateCheckoutSe
 // platform silently drops them for any other credential. ChangeAmount and
 // ChangeCreditAmount are mutually exclusive and the platform rejects both-at-once
 // with a 400 — this method forwards what the caller passes.
+//
+// CouponID (locked), PromotionCode (prefilled; changeable only with
+// AllowPromotionCodes true) or AllowPromotionCodes alone (code entry field) set the
+// discount. A coupon or code replaces the subscription's current discount; without
+// one the current discount carries over with the periods already used, unless it has
+// no periods left, its coupon's RedeemBy is within 60 seconds, or the coupon is
+// deactivated. CouponID with PromotionCode or AllowPromotionCodes returns *Error
+// (400, ErrorLayerSDK) before the request is sent.
 //
 // Example:
 //

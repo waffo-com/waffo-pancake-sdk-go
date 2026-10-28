@@ -6,7 +6,7 @@ Go SDK for the Waffo Pancake Merchant of Record (MoR) payment platform.
 - Automatic RSA-SHA256 request signing; opt-in idempotency keys per call
 - Full type definitions (20 enums, 40+ structs)
 - Webhook verification with embedded public keys (test/prod)
-- Feature parity with [`@waffo/pancake-ts@0.26.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
+- Feature parity with [`@waffo/pancake-ts@0.27.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
 
 ## Installation
 
@@ -117,6 +117,76 @@ res, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParam
 Opening the URL in a new tab is recommended so customers can return to your site
 without losing page state.
 
+### Discounts at checkout
+
+A session either carries a coupon you chose (locked), or works with promotion codes —
+a code you prefill, a code entry field, or both. A coupon never comes with either. The
+fields work with `CreateSession`, `Anonymous.Create` and `Authenticated.Create`, and on
+plan changes with `CreatePlanChangeSession` and `Authenticated.CreatePlanChange`, for
+one-time products, new subscriptions and plan changes.
+
+```go
+// Apply a coupon (CPN_ ID from Coupons.Create): the customer sees "discount applied"
+// and the discounted amount, but cannot see, change or remove the code.
+res, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCheckoutParams{
+    CreateCheckoutSessionParams: pancake.CreateCheckoutSessionParams{
+        ProductID: "PROD_...",
+        Currency:  "USD",
+        CouponID:  pancake.Ptr("CPN_..."),
+    },
+    BuyerIdentity: "user-123",
+})
+
+// Or show a code entry field where the customer types a coupon or promotion code.
+session, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheckoutParams{
+    ProductID:           "PROD_...",
+    Currency:            "USD",
+    AllowPromotionCodes: pancake.Ptr(true),
+})
+
+// Or prefill a promotion code (the code string). With AllowPromotionCodes true the
+// customer can replace it with another code or remove it; left nil the code is locked.
+session, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
+    ProductID:           "PROD_...",
+    Currency:            "USD",
+    PromotionCode:       pancake.Ptr("SPRING-20"),
+    AllowPromotionCodes: pancake.Ptr(true),
+})
+```
+
+- `AllowPromotionCodes` defaults to `false` for sessions created with your API Key.
+- `PromotionCode` takes the code string (case-insensitive) and needs your API Key. With
+  `AllowPromotionCodes` true the customer can replace the prefilled code or remove it and
+  enter another; left nil (or false) the code is locked.
+- Setting `CouponID` together with `PromotionCode` or `AllowPromotionCodes` (either
+  value), a `CouponID` without the `CPN_` prefix, or an empty `PromotionCode`, returns
+  `*pancake.Error` (400, `ErrorLayerSDK`) before any request is sent.
+- The platform rejects a coupon or prefilled promotion code that belongs to another store
+  or environment, is not `active`, expires within 60 seconds, does not cover the product,
+  or is a fixed amount with no amount in the session currency, with a 409 whose message
+  names the reason.
+  Rules tied to the customer are checked when the order is placed.
+- On a subscription, the coupon's `Duration` decides how many billing periods are
+  discounted: `once` one period, `repeating` `DurationInPeriods` periods, `forever` every
+  period until the subscription ends. Only periods with a price above zero count — a free
+  trial uses no discount and it starts with the first paid period, while a paid trial is
+  discounted and counts as the first period. With any duration, renewals charged after the
+  coupon's `RedeemBy` are charged the full price.
+- A promotion code's minimum amount is checked against the first charge that should be
+  discounted, before the discount and excluding tax: the trial price for a paid trial, the
+  regular price otherwise.
+- A use is counted once, when the first discounted charge succeeds. If the subscription is
+  canceled before that (for example during a free trial), it first moves to `canceling`, and
+  the use is given back when the subscription ends.
+- On a plan change, a coupon or code replaces the subscription's current discount and
+  counts its periods from the new subscription's first charge above zero; without one, the
+  current discount carries over to the new plan with the periods already used, unless it
+  has no periods left, its coupon's `RedeemBy` is within 60 seconds, or the coupon is
+  deactivated — then the new plan is charged the full price. A promotion code's minimum
+  amount is checked against the new plan's regular price before the discount, excluding
+  tax, without subtracting the credit for the current plan. See
+  [Discounts](https://docs.waffo.ai/guides/discounts#plan-changes).
+
 ### Plan change links
 
 Switching an existing subscription to another plan uses the same endpoint in a
@@ -149,6 +219,10 @@ res, err := client.Checkout.Authenticated.CreatePlanChange(ctx, pancake.Authenti
 - `ChangeAmount` sets what you charge for this period, `ChangeCreditAmount` how
   much you credit against it. Same unit and tax basis, opposite meaning — they are
   mutually exclusive and sending both is rejected with a 400.
+- `CouponID`, `PromotionCode` and `AllowPromotionCodes` work as on a new purchase; a
+  coupon or code replaces the subscription's discount, and without one the current
+  discount carries over while it still applies (see
+  [Discounts at checkout](#discounts-at-checkout)).
 - `ChangeAmount`, `ChangeCreditAmount` and `WithTrial` are honored because these
   calls are signed with your API Key; a customer-session credential has them
   silently dropped.
@@ -447,6 +521,44 @@ _, _ = client.Webhooks.Add(ctx, pancake.AddWebhookParams{
 To list configured webhooks, query GraphQL `Store.storeWebhooks` via
 `client.GraphQL.Query`.
 
+### Coupons & Promotion Codes
+
+A coupon defines the discount and has its own `Code` (random when nil) that buyers can type; its only limits are `RedeemBy` and `MaxRedemptions`. Promotion codes carry buyer restrictions (emails, per-buyer limit, minimum amount): create them together with the coupon (`PromotionCodes`, up to 20) or later with `client.PromotionCodes`. A coupon applied with `CouponID` needs no code. Deactivation is permanent and releases the codes for reuse. Read coupons with `client.GraphQL.Query` (`coupons`, `coupon`, `promotionCodes`).
+
+```go
+couponRes, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
+    StoreID:           "STO_xxx",
+    Name:              "Black Friday 20% off",
+    Discount:          pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
+    Duration:          pancake.Ptr(pancake.CouponDurationRepeating),
+    DurationInPeriods: pancake.Ptr(3),
+    Code:              pancake.Ptr("BF2026"),
+    PromotionCodes: []pancake.CreateCouponPromotionCodeParams{{
+        Code:         pancake.Ptr("BF-NEW"),
+        Restrictions: &pancake.PromotionCodeRestrictions{PerCustomerLimit: pancake.Ptr(1)},
+    }},
+}, pancake.WithIdempotencyKey("coupon-bf2026"))
+if err != nil {
+    return err
+}
+
+// 1-500 random single-use codes; always retry with the same idempotency key
+batch, err := client.PromotionCodes.Generate(ctx, pancake.GeneratePromotionCodesParams{
+    CouponID:     couponRes.Coupon.ID,
+    Count:        100,
+    Prefix:       pancake.Ptr("KOL-"),
+    Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(1)},
+}, pancake.WithIdempotencyKey("kol-batch-2026-11"))
+if err != nil {
+    return err
+}
+fmt.Println(batch.BatchID, len(batch.PromotionCodes))
+
+if _, err := client.Coupons.Deactivate(ctx, pancake.DeactivateCouponParams{ID: couponRes.Coupon.ID}); err != nil {
+    return err
+}
+```
+
 ## Content Safety
 
 Scan a user's prompt for content-safety compliance before AIGC generation — continue only when `Action` is `pancake.ScanActionAllow`. The check is stateless (prompt text is never stored); it fails closed to `pancake.ScanActionReview` if the safety service is briefly unavailable.
@@ -515,6 +627,8 @@ distinguished from server-returned errors.
 | `client.OnetimeProducts`             | `Create`, `Update`, `Publish`, `UpdateStatus`                                                                                            |
 | `client.SubscriptionProducts`        | `Create`, `Update`, `Publish`, `UpdateStatus`                                                                                            |
 | `client.SubscriptionProductGroups`   | `Create`, `Update`, `Delete`, `Publish`                                                                                                  |
+| `client.Coupons`                     | `Create`, `Update`, `Deactivate`                                                                                                         |
+| `client.PromotionCodes`              | `Create`, `Generate`, `Deactivate`                                                                                                       |
 | `client.Orders`                      | `CancelSubscription`                                                                                                                     |
 | `client.Checkout`                    | `CreateSession`, `CreatePlanChangeSession`, `Anonymous.Create`, `Authenticated.Create`, `Authenticated.CreatePlanChange`                  |
 | `client.GraphQL`                     | `Query` (also `pancake.GraphQLQuery[T]`)                                                                                                 |

@@ -1,0 +1,164 @@
+package pancake
+
+import (
+	"context"
+	"fmt"
+	"strings"
+)
+
+// CouponsResource manages coupons. Buyers redeem a coupon by entering its own
+// code or one of its promotion codes; CouponID applies it without a code. Only
+// the name of a coupon can change; deactivation is permanent.
+type CouponsResource struct {
+	http *httpClient
+}
+
+// Create creates a coupon with its own code (random when Code is nil),
+// optionally with up to 20 promotion codes in the same request. A coupon only
+// limits redemptions by RedeemBy and MaxRedemptions; buyer restrictions go on
+// promotion codes. The returned status is always active, Coupon.Code is the
+// coupon's code and Coupon.PromotionCodes lists the codes created with it. When the payment provider rejects the coupon or
+// does not confirm it, the request fails with 502 and every code is released,
+// so the coupon can be created again with the same codes. A code already used
+// by an active code of the store fails with 409 and the message names
+// it. If the request itself fails on your side (timeout, network), retry with
+// the same idempotency key: a creation that succeeded is returned instead of a
+// 409 for the codes it already took.
+//
+// Example:
+//
+//	res, err := client.Coupons.Create(ctx, pancake.CreateCouponParams{
+//		StoreID:  "STO_xxx",
+//		Name:     "Black Friday 20% off",
+//		Code:     pancake.Ptr("BF2026"),
+//		Discount: pancake.CouponDiscount{Type: pancake.CouponDiscountTypePercentage, PercentOff: pancake.Ptr(20.0)},
+//		PromotionCodes: []pancake.CreateCouponPromotionCodeParams{
+//			{Code: pancake.Ptr("BF-VIP")},
+//			{Restrictions: &pancake.PromotionCodeRestrictions{MaxRedemptions: pancake.Ptr(100), PerCustomerLimit: pancake.Ptr(1)}},
+//		},
+//	}, pancake.WithIdempotencyKey("coupon-bf2026"))
+//	// res.Coupon.Code == "BF2026"; res.Coupon.PromotionCodes[0].Code == "BF-VIP"; the second code is random
+func (r *CouponsResource) Create(ctx context.Context, p CreateCouponParams, opts ...RequestOption) (*CreateCouponResult, error) {
+	if err := validateShortID("storeId", p.StoreID, "STO"); err != nil {
+		return nil, err
+	}
+	if err := validateCouponName(p.Name); err != nil {
+		return nil, err
+	}
+	if len(p.PromotionCodes) > 20 {
+		return nil, newSDKError("Invalid promotionCodes: expected at most 20 entries, got %d", len(p.PromotionCodes))
+	}
+	// The coupon's code and its promotion codes share the store's code namespace,
+	// so they cannot repeat within a request.
+	seenCodes := make(map[string]bool, len(p.PromotionCodes)+1)
+	if p.Code != nil {
+		if err := validateDiscountCode("code", *p.Code); err != nil {
+			return nil, err
+		}
+		seenCodes[strings.ToUpper(strings.TrimSpace(*p.Code))] = true
+	}
+	for i, promotionCode := range p.PromotionCodes {
+		if promotionCode.Code == nil {
+			continue
+		}
+		if err := validateDiscountCode(fmt.Sprintf("promotionCodes[%d].code", i), *promotionCode.Code); err != nil {
+			return nil, err
+		}
+		normalized := strings.ToUpper(strings.TrimSpace(*promotionCode.Code))
+		if seenCodes[normalized] {
+			return nil, newSDKError("Duplicate promotionCodes code: %q", normalized)
+		}
+		seenCodes[normalized] = true
+	}
+	switch p.Discount.Type {
+	case CouponDiscountTypePercentage:
+		if p.Discount.PercentOff == nil {
+			return nil, newSDKError("Missing required field: discount.percentOff")
+		}
+		if *p.Discount.PercentOff <= 0 || *p.Discount.PercentOff > 100 {
+			return nil, newSDKError("Invalid discount.percentOff: expected a value above 0 and up to 100, got %v", *p.Discount.PercentOff)
+		}
+	case CouponDiscountTypeFixedAmount:
+		if len(p.Discount.AmountOff) == 0 {
+			return nil, newSDKError("Missing required field: discount.amountOff")
+		}
+		for currency, amount := range p.Discount.AmountOff {
+			if err := validateCurrencyCode("discount.amountOff (key)", currency); err != nil {
+				return nil, err
+			}
+			if err := validatePositiveAmountString("discount.amountOff."+currency, amount); err != nil {
+				return nil, err
+			}
+		}
+	default:
+		return nil, newSDKError("Invalid discount.type: expected one of [percentage, fixed_amount], got %q", p.Discount.Type)
+	}
+	if p.Duration != nil {
+		switch *p.Duration {
+		case CouponDurationOnce, CouponDurationRepeating, CouponDurationForever:
+		default:
+			return nil, newSDKError("Invalid duration: expected one of [once, repeating, forever], got %q", *p.Duration)
+		}
+	}
+	if p.Duration != nil && *p.Duration == CouponDurationRepeating {
+		if p.DurationInPeriods == nil {
+			return nil, newSDKError("Missing required field: durationInPeriods")
+		}
+		if err := validatePositiveInt("durationInPeriods", *p.DurationInPeriods); err != nil {
+			return nil, err
+		}
+	} else if p.DurationInPeriods != nil {
+		return nil, newSDKError("durationInPeriods is only allowed when duration is repeating")
+	}
+	for _, productID := range p.ProductIDs {
+		if err := validateShortID("productIds[]", productID, "PROD"); err != nil {
+			return nil, err
+		}
+	}
+	out, warnings, err := postAction[CreateCouponResult](ctx, r.http, "/v1/actions/coupon/create-coupon", p, opts)
+	if err != nil {
+		return nil, err
+	}
+	out.Warnings = warnings
+	return out, nil
+}
+
+// Update renames a coupon. Create a new coupon to change the discount.
+//
+// Example:
+//
+//	res, err := client.Coupons.Update(ctx, pancake.UpdateCouponParams{ID: "CPN_xxx", Name: "Black Friday (extended)"})
+func (r *CouponsResource) Update(ctx context.Context, p UpdateCouponParams, opts ...RequestOption) (*CouponResult, error) {
+	if err := validateShortID("id", p.ID, "CPN"); err != nil {
+		return nil, err
+	}
+	if err := validateCouponName(p.Name); err != nil {
+		return nil, err
+	}
+	out, warnings, err := postAction[CouponResult](ctx, r.http, "/v1/actions/coupon/update-coupon", p, opts)
+	if err != nil {
+		return nil, err
+	}
+	out.Warnings = warnings
+	return out, nil
+}
+
+// Deactivate deactivates a coupon permanently. All its promotion codes are
+// deactivated and their codes released. Discounts already attached to
+// subscriptions continue until the subscription's next plan change. Calling it
+// again returns the coupon unchanged.
+//
+// Example:
+//
+//	res, err := client.Coupons.Deactivate(ctx, pancake.DeactivateCouponParams{ID: "CPN_xxx"})
+func (r *CouponsResource) Deactivate(ctx context.Context, p DeactivateCouponParams, opts ...RequestOption) (*CouponResult, error) {
+	if err := validateShortID("id", p.ID, "CPN"); err != nil {
+		return nil, err
+	}
+	out, warnings, err := postAction[CouponResult](ctx, r.http, "/v1/actions/coupon/deactivate-coupon", p, opts)
+	if err != nil {
+		return nil, err
+	}
+	out.Warnings = warnings
+	return out, nil
+}

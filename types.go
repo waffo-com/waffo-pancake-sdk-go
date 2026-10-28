@@ -422,6 +422,189 @@ type OnetimeProductResult struct {
 }
 
 // -----------------------------------------------------------------------------
+// Coupon & Promotion Code
+// -----------------------------------------------------------------------------
+
+// CouponDiscount is the discount of a coupon: set PercentOff for
+// CouponDiscountTypePercentage, or AmountOff (display-format amounts per
+// currency, e.g. "5.00") for CouponDiscountTypeFixedAmount.
+type CouponDiscount struct {
+	Type       CouponDiscountType `json:"type"`
+	PercentOff *float64           `json:"percentOff,omitempty"`
+	AmountOff  map[string]string  `json:"amountOff,omitempty"`
+}
+
+// PromotionCodeRestrictions are the redemption restrictions of a promotion
+// code, enforced together with its coupon's RedeemBy and MaxRedemptions (the
+// only limits a coupon has).
+type PromotionCodeRestrictions struct {
+	// CustomerEmails limits the code to these buyer emails (case-insensitive).
+	CustomerEmails []string `json:"customerEmails,omitempty"`
+	// PerCustomerLimit is the lifetime uses of this code per buyer.
+	PerCustomerLimit *int `json:"perCustomerLimit,omitempty"`
+	// MaxRedemptions must not exceed the coupon's MaxRedemptions.
+	MaxRedemptions *int `json:"maxRedemptions,omitempty"`
+	// ExpiresAt (ISO 8601) must not be later than the coupon's RedeemBy; it
+	// defaults to the coupon's RedeemBy.
+	ExpiresAt *string `json:"expiresAt,omitempty"`
+	// MinimumAmount is the minimum pre-discount, pre-tax amount per currency
+	// (display format). Currencies not listed have no minimum.
+	MinimumAmount map[string]string `json:"minimumAmount,omitempty"`
+}
+
+// PromotionCodeRestrictionsDetail is the API shape of a promotion code's restrictions.
+type PromotionCodeRestrictionsDetail struct {
+	CustomerEmails   []string          `json:"customerEmails"`
+	PerCustomerLimit *int              `json:"perCustomerLimit"`
+	MaxRedemptions   *int              `json:"maxRedemptions"`
+	ExpiresAt        *string           `json:"expiresAt"`
+	MinimumAmount    map[string]string `json:"minimumAmount"`
+}
+
+// CouponDetail is the API shape of a coupon. Buyers redeem a coupon with its
+// own Code or one of its promotion codes; a coupon applied by CouponID needs no
+// code. Its only redemption limits are RedeemBy and MaxRedemptions.
+type CouponDetail struct {
+	ID      string `json:"id"`
+	StoreID string `json:"storeId"`
+	Name    string `json:"name"`
+	// Code is the coupon's own code (uppercase), usable by buyers at checkout.
+	Code              string             `json:"code"`
+	Status            CouponStatus       `json:"status"`
+	DiscountType      CouponDiscountType `json:"discountType"`
+	PercentOff        *float64           `json:"percentOff"`
+	AmountOff         map[string]string  `json:"amountOff"`
+	Duration          CouponDuration     `json:"duration"`
+	DurationInPeriods *int               `json:"durationInPeriods"`
+	ProductIDs        []string           `json:"productIds"`
+	MaxRedemptions    *int               `json:"maxRedemptions"`
+	RedeemBy          *string            `json:"redeemBy"`
+	CreatedAt         string             `json:"createdAt"`
+	UpdatedAt         string             `json:"updatedAt"`
+}
+
+// CreateCouponPromotionCodeParams is a promotion code created together with its
+// coupon. A random 10-character code is generated when Code is nil.
+type CreateCouponPromotionCodeParams struct {
+	// Code is 3-32 letters, digits or '-', case-insensitive, unique among the
+	// store's active codes and within the request (including the coupon's Code).
+	Code *string `json:"code,omitempty"`
+	// Restrictions follow the same rules as PromotionCodes.Create; MaxRedemptions
+	// and ExpiresAt must stay within the coupon's limits.
+	Restrictions *PromotionCodeRestrictions `json:"restrictions,omitempty"`
+}
+
+// CreateCouponParams is the input to Coupons.Create. A coupon only limits
+// redemptions by RedeemBy and MaxRedemptions; buyer restrictions (emails,
+// per-buyer limit, minimum amount) go on PromotionCodes.
+type CreateCouponParams struct {
+	StoreID string `json:"storeId"`
+	// Name is an internal name (at most 64 characters), not visible to buyers.
+	Name string `json:"name"`
+	// Code is the coupon's own code buyers can type: 3-32 letters, digits or
+	// '-', case-insensitive, unique among the store's active codes. A random
+	// 10-character code is generated when Code is nil.
+	Code     *string        `json:"code,omitempty"`
+	Discount CouponDiscount `json:"discount"`
+	// Duration defaults to CouponDurationOnce.
+	Duration *CouponDuration `json:"duration,omitempty"`
+	// DurationInPeriods is required when Duration is CouponDurationRepeating.
+	DurationInPeriods *int `json:"durationInPeriods,omitempty"`
+	// ProductIDs restricts the coupon to these products; empty means the whole store.
+	ProductIDs []string `json:"productIds,omitempty"`
+	// MaxRedemptions is the total redemption limit across the coupon's code and
+	// all its promotion codes; refunds do not give uses back.
+	MaxRedemptions *int `json:"maxRedemptions,omitempty"`
+	// RedeemBy (ISO 8601) also ends discounts already attached to subscriptions.
+	RedeemBy *string `json:"redeemBy,omitempty"`
+	// PromotionCodes are created in the same request (0-20) and become usable
+	// when the coupon is created.
+	PromotionCodes []CreateCouponPromotionCodeParams `json:"promotionCodes,omitempty"`
+}
+
+// UpdateCouponParams is the input to Coupons.Update. The name is the only field
+// that can change.
+type UpdateCouponParams struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// DeactivateCouponParams is the input to Coupons.Deactivate.
+type DeactivateCouponParams struct {
+	ID string `json:"id"`
+}
+
+// CouponResult wraps a coupon returned by the coupon actions.
+type CouponResult struct {
+	Coupon   CouponDetail `json:"coupon"`
+	Warnings []Notice     `json:"warnings,omitempty"`
+}
+
+// CreatedCouponDetail is the coupon returned by Coupons.Create, with the
+// promotion codes created in the same request (in request order; empty when
+// none were requested).
+type CreatedCouponDetail struct {
+	CouponDetail
+	PromotionCodes []PromotionCodeDetail `json:"promotionCodes"`
+}
+
+// CreateCouponResult wraps the coupon returned by Coupons.Create.
+type CreateCouponResult struct {
+	Coupon   CreatedCouponDetail `json:"coupon"`
+	Warnings []Notice            `json:"warnings,omitempty"`
+}
+
+// PromotionCodeDetail is the API shape of a promotion code.
+type PromotionCodeDetail struct {
+	ID           string                          `json:"id"`
+	CouponID     string                          `json:"couponId"`
+	Code         string                          `json:"code"`
+	Status       PromotionCodeStatus             `json:"status"`
+	Restrictions PromotionCodeRestrictionsDetail `json:"restrictions"`
+	BatchID      *string                         `json:"batchId"`
+	CreatedAt    string                          `json:"createdAt"`
+}
+
+// CreatePromotionCodeParams is the input to PromotionCodes.Create. A random
+// code is generated when Code is nil.
+type CreatePromotionCodeParams struct {
+	CouponID     string                     `json:"couponId"`
+	Code         *string                    `json:"code,omitempty"`
+	Restrictions *PromotionCodeRestrictions `json:"restrictions,omitempty"`
+}
+
+// GeneratePromotionCodesParams is the input to PromotionCodes.Generate
+// (1-500 codes, synchronous). Always retry with the same idempotency key: a
+// retry without it generates another batch.
+type GeneratePromotionCodesParams struct {
+	CouponID string `json:"couponId"`
+	Count    int    `json:"count"`
+	// Prefix is 1-12 letters, digits or '-'.
+	Prefix *string `json:"prefix,omitempty"`
+	// Length of the random part, 8-16; defaults to 10.
+	Length       *int                       `json:"length,omitempty"`
+	Restrictions *PromotionCodeRestrictions `json:"restrictions,omitempty"`
+}
+
+// DeactivatePromotionCodeParams is the input to PromotionCodes.Deactivate.
+type DeactivatePromotionCodeParams struct {
+	ID string `json:"id"`
+}
+
+// PromotionCodeResult wraps a promotion code returned by the promotion code actions.
+type PromotionCodeResult struct {
+	PromotionCode PromotionCodeDetail `json:"promotionCode"`
+	Warnings      []Notice            `json:"warnings,omitempty"`
+}
+
+// GeneratePromotionCodesResult is the result of PromotionCodes.Generate.
+type GeneratePromotionCodesResult struct {
+	BatchID        string                `json:"batchId"`
+	PromotionCodes []PromotionCodeDetail `json:"promotionCodes"`
+	Warnings       []Notice              `json:"warnings,omitempty"`
+}
+
+// -----------------------------------------------------------------------------
 // Subscription Product
 // -----------------------------------------------------------------------------
 
@@ -623,6 +806,32 @@ type CreateCheckoutSessionParams struct {
 	// Values the currency does not offer are ignored, so one blacklist can be reused across currencies.
 	// Mutually exclusive with IncludePaymentMethods.
 	ExcludePaymentMethods []PaymentMethod `json:"excludePaymentMethods,omitempty"`
+	// CouponID applies a coupon to the session (Short ID, CPN_xxx — the Pancake coupon ID, not
+	// the payment provider's). The discount is locked: the customer sees it applied but cannot
+	// change or remove it, and no code entry field is shown. The customer sees the discount but
+	// not a code, even when the coupon has its own code — to show a code, prefill it with
+	// PromotionCode instead. Works for one-time products and new
+	// subscriptions (plan changes take one through CreatePlanChangeSessionParams.CouponID). On a
+	// subscription the coupon's CouponDuration decides how many billing periods are discounted.
+	// The platform answers 409 for a coupon from another store or environment, one that is not
+	// active or expires within 60 seconds, one not covering the product, and a fixed amount coupon
+	// with no amount in Currency. Rules tied to the customer are checked when the order is placed.
+	// Mutually exclusive with PromotionCode and AllowPromotionCodes.
+	CouponID *string `json:"couponId,omitempty"`
+	// PromotionCode prefills a promotion code on the checkout page (the code string the customer
+	// would type, case-insensitive). Merchant credentials only. The customer sees the code, also
+	// when it is the coupon's own code. With AllowPromotionCodes set to
+	// true the customer can replace it with another code or remove it; left nil (or false) the
+	// code is locked. The platform looks the code up among currently usable promotion codes and
+	// answers 409 for one that cannot be used in this store, environment, product or currency,
+	// naming the reason. Rules tied to the customer are checked when the order is placed.
+	// Mutually exclusive with CouponID.
+	PromotionCode *string `json:"promotionCode,omitempty"`
+	// AllowPromotionCodes shows a code entry field on the checkout page, where the customer can
+	// enter a coupon code or promotion code. The platform defaults it to false for sessions
+	// created with the API Key. Together with PromotionCode, true lets the customer change or
+	// remove the prefilled code. Mutually exclusive with CouponID.
+	AllowPromotionCodes *bool `json:"allowPromotionCodes,omitempty"`
 }
 
 // CheckoutSessionResult is the response of Checkout.CreateSession and
@@ -685,6 +894,33 @@ type CreatePlanChangeSessionParams struct {
 	IncludePaymentMethods []PaymentMethod `json:"includePaymentMethods,omitempty"`
 	// ExcludePaymentMethods is a blacklist, mutually exclusive with IncludePaymentMethods.
 	ExcludePaymentMethods []PaymentMethod `json:"excludePaymentMethods,omitempty"`
+	// CouponID applies a coupon to the new plan (Short ID, CPN_xxx). Locked: the customer
+	// cannot change or remove it, and no code entry field is shown; they see the discount
+	// but not a code. It replaces the
+	// subscription's current discount — the remaining periods of that discount are dropped
+	// and the new coupon's CouponDuration counts from the new subscription's first charge
+	// above zero. The platform checks it against the target plan's product, with the same
+	// 409 reasons as CreateCheckoutSessionParams.CouponID.
+	//
+	// Without a coupon or promotion code, the current discount carries over to the new plan
+	// with the periods already used, unless it has no periods left, its coupon's RedeemBy is
+	// within 60 seconds, or the coupon is deactivated — then the new plan is charged the full
+	// price. See https://docs.waffo.ai/guides/discounts#plan-changes.
+	//
+	// Mutually exclusive with PromotionCode and AllowPromotionCodes.
+	CouponID *string `json:"couponId,omitempty"`
+	// PromotionCode prefills a promotion code on the confirmation page (the code string,
+	// case-insensitive). Merchant credentials only. Like CouponID it replaces the
+	// subscription's current discount. With AllowPromotionCodes set to true the customer can
+	// replace it with another code or remove it; otherwise it is locked. The platform answers
+	// 409 when it cannot be used for the target plan. Mutually exclusive with CouponID.
+	PromotionCode *string `json:"promotionCode,omitempty"`
+	// AllowPromotionCodes shows a code entry field on the confirmation page, where the
+	// customer can enter a coupon code or promotion code for the new plan. The platform
+	// defaults it to false for sessions created with the API Key. Together with
+	// PromotionCode, true lets the customer change or remove the prefilled code. Mutually
+	// exclusive with CouponID.
+	AllowPromotionCodes *bool `json:"allowPromotionCodes,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -903,8 +1139,8 @@ type TypedGraphQLResponse[T any] struct {
 // -----------------------------------------------------------------------------
 
 // WebhookAmountBreakdown is the amount breakdown of the object a webhook event
-// refers to: the list price behind a charge, the original payment behind a refund,
-// or the plan price behind a subscription status change.
+// refers to: the price snapshot behind a charge, the original payment behind a
+// refund, or the plan price behind a subscription status change.
 //
 // Money fields are display strings, already converted from minor units ("29.00" for
 // USD, "4500" for JPY). The block never uses the name Amount — that name belongs to
@@ -920,6 +1156,19 @@ type WebhookAmountBreakdown struct {
 	TaxRate *float64 `json:"taxRate,omitempty"`
 	// TaxName is the tax name (for example "Consumption Tax").
 	TaxName *string `json:"taxName,omitempty"`
+	// ListTotal is the price before the discount, tax included. Present only in
+	// ListPrice and OriginalPayment, and only when that payment was recorded with the
+	// discount fields — nil for payments recorded before these keys were introduced.
+	// Never set in PlanPrice, which is always the list price before any discount. When
+	// present, ListTotal - DiscountAmount = Total: Total is the amount expected for that
+	// payment after the discount. Without a discount ListTotal equals Total.
+	ListTotal *string `json:"listTotal,omitempty"`
+	// DiscountAmount is the discount applied to that payment, tax included; zero in
+	// display format ("0.00" for USD, "0" for JPY) when no discount applies. Present
+	// under the same conditions as ListTotal. With a discount, Total and TaxAmount are
+	// the discounted amounts while Subtotal stays the pre-discount amount excluding tax,
+	// so Subtotal + TaxAmount does not equal Total — use ListTotal - DiscountAmount = Total.
+	DiscountAmount *string `json:"discountAmount,omitempty"`
 }
 
 // WebhookEventData is the canonical payload shape of a webhook event. Many
@@ -977,23 +1226,31 @@ type WebhookEventData struct {
 	// than 12 months away and ships with the next major version.
 	Total *string `json:"total,omitempty"`
 
-	// ListPrice is the list price snapshot taken when the order was placed. Present
-	// only on payment events; nil when the order carries no amount snapshot.
+	// ListPrice is the price snapshot recorded for this payment. With a coupon or
+	// promotion code, Total is the discounted amount expected for the payment, and
+	// ListTotal / DiscountAmount give the price before the discount and the discount
+	// itself (when the payment was recorded with them). Present only on payment events;
+	// nil when the order carries no amount snapshot.
 	ListPrice *WebhookAmountBreakdown `json:"listPrice,omitempty"`
 	// OriginalChargedAmount is what the payment being refunded actually collected, as a
 	// display string. Present only on refund events, and only when the channel reported an
 	// amount for that payment — nil otherwise, never zero-filled. It is the ceiling a refund
-	// can reach; OriginalPayment.Total next to it is the list price snapshot taken when the
-	// order was placed. The two differ when a prorated credit or a zero-amount card check
-	// applied to that payment, and refunding up to the list price is then rejected by the
-	// channel.
+	// can reach; OriginalPayment.Total next to it is the amount expected for that payment,
+	// after any discount (the price before the discount is its ListTotal). The two differ
+	// when a prorated credit or a zero-amount card check applied to that payment, and
+	// refunding up to the expected amount is then rejected by the channel.
 	OriginalChargedAmount *string `json:"originalChargedAmount,omitempty"`
-	// OriginalPayment is the payment being refunded, as it was originally charged.
-	// Present only on refund events; nil when that payment carries no amount snapshot.
+	// OriginalPayment is the payment being refunded, as it was originally charged. It
+	// carries ListTotal / DiscountAmount when that payment was recorded with them, read
+	// the same way as in ListPrice. Present only on refund events; nil when that payment
+	// carries no amount snapshot.
 	OriginalPayment *WebhookAmountBreakdown `json:"originalPayment,omitempty"`
-	// PlanPrice is the subscription's list price for the current phase. Present only on
-	// subscription status events (every subscription.* event except
-	// subscription.payment_succeeded); nil when the subscription carries no price snapshot.
+	// PlanPrice is the subscription's list price for the current phase, always before
+	// any coupon discount — ListTotal / DiscountAmount are never set on it; the
+	// discounted amount of a charge is in ListPrice on subscription.payment_succeeded.
+	// Present only on subscription status events (every subscription.* event except
+	// subscription.payment_succeeded); nil when the subscription carries no price
+	// snapshot.
 	PlanPrice *WebhookAmountBreakdown `json:"planPrice,omitempty"`
 
 	ProductName        string            `json:"productName"`
