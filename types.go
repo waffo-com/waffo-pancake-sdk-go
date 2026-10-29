@@ -191,6 +191,11 @@ type NotificationSettings struct {
 
 // CheckoutThemeSettings holds checkout page styling for a single theme.
 type CheckoutThemeSettings struct {
+	// CheckoutLogo is always nil. The checkout page shows the store's top-level
+	// Store.Logo; set it via UpdateStoreParams.Logo. A non-nil value sent in
+	// CheckoutSettings is ignored and the response carries a Warnings entry.
+	//
+	// Deprecated: Use Store.Logo / UpdateStoreParams.Logo instead.
 	CheckoutLogo            *string `json:"checkoutLogo"`
 	CheckoutColorPrimary    string  `json:"checkoutColorPrimary"`
 	CheckoutColorBackground string  `json:"checkoutColorBackground"`
@@ -208,9 +213,12 @@ type CheckoutSettings struct {
 
 // Store is the store entity returned by Stores.Create / Update / Delete.
 type Store struct {
-	ID                   string                `json:"id"`
-	Name                 string                `json:"name"`
-	Status               EntityStatus          `json:"status"`
+	ID     string       `json:"id"`
+	Name   string       `json:"name"`
+	Status EntityStatus `json:"status"`
+	// Logo is the store logo URL shown on the checkout page. Logos uploaded as
+	// a base64 data URI come back as a CDN URL such as
+	// https://media.waffo.ai/stores/{STO_xxx}/logo/{sha256}.{ext}.
 	Logo                 *string               `json:"logo"`
 	SupportEmail         *string               `json:"supportEmail"`
 	Website              *string               `json:"website"`
@@ -237,9 +245,17 @@ type CreateStoreParams struct {
 // code binding and domain verification, or KYB approval. Read them back from
 // Store.
 type UpdateStoreParams struct {
-	ID                   string                          `json:"id"`
-	Name                 *string                         `json:"name,omitempty"`
-	Status               *EntityStatus                   `json:"status,omitempty"`
+	ID     string        `json:"id"`
+	Name   *string       `json:"name,omitempty"`
+	Status *EntityStatus `json:"status,omitempty"`
+	// Logo accepts an http(s) URL (stored as-is) or a base64 image data URI
+	// ("data:image/<type>;base64,...", at most 3 MB decoded; PNG, JPEG, WebP,
+	// GIF, SVG or ICO). A data URI is uploaded to the Waffo Pancake CDN and the
+	// stored value becomes a CDN URL such as
+	// https://media.waffo.ai/stores/{STO_xxx}/logo/{sha256}.{ext}. The logo is
+	// always stored as a PNG with the longest edge capped at 512px and metadata
+	// such as EXIF/GPS removed; an ICO without a PNG frame is kept as ICO.
+	// ExplicitNullPtr clears it.
 	Logo                 *Nullable[string]               `json:"logo,omitempty"`
 	NotificationSettings *Nullable[NotificationSettings] `json:"notificationSettings,omitempty"`
 	CheckoutSettings     *Nullable[CheckoutSettings]     `json:"checkoutSettings,omitempty"`
@@ -334,10 +350,16 @@ type Prices map[string]PriceInfo
 
 // MediaItem is a single image or video attached to a product.
 type MediaItem struct {
-	Type      MediaType `json:"type"`
-	URL       string    `json:"url"`
-	Alt       *string   `json:"alt,omitempty"`
-	Thumbnail *string   `json:"thumbnail,omitempty"`
+	Type MediaType `json:"type"`
+	// URL accepts, on create / update, an http(s) URL (stored as-is) or a
+	// base64 image data URI ("data:image/<type>;base64,...", at most 3 MB
+	// decoded). A data URI is uploaded to the Waffo Pancake CDN and replaced
+	// with a URL such as
+	// https://media.waffo.ai/stores/{STO_xxx}/product/{sha256}.{ext}.
+	URL string  `json:"url"`
+	Alt *string `json:"alt,omitempty"`
+	// Thumbnail accepts the same values as URL.
+	Thumbnail *string `json:"thumbnail,omitempty"`
 }
 
 // -----------------------------------------------------------------------------

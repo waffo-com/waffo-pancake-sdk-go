@@ -151,9 +151,9 @@ res, err := client.Stores.Update(ctx, pancake.UpdateStoreParams{
 | `ID`                   | `string`                                 | Yes      | Store ID                                                                 |
 | `Name`                 | `*string`                                | No       | Store name (1–48 characters, no control characters)                      |
 | `Status`               | `*pancake.EntityStatus`                  | No       | Store status                                                             |
-| `Logo`                 | `*pancake.Nullable[string]`              | No       | Logo (Base64 encoded image); `ExplicitNullPtr[string]()` clears          |
+| `Logo`                 | `*pancake.Nullable[string]`              | No       | Store logo shown on the checkout page: an http(s) URL (stored as-is) or a base64 image data URI (`data:image/<type>;base64,...`, at most 3 MB decoded), which is uploaded to the Waffo Pancake CDN and stored as a `https://media.waffo.ai/...` URL; `ExplicitNullPtr[string]()` clears |
 | `NotificationSettings` | `*pancake.Nullable[NotificationSettings]` | No       | Notification preferences. Merchant-writable: the `Notify*` toggles plus `EmailUpcomingCharge`; the other `Email*` toggles are platform-managed and dropped with a `warnings` entry |
-| `CheckoutSettings`     | `*pancake.Nullable[CheckoutSettings]`    | No       | Checkout page theme (light/dark)                                         |
+| `CheckoutSettings`     | `*pancake.Nullable[CheckoutSettings]`    | No       | Checkout page theme (light/dark). `CheckoutLogo` inside each theme is deprecated: it is ignored and always returned as nil; set `Logo` instead |
 
 > `SupportEmail` and `Website` are not writable through this endpoint. They are derived from ownership verification and are set only by the flows that prove it: email code binding and domain verification, or KYB approval. Both remain readable on `pancake.Store`.
 
