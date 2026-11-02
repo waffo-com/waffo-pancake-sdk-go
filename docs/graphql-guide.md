@@ -105,7 +105,7 @@ type StoreQuery struct {
     } `json:"store"`
 }
 single, err := pancake.GraphQLQuery[StoreQuery](ctx, client, pancake.GraphQLParams{
-    Query: `query ($id: ID!) {
+    Query: `query ($id: String!) {
         store(id: $id) { id name slug status }
     }`,
     Variables: map[string]any{"id": "STO_xxx"},
@@ -253,7 +253,7 @@ subOrders, err := pancake.GraphQLQuery[SubOrdersQuery](ctx, client, pancake.Grap
 ```go
 // One-time order with payments and refunds
 resp, err := client.GraphQL.Query(ctx, pancake.GraphQLParams{
-    Query: `query ($id: ID!) {
+    Query: `query ($id: String!) {
         onetimeOrder(id: $id) {
             id buyerEmail currency status testMode
             priceSnapshot { currency subtotal taxAmount total taxCategory }
@@ -275,7 +275,7 @@ resp, err := client.GraphQL.Query(ctx, pancake.GraphQLParams{
 
 // Subscription order with renewal status
 resp, err = client.GraphQL.Query(ctx, pancake.GraphQLParams{
-    Query: `query ($id: ID!) {
+    Query: `query ($id: String!) {
         subscriptionOrder(id: $id) {
             id buyerEmail status billingPeriod
             priceSnapshot {
@@ -390,7 +390,7 @@ byRefundTicketRef, err := pancake.GraphQLQuery[ByRefundTicketRef](ctx, client, p
 
 ```go
 resp, err := client.GraphQL.Query(ctx, pancake.GraphQLParams{
-    Query: `query ($id: ID!) {
+    Query: `query ($id: String!) {
         merchant(id: $id) {
             id email name status
             storeMerchants {

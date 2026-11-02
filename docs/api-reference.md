@@ -1130,7 +1130,7 @@ var data struct {
 _ = json.Unmarshal(resp.Data, &data)
 
 productResp, err := client.GraphQL.Query(ctx, pancake.GraphQLParams{
-    Query:     `query ($id: ID!) { onetimeProduct(id: $id) { id name prices } }`,
+    Query:     `query ($id: String!) { onetimeProduct(id: $id) { id name prices { currency priceInfo { amount } } } }`,
     Variables: map[string]any{"id": "PROD_xxx"},
 })
 ```
