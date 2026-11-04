@@ -6,7 +6,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Store logos and product images are stored on the Waffo Pancake CDN. Doc comments and documentation only; no runtime change. Matches the `@waffo/pancake-ts` Unreleased entry.
+Store logos and product images are stored on the Waffo Pancake CDN. Matches the `@waffo/pancake-ts` Unreleased entry.
+
+### Added
+
+- **`WebhookEventData.PaymentMethodBrand`** (`*string`) — optional wallet or card brand from the associated payment, independent of `PaymentMethod`; existing payloads without it remain supported.
 
 ### Deprecated
 

@@ -1257,9 +1257,11 @@ type WebhookEventData struct {
 	ProductDescription *string           `json:"productDescription,omitempty"`
 	ProductMetadata    map[string]string `json:"productMetadata,omitempty"`
 
-	PaymentID            *string `json:"paymentId,omitempty"`
-	PaymentStatus        *string `json:"paymentStatus,omitempty"`
-	PaymentMethod        *string `json:"paymentMethod,omitempty"`
+	PaymentID     *string `json:"paymentId,omitempty"`
+	PaymentStatus *string `json:"paymentStatus,omitempty"`
+	PaymentMethod *string `json:"paymentMethod,omitempty"`
+	// PaymentMethodBrand is the wallet or card brand, optional independently of PaymentMethod.
+	PaymentMethodBrand   *string `json:"paymentMethodBrand,omitempty"`
 	PaymentLast4         *string `json:"paymentLast4,omitempty"`
 	PaymentFailureReason *string `json:"paymentFailureReason,omitempty"`
 	PaymentDate          *string `json:"paymentDate,omitempty"`
