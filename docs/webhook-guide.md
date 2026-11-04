@@ -551,16 +551,19 @@ On payment events `Amount` is the amount actually charged, equal to `ChargedAmou
 | `ProductDescription` | `*string`           | No       | Product description                                           |
 | `ProductMetadata`    | `map[string]string` | No       | Product-level metadata set when creating/updating the product |
 
-**Payment fields** (present for `order.completed`, `subscription.payment_succeeded`):
+**Payment fields** (on `order.completed`, `subscription.payment_succeeded`, `refund.succeeded` and `refund.failed`; refunds refer to the original payment):
 
-| Field                  | Type      | Description                                        |
-| ---------------------- | --------- | -------------------------------------------------- |
-| `PaymentID`            | `*string` | Payment ID                                         |
-| `PaymentStatus`        | `*string` | Payment status (e.g., `"succeeded"`, `"failed"`)   |
-| `PaymentMethod`        | `*string` | Payment method type (e.g., `"card"`)               |
-| `PaymentLast4`         | `*string` | Last 4 digits of payment instrument                |
-| `PaymentFailureReason` | `*string` | Payment failure reason (present when failed)       |
-| `PaymentDate`          | `*string` | Payment date (ISO 8601 date, e.g., `"2026-04-18"`) |
+| Field                  | Type      | Description                                                                           |
+| ---------------------- | --------- | ------------------------------------------------------------------------------------- |
+| `PaymentID`            | `*string` | Payment ID                                                                            |
+| `PaymentStatus`        | `*string` | Payment status (e.g., `"succeeded"`, `"failed"`)                                      |
+| `PaymentMethod`        | `*string` | Payment method type (e.g., `"card"`)                                                  |
+| `PaymentMethodBrand`   | `*string` | Optional wallet or card brand, e.g. `"wechatpay"`, `"alipay"`, `"alipayhk"`, `"visa"` |
+| `PaymentLast4`         | `*string` | Last 4 digits of payment instrument                                                   |
+| `PaymentFailureReason` | `*string` | Payment failure reason (present when failed)                                          |
+| `PaymentDate`          | `*string` | Payment date (ISO 8601 date, e.g., `"2026-04-18"`)                                    |
+
+`PaymentMethod` and `PaymentLast4` remain optional. `PaymentMethodBrand` (JSON `paymentMethodBrand`) is an open string: it is included only when the associated payment has a non-blank string brand, even if `PaymentMethod` is nil. Missing brands are omitted and decoded as nil, never guessed or filled with `""` or `"unknown"`. Subscription status events do not carry this field. The existing explicitly subscribed `chargeback.filed` delivery path also uses the original payment's brand; this does not add it to the standard event list. Stored deliveries retain their original payload on retry or manual resend.
 
 **Subscription fields** — present on the subscription domain events, **not** on `subscription.payment_succeeded`:
 

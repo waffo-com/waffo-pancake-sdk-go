@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -174,6 +175,43 @@ func TestVerifyWebhookTyped_DeserializesData(t *testing.T) {
 	}
 	if evt.Data.OrderID != "ORD_x" || evt.Data.Amount != "29.00" {
 		t.Errorf("typed data not populated: %+v", evt.Data)
+	}
+}
+
+func TestVerifyWebhookTyped_PaymentMethodBrand(t *testing.T) {
+	priv, pubPEM := generateRSAKeyPair(t)
+	for _, brand := range []string{"wechatpay", "alipay", "alipayhk", "visa", "future_wallet", ""} {
+		t.Run(brand, func(t *testing.T) {
+			data := map[string]any{"orderId": "ORD_brand", "paymentId": "PAY_brand"}
+			if brand != "" {
+				data["paymentMethodBrand"] = brand
+			}
+			payload, sig := makeSignedPayload(t, priv, map[string]any{
+				"id": "PAY_brand", "eventType": "order.completed", "data": data,
+			}, time.Now().UnixMilli())
+
+			evt, err := VerifyWebhookTyped[WebhookEventData](payload, sig, &VerifyWebhookOptions{PublicKey: pubPEM})
+			if err != nil {
+				t.Fatalf("typed: %v", err)
+			}
+			if evt.Data.PaymentMethod != nil {
+				t.Fatal("paymentMethod should remain absent")
+			}
+			if brand == "" {
+				if evt.Data.PaymentMethodBrand != nil {
+					t.Fatal("paymentMethodBrand should be nil when omitted")
+				}
+				out, err := json.Marshal(evt.Data)
+				if err != nil {
+					t.Fatalf("marshal: %v", err)
+				}
+				if strings.Contains(string(out), `"paymentMethodBrand"`) {
+					t.Fatalf("paymentMethodBrand should be omitted: %s", out)
+				}
+			} else if evt.Data.PaymentMethodBrand == nil || *evt.Data.PaymentMethodBrand != brand {
+				t.Errorf("paymentMethodBrand = %v, want %s", evt.Data.PaymentMethodBrand, brand)
+			}
+		})
 	}
 }
 
