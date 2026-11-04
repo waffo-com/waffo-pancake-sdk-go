@@ -6,11 +6,17 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Store logos and product images are stored on the Waffo Pancake CDN. Matches the `@waffo/pancake-ts` Unreleased entry.
+## [0.19.0] — 2026-11-04
+
+Webhook payment data now exposes the wallet or card brand. Matches `@waffo/pancake-ts@0.28.0`.
 
 ### Added
 
 - **`WebhookEventData.PaymentMethodBrand`** (`*string`) — optional wallet or card brand from the associated payment, independent of `PaymentMethod`; existing payloads without it remain supported.
+
+### Changed
+
+- **Source compatibility:** adding `PaymentMethodBrand` changes the field count of `WebhookEventData`. Callers using unkeyed struct literals must switch to keyed fields before upgrading.
 
 ### Deprecated
 
@@ -18,6 +24,7 @@ Store logos and product images are stored on the Waffo Pancake CDN. Matches the 
 
 ### Documentation
 
+- Correct GraphQL examples to use `String!` for IDs and select the nested fields of `prices`.
 - **`UpdateStoreParams.Logo` / `Store.Logo`** — doc comments and `docs/api-reference.md` state the accepted values: an http(s) URL (stored as-is) or a base64 image data URI (`data:image/<type>;base64,...`, at most 3 MB decoded; PNG, JPEG, WebP, GIF, SVG or ICO). A data URI is uploaded to the CDN and the store returns a URL such as `https://media.waffo.ai/stores/{STO_xxx}/logo/{sha256}.{ext}`.
 - **`MediaItem.URL` / `MediaItem.Thumbnail`** — doc comments state the same accepted values for product media on create / update; data URIs come back as `https://media.waffo.ai/stores/{STO_xxx}/product/{sha256}.{ext}` URLs.
 
