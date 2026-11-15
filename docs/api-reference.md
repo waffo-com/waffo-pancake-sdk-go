@@ -1333,6 +1333,7 @@ All exported types:
 | `TypedWebhookEvent[T]`                  | Typed event envelope                                       |
 | `WebhookEventData`                      | Common event data fields                                   |
 | `WebhookAmountBreakdown`                | Amount breakdown of the object an event refers to          |
+| `CheckoutSessionWebhookEventData`              | Event data of `checkout.completed` / `checkout.expired`    |
 | `WebhookPublicKeys`                     | Per-environment webhook public keys                        |
 | `VerifyWebhookOptions`                  | Verification options (environment, tolerance, key)         |
 | **Nullable helpers**                    |                                                            |
@@ -1356,7 +1357,7 @@ All exported types:
 | `RefundStatus`                          | `Succeeded` / `Failed`                                     |
 | `MediaType`                             | `Image` / `Video`                                          |
 | `ErrorLayer`                            | `Gateway` / `User` / `Store` / `Product` / `Order` / `Ticket` / `GraphQL` / `Resource` / `Email` / `SDK` |
-| `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` |
+| `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` / `CheckoutCompleted` / `CheckoutExpired` |
 | `WebhookChannel`                        | `HTTP` / `Feishu` / `Discord` / `Telegram` / `Slack`       |
 | `CouponStatus`                          | `Active` / `Inactive` / `Failed`                           |
 | `CouponDiscountType`                    | `Percentage` / `FixedAmount`                               |

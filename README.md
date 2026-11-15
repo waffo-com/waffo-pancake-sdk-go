@@ -278,6 +278,11 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
         var data pancake.WebhookEventData
         _ = json.Unmarshal(event.Data, &data)
         fmt.Println("Order completed for", data.BuyerEmail)
+    case pancake.WebhookEventTypeCheckoutCompleted, pancake.WebhookEventTypeCheckoutExpired:
+        // checkout.* events carry a checkout session, not an order.
+        var data pancake.CheckoutSessionWebhookEventData
+        _ = json.Unmarshal(event.Data, &data)
+        fmt.Println("Checkout session", data.SessionID, data.Status)
     }
 }
 ```

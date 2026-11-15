@@ -224,6 +224,11 @@ const (
 	WebhookEventTypeSubscriptionPastDue             WebhookEventType = "subscription.past_due"
 	WebhookEventTypeRefundSucceeded                 WebhookEventType = "refund.succeeded"
 	WebhookEventTypeRefundFailed                    WebhookEventType = "refund.failed"
+	// WebhookEventTypeCheckoutCompleted and WebhookEventTypeCheckoutExpired are sent by the
+	// one-page checkout only, in addition to the order and subscription events above. Their
+	// data decodes into CheckoutSessionWebhookEventData, not WebhookEventData.
+	WebhookEventTypeCheckoutCompleted WebhookEventType = "checkout.completed"
+	WebhookEventTypeCheckoutExpired   WebhookEventType = "checkout.expired"
 )
 
 // WebhookChannel is the delivery channel of a configured webhook endpoint.

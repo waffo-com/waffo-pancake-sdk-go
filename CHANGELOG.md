@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`WebhookEventTypeCheckoutCompleted` / `WebhookEventTypeCheckoutExpired`** (`checkout.completed` / `checkout.expired`) — webhook events of the one-page checkout, sent once when a checkout session completes (the one-time order was paid or the subscription was activated) or expires without completing. They are sent in addition to the existing order and subscription events; a session moved back to the legacy checkout sends neither.
+- **`CheckoutSessionWebhookEventData`** — the payload of the two events: `SessionID` (`cs_` + UUID, also the envelope `ID` / `EventID`), `Status`, `ProductID`, `ProductName`, `ProductType`, `Currency`, `Amount`, `BuyerEmail` (`*string`, nil when the customer entered no email), `MerchantProvidedBuyerIdentity`, `OrderID` (`*string`, nil when the session expired before an order was created), `OrderMerchantExternalID`, `OrderMetadata`, `CreatedAt`, `ExpiresAt`. Decode it with `VerifyWebhookTyped[CheckoutSessionWebhookEventData]` or `json.Unmarshal(event.Data, ...)`.
+
 ## [0.19.0] — 2026-11-04
 
 Webhook payment data now exposes the wallet or card brand. Matches `@waffo/pancake-ts@0.28.0`.
