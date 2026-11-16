@@ -6,6 +6,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`WebhookEventData.PaymentTimestamp`** (`*string`) — optional time Waffo recorded the associated payment (ISO 8601 UTC with milliseconds), present whenever `PaymentDate` is; `PaymentDate` is its UTC date part. On `refund.*` events it refers to the refunded payment.
+
+### Changed
+
+- **Source compatibility:** adding `PaymentTimestamp` changes the field count of `WebhookEventData`. Callers using unkeyed struct literals must switch to keyed fields before upgrading.
+
 ## [0.19.0] — 2026-11-04
 
 Webhook payment data now exposes the wallet or card brand. Matches `@waffo/pancake-ts@0.28.0`.
