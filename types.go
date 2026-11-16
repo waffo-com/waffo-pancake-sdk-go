@@ -843,6 +843,23 @@ type CheckoutSessionResult struct {
 	Warnings    []Notice `json:"warnings,omitempty"`
 }
 
+// ExpireCheckoutSessionParams is the input to Checkout.ExpireSession.
+type ExpireCheckoutSessionParams struct {
+	// CheckoutSessionID is the checkout session ID ("cs_" + lowercase UUID, not a
+	// Short ID) — the SessionID returned when a one-page checkout session
+	// (checkoutVersion "v2") was created.
+	CheckoutSessionID string `json:"checkoutSessionId"`
+}
+
+// ExpireCheckoutSessionResult is the response of Checkout.ExpireSession.
+type ExpireCheckoutSessionResult struct {
+	// CheckoutSessionID is the session ID, same value as the request.
+	CheckoutSessionID string `json:"checkoutSessionId"`
+	// Status is always "expired", also when the session had already expired.
+	Status   string   `json:"status"`
+	Warnings []Notice `json:"warnings,omitempty"`
+}
+
 // CreatePlanChangeSessionParams is the input to Checkout.CreatePlanChangeSession.
 //
 // A plan change is the same create-session endpoint in a different mode, and

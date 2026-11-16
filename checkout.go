@@ -11,6 +11,7 @@ import (
 // existing subscription. Anonymous has no plan change counterpart: a Store Slug
 // session is an anonymous credential with no subscription to attribute the change
 // to, and the platform answers 403 for it.
+// ExpireSession closes a one-page checkout session the customer has not paid.
 //
 // Every method on this resource validates its input before sending, as resource
 // methods do throughout the SDK.
@@ -112,6 +113,48 @@ func (r *CheckoutResource) CreatePlanChangeSession(ctx context.Context, p Create
 		return nil, err
 	}
 	out, warnings, err := postAction[CheckoutSessionResult](ctx, r.http, "/v1/actions/checkout/create-session", p, opts)
+	if err != nil {
+		return nil, err
+	}
+	out.Warnings = warnings
+	return out, nil
+}
+
+// ExpireSession closes (expires) a one-page checkout session the customer has
+// not paid. Only one-page checkout sessions (checkoutVersion "v2") can be closed;
+// pass the SessionID returned when the session was created as CheckoutSessionID.
+//
+// Closing moves the session to expired, cancels its pending order, releases its
+// discount reservation, and sends you a checkout.expired webhook. A customer who
+// already had the payment form open may still be charged; that payment is
+// refunded automatically. A session that has already expired returns the same
+// result.
+//
+// The platform refuses with *Error; Errors[0].Message is the code to branch on
+// and Errors[0].AIHint explains it:
+//
+//   - 404 SESSION_NOT_FOUND — not in your stores in this environment, or a
+//     legacy checkout session
+//   - 409 SESSION_COMPLETED — the customer already paid
+//   - 409 SESSION_FALLEN_BACK — the customer moved to the legacy checkout
+//   - 409 SYNC_IN_PROGRESS — retry with backoff
+//   - 409 VERSION_CONFLICT — retry
+//   - 409 PAYMENT_IN_FLIGHT — a submitted payment has not finished; wait for
+//     checkout.completed or retry later
+//   - 502 PSP_INQUIRY_FAILED — nothing was changed; retry, and do not treat the
+//     session as expired
+//
+// Example:
+//
+//	res, err := client.Checkout.ExpireSession(ctx, pancake.ExpireCheckoutSessionParams{
+//	    CheckoutSessionID: "cs_3f2b9c1e-7a4d-4e8b-9c21-5d6f0a1b2c3d",
+//	})
+//	// res.Status == "expired"
+func (r *CheckoutResource) ExpireSession(ctx context.Context, p ExpireCheckoutSessionParams, opts ...RequestOption) (*ExpireCheckoutSessionResult, error) {
+	if err := validateRequired("checkoutSessionId", p.CheckoutSessionID); err != nil {
+		return nil, err
+	}
+	out, warnings, err := postAction[ExpireCheckoutSessionResult](ctx, r.http, "/v1/actions/checkout/session/expire", p, opts)
 	if err != nil {
 		return nil, err
 	}
