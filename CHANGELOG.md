@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-11-16
+
+Webhook payment data now exposes the payment timestamp. Matches the webhook types of `@waffo/pancake-ts@0.29.0`; its GraphQL `extensions.code` is not ported yet.
+
 ### Added
 
 - **`WebhookEventData.PaymentTimestamp`** (`*string`) — optional time Waffo recorded the associated payment (ISO 8601 UTC with milliseconds), present whenever `PaymentDate` is; `PaymentDate` is its UTC date part. On `refund.*` events it refers to the refunded payment.
