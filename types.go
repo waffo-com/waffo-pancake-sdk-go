@@ -1299,11 +1299,12 @@ type WebhookEventData struct {
 }
 
 // CheckoutSessionWebhookEventData is the payload of the checkout.completed and
-// checkout.expired webhook events. It describes a checkout session of the one-page
-// checkout rather than an order: unmarshal WebhookEvent.Data into it, or verify with
-// VerifyWebhookTyped[CheckoutSessionWebhookEventData]. These events are sent in addition
-// to the order and subscription events — a completed one-time session also sends
-// order.completed, a subscription also subscription.activated.
+// checkout.expired webhook events. It identifies a checkout session of the one-page
+// checkout and its order, nothing more: unmarshal WebhookEvent.Data into it, or verify
+// with VerifyWebhookTyped[CheckoutSessionWebhookEventData]. These events are sent in
+// addition to the order and subscription events — a completed one-time session also
+// sends order.completed, a subscription also subscription.activated — and those carry
+// the full order details; look the order up by OrderID.
 //
 // checkout.completed is sent once per session when it completes (the one-time order
 // was paid or the subscription was activated); checkout.expired when the session
@@ -1316,35 +1317,9 @@ type CheckoutSessionWebhookEventData struct {
 	SessionID string `json:"sessionId"`
 	// Status is "completed" on checkout.completed and "expired" on checkout.expired.
 	Status string `json:"status"`
-	// ProductID is the product Short ID (PROD_xxx).
-	ProductID   string `json:"productId"`
-	ProductName string `json:"productName"`
-	// ProductType is "onetime" or "subscription".
-	ProductType string `json:"productType"`
-	// Currency is the order currency (ISO 4217).
-	Currency string `json:"currency"`
-	// Amount is a display string, already converted from minor units ("29.00" for USD,
-	// "4500" for JPY). With an order it is the order's amount payable after any
-	// discount, tax included (for a subscription, the first period). Without an order
-	// it is the product's list price, tax not included.
-	Amount string `json:"amount"`
-	// BuyerEmail is nil when the buyer never entered an email before the session expired.
-	BuyerEmail                    *string `json:"buyerEmail"`
-	MerchantProvidedBuyerIdentity *string `json:"merchantProvidedBuyerIdentity,omitempty"`
 	// OrderID is the order Short ID (ORD_xxx); nil when the session expired before an
 	// order was created.
 	OrderID *string `json:"orderId"`
-	// OrderMerchantExternalID is the order business identifier set at checkout creation;
-	// nil when none was passed.
-	OrderMerchantExternalID *string `json:"orderMerchantExternalId,omitempty"`
-	// OrderMetadata is the order-level metadata from the checkout session; empty when
-	// none was passed.
-	OrderMetadata map[string]string `json:"orderMetadata"`
-	// CreatedAt is when the session was created (ISO 8601).
-	CreatedAt string `json:"createdAt"`
-	// ExpiresAt is when the session expires (ISO 8601) — the CheckoutSessionResult.ExpiresAt
-	// returned when the session was created.
-	ExpiresAt string `json:"expiresAt"`
 }
 
 // WebhookEvent is the verified envelope returned by VerifyWebhook. Data is

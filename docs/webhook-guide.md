@@ -623,24 +623,13 @@ The payload of `checkout.completed` and `checkout.expired`. Only the one-page ch
 
 The envelope's `ID` and `EventID` are both the session ID.
 
-| Field                           | Type                | Required | Description                                                                                                                                                                                         |
-| ------------------------------- | ------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SessionID`                     | `string`            | Yes      | Checkout session ID (`cs_` followed by a UUID, not a Short ID) — the `SessionID` returned when the session was created                                                                             |
-| `Status`                        | `string`            | Yes      | `"completed"` or `"expired"`, matching the event type                                                                                                                                               |
-| `ProductID`                     | `string`            | Yes      | Product Short ID (`PROD_xxx`)                                                                                                                                                                       |
-| `ProductName`                   | `string`            | Yes      | Product name                                                                                                                                                                                        |
-| `ProductType`                   | `string`            | Yes      | `"onetime"` or `"subscription"`                                                                                                                                                                     |
-| `Currency`                      | `string`            | Yes      | Order currency (ISO 4217)                                                                                                                                                                           |
-| `Amount`                        | `string`            | Yes      | Display string (`"29.00"` for USD, `"4500"` for JPY). With an order: the amount payable after any discount, tax included (subscriptions: the first period). Without an order: the product's list price, tax not included |
-| `BuyerEmail`                    | `*string`           | Yes      | Customer email address; nil (`null`) when the customer never entered one before the session expired                                                                                                |
-| `MerchantProvidedBuyerIdentity` | `*string`           | No       | Merchant-provided customer identity from checkout session                                                                                                                                           |
-| `OrderID`                       | `*string`           | Yes      | Associated order ID (`ORD_xxx`); nil (`null`) when the session expired before an order was created                                                                                                 |
-| `OrderMerchantExternalID`       | `*string`           | No       | Order business-side identifier set at checkout creation                                                                                                                                             |
-| `OrderMetadata`                 | `map[string]string` | Yes      | Order-level metadata from checkout session; empty when none was set                                                                                                                                 |
-| `CreatedAt`                     | `string`            | Yes      | Session creation time (ISO 8601)                                                                                                                                                                    |
-| `ExpiresAt`                     | `string`            | Yes      | Session expiry time (ISO 8601) — the `ExpiresAt` returned when the session was created                                                                                                             |
+| Field       | Type      | Required | Description                                                                                                            |
+| ----------- | --------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `SessionID` | `string`  | Yes      | Checkout session ID (`cs_` followed by a UUID, not a Short ID) — the `SessionID` returned when the session was created |
+| `Status`    | `string`  | Yes      | `"completed"` or `"expired"`, matching the event type                                                                  |
+| `OrderID`   | `*string` | Yes      | Associated order ID (`ORD_xxx`); nil (`null`) when the session expired before an order was created                     |
 
-The payload carries no payment method, failure reason, billing details or tax breakdown; read those from the order events.
+The payload carries no product, amount, customer or metadata. On completion, the order's own `order.completed` (one-time) or `subscription.activated` (subscription) event carries the full order details; look the order up by `OrderID`.
 
 ```go
 event, err := pancake.VerifyWebhookTyped[pancake.CheckoutSessionWebhookEventData](string(body), sig, nil)

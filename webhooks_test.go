@@ -284,20 +284,9 @@ func TestVerifyWebhookTyped_CheckoutCompleted(t *testing.T) {
 		"storeName": "My Store",
 		"mode":      "prod",
 		"data": map[string]any{
-			"sessionId":                     sessionID,
-			"status":                        "completed",
-			"productId":                     "PROD_AbCdEfGhIjKlMnOpQrStUv",
-			"productName":                   "Pro Plan",
-			"productType":                   "onetime",
-			"currency":                      "USD",
-			"amount":                        "86.40",
-			"buyerEmail":                    "buyer@example.com",
-			"merchantProvidedBuyerIdentity": "user_123",
-			"orderId":                       "ORD_AbCdEfGhIjKlMnOpQrStUv",
-			"orderMerchantExternalId":       "INV-1001",
-			"orderMetadata":                 map[string]any{"plan": "pro"},
-			"createdAt":                     "2026-11-15T07:00:00.000Z",
-			"expiresAt":                     "2026-11-16T07:00:00.000Z",
+			"sessionId": sessionID,
+			"status":    "completed",
+			"orderId":   "ORD_AbCdEfGhIjKlMnOpQrStUv",
 		},
 	}, time.Now().UnixMilli())
 
@@ -309,49 +298,25 @@ func TestVerifyWebhookTyped_CheckoutCompleted(t *testing.T) {
 		t.Errorf("envelope = %+v", evt)
 	}
 	d := evt.Data
-	if d.SessionID != sessionID || d.Status != "completed" || d.ProductID != "PROD_AbCdEfGhIjKlMnOpQrStUv" ||
-		d.ProductName != "Pro Plan" || d.ProductType != "onetime" || d.Currency != "USD" || d.Amount != "86.40" ||
-		d.CreatedAt != "2026-11-15T07:00:00.000Z" || d.ExpiresAt != "2026-11-16T07:00:00.000Z" {
+	if d.SessionID != sessionID || d.Status != "completed" {
 		t.Errorf("data not populated: %+v", d)
-	}
-	if d.BuyerEmail == nil || *d.BuyerEmail != "buyer@example.com" {
-		t.Errorf("BuyerEmail = %v, want buyer@example.com", d.BuyerEmail)
-	}
-	if d.MerchantProvidedBuyerIdentity == nil || *d.MerchantProvidedBuyerIdentity != "user_123" {
-		t.Errorf("MerchantProvidedBuyerIdentity = %v, want user_123", d.MerchantProvidedBuyerIdentity)
 	}
 	if d.OrderID == nil || *d.OrderID != "ORD_AbCdEfGhIjKlMnOpQrStUv" {
 		t.Errorf("OrderID = %v, want ORD_AbCdEfGhIjKlMnOpQrStUv", d.OrderID)
 	}
-	if d.OrderMerchantExternalID == nil || *d.OrderMerchantExternalID != "INV-1001" {
-		t.Errorf("OrderMerchantExternalID = %v, want INV-1001", d.OrderMerchantExternalID)
-	}
-	if d.OrderMetadata["plan"] != "pro" {
-		t.Errorf("OrderMetadata = %v, want plan=pro", d.OrderMetadata)
-	}
 }
 
 func TestCheckoutSessionWebhookEventData_ExpiredWithoutOrder(t *testing.T) {
-	raw := `{"sessionId":"cs_3f2b9c1e-7a4d-4e8b-9c21-5d6f0a1b2c3d","status":"expired",` +
-		`"productId":"PROD_AbCdEfGhIjKlMnOpQrStUv","productName":"Pro Plan","productType":"subscription",` +
-		`"currency":"USD","amount":"99.99","buyerEmail":null,"orderId":null,"orderMetadata":{},` +
-		`"createdAt":"2026-11-15T07:00:00.000Z","expiresAt":"2026-11-16T07:00:00.000Z"}`
+	raw := `{"sessionId":"cs_3f2b9c1e-7a4d-4e8b-9c21-5d6f0a1b2c3d","status":"expired","orderId":null}`
 	var d CheckoutSessionWebhookEventData
 	if err := json.Unmarshal([]byte(raw), &d); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if d.Status != "expired" || d.ProductType != "subscription" || d.Amount != "99.99" {
+	if d.SessionID != "cs_3f2b9c1e-7a4d-4e8b-9c21-5d6f0a1b2c3d" || d.Status != "expired" {
 		t.Errorf("data not populated: %+v", d)
 	}
-	if d.BuyerEmail != nil || d.OrderID != nil {
-		t.Errorf("null fields should decode to nil: BuyerEmail=%v OrderID=%v", d.BuyerEmail, d.OrderID)
-	}
-	if d.MerchantProvidedBuyerIdentity != nil || d.OrderMerchantExternalID != nil {
-		t.Errorf("absent keys should decode to nil: MerchantProvidedBuyerIdentity=%v OrderMerchantExternalID=%v",
-			d.MerchantProvidedBuyerIdentity, d.OrderMerchantExternalID)
-	}
-	if d.OrderMetadata == nil || len(d.OrderMetadata) != 0 {
-		t.Errorf("OrderMetadata = %v, want empty map", d.OrderMetadata)
+	if d.OrderID != nil {
+		t.Errorf("null orderId should decode to nil: OrderID=%v", d.OrderID)
 	}
 
 	out, err := json.Marshal(d)
