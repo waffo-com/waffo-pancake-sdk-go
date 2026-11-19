@@ -254,15 +254,20 @@ of `CustomerPlanChangeParams` — the platform drops them on this path without s
 
 ### Closing a checkout session
 
-Close a one-page checkout session (`checkoutVersion` `v2`) the customer has not
-paid — for example when the item sold out or the customer cancelled on your site.
-Pass the `SessionID` returned when the session was created.
+Close a one-page checkout session the customer has not paid — for example when
+the item sold out or the customer cancelled on your site. Only sessions whose
+`CheckoutVersion` is `"v2"` can be closed: every create method returns
+`CheckoutVersion` next to `SessionID` (`"v2"` one-page checkout, `"v1"` legacy;
+an empty value means `"v1"`). Pass the `SessionID` returned when the session was
+created.
 
 ```go
-res, err := client.Checkout.ExpireSession(ctx, pancake.ExpireCheckoutSessionParams{
-    CheckoutSessionID: session.SessionID,
-})
-// res.Status == "expired" (also when the session had already expired)
+if session.CheckoutVersion == "v2" {
+    res, err := client.Checkout.ExpireSession(ctx, pancake.ExpireCheckoutSessionParams{
+        CheckoutSessionID: session.SessionID,
+    })
+    // res.Status == "expired" (also when the session had already expired)
+}
 ```
 
 Closing moves the session to `expired`, cancels its pending order, releases its

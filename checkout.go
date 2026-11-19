@@ -305,11 +305,12 @@ func (r *CheckoutAuthenticatedResource) issueTokenAndSession(
 
 	warnings := append(append([]Notice(nil), tokWarnings...), sessWarnings...)
 	return &AuthenticatedCheckoutResult{
-		SessionID:      session.SessionID,
-		CheckoutURL:    session.CheckoutURL + "#token=" + tok.Token,
-		ExpiresAt:      session.ExpiresAt,
-		Token:          tok.Token,
-		TokenExpiresAt: tok.ExpiresAt,
-		Warnings:       warnings,
+		SessionID:       session.SessionID,
+		CheckoutURL:     session.CheckoutURL + "#token=" + tok.Token,
+		ExpiresAt:       session.ExpiresAt,
+		Token:           tok.Token,
+		TokenExpiresAt:  tok.ExpiresAt,
+		CheckoutVersion: session.CheckoutVersion,
+		Warnings:        warnings,
 	}, nil
 }

@@ -820,7 +820,7 @@ Three platform checks apply to this path and not to merchant-issued links, each 
 | Target plan is in the same product group | `Target plan is not in the same product group as the current plan` |
 | That group's `selfServicePlanChange` is on | `Self-service plan change is not enabled for this product group` |
 
-**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Warnings }`
+**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, CheckoutVersion, Warnings }`
 
 ### `customer.GraphQL.Query(ctx, params)`
 
@@ -930,6 +930,7 @@ subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCh
 | `SessionID`      | `string`           | Session ID                              |
 | `CheckoutURL`    | `string`           | Checkout URL with `#token=...` appended |
 | `ExpiresAt`      | `string`           | Session expiration time                 |
+| `CheckoutVersion` | `string` | `"v2"` one-page checkout (can be closed with `ExpireSession`), `"v1"` legacy; empty = `"v1"` |
 | `Token`          | `string`           | Issued JWT token                        |
 | `TokenExpiresAt` | `string`           | Token expiration time                   |
 | `Warnings`       | `[]pancake.Notice` | Migration notices                       |
@@ -986,6 +987,7 @@ snapshotRes, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheck
 | `SessionID`   | `string`           | Session ID               |
 | `CheckoutURL` | `string`           | Hosted checkout page URL |
 | `ExpiresAt`   | `string`           | Session expiration time  |
+| `CheckoutVersion` | `string` | `"v2"` one-page checkout (can be closed with `ExpireSession`), `"v1"` legacy; empty = `"v1"` |
 | `Warnings`    | `[]pancake.Notice` | Migration notices        |
 
 ### `client.Checkout.CreatePlanChangeSession(ctx, params)`
@@ -1033,7 +1035,7 @@ There is no `BuyerEmail` or `BillingDetail`: in plan change mode the customer em
 
 Two amount fields, two ways to price the same change: `ChangeAmount` says what to charge for this period, `ChangeCreditAmount` says how much to credit against it. Same unit and tax basis, opposite meaning — sending both is rejected with a 400, and the SDK forwards what you pass rather than picking one.
 
-**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Warnings }`
+**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, CheckoutVersion, Warnings }`
 
 ### `client.Checkout.Authenticated.CreatePlanChange(ctx, params)`
 
@@ -1053,7 +1055,7 @@ res, err := client.Checkout.Authenticated.CreatePlanChange(ctx, pancake.Authenti
 
 **Parameters `AuthenticatedPlanChangeParams`**: embeds `CreatePlanChangeSessionParams`, plus `BuyerIdentity` (`string`, required) — routed to `issue-session-token` only, never into the session body.
 
-**Returns `*AuthenticatedCheckoutResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Token, TokenExpiresAt, Warnings }`
+**Returns `*AuthenticatedCheckoutResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Token, TokenExpiresAt, CheckoutVersion, Warnings }`
 
 > **There is no anonymous plan change.** A Store Slug session is an anonymous credential with no subscription to attribute the change to, and the platform answers 403 — so `client.Checkout.Anonymous` carries no plan change method.
 
@@ -1108,7 +1110,7 @@ _, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
 | `BusinessName` | `*string` | Conditional | Business name (required when `IsBusiness` is `true`)                                                    |
 | `TaxID`        | `*string` | Conditional | Tax ID / VAT number (required for EU countries when `IsBusiness` is `true`; triggers reverse charge 0%) |
 
-**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Warnings }`
+**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, CheckoutVersion, Warnings }`
 
 ### `client.Checkout.ExpireSession(ctx, params)`
 

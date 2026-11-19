@@ -837,10 +837,16 @@ type CreateCheckoutSessionParams struct {
 // CheckoutSessionResult is the response of Checkout.CreateSession and
 // Checkout.Anonymous.Create.
 type CheckoutSessionResult struct {
-	SessionID   string   `json:"sessionId"`
-	CheckoutURL string   `json:"checkoutUrl"`
-	ExpiresAt   string   `json:"expiresAt"`
-	Warnings    []Notice `json:"warnings,omitempty"`
+	SessionID   string `json:"sessionId"`
+	CheckoutURL string `json:"checkoutUrl"`
+	ExpiresAt   string `json:"expiresAt"`
+	// CheckoutVersion is which checkout the session opens: "v2" is the one-page
+	// checkout (stored session; can be closed with Checkout.ExpireSession), "v1"
+	// the legacy checkout. Plan-change sessions are always "v1". Empty on
+	// responses of platform versions before the one-page checkout — treat an
+	// empty value as "v1".
+	CheckoutVersion string   `json:"checkoutVersion,omitempty"`
+	Warnings        []Notice `json:"warnings,omitempty"`
 }
 
 // ExpireCheckoutSessionParams is the input to Checkout.ExpireSession.
@@ -1091,12 +1097,18 @@ type AuthenticatedPlanChangeParams struct {
 // AuthenticatedCheckoutResult is the response of Checkout.Authenticated.Create
 // — session and token data merged into one struct.
 type AuthenticatedCheckoutResult struct {
-	SessionID      string   `json:"sessionId"`
-	CheckoutURL    string   `json:"checkoutUrl"`
-	ExpiresAt      string   `json:"expiresAt"`
-	Token          string   `json:"token"`
-	TokenExpiresAt string   `json:"tokenExpiresAt"`
-	Warnings       []Notice `json:"warnings,omitempty"`
+	SessionID      string `json:"sessionId"`
+	CheckoutURL    string `json:"checkoutUrl"`
+	ExpiresAt      string `json:"expiresAt"`
+	Token          string `json:"token"`
+	TokenExpiresAt string `json:"tokenExpiresAt"`
+	// CheckoutVersion is which checkout the session opens: "v2" is the one-page
+	// checkout (stored session; can be closed with Checkout.ExpireSession), "v1"
+	// the legacy checkout. Plan-change sessions are always "v1". Empty on
+	// responses of platform versions before the one-page checkout — treat an
+	// empty value as "v1".
+	CheckoutVersion string   `json:"checkoutVersion,omitempty"`
+	Warnings        []Notice `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
