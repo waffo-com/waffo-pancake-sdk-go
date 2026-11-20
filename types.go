@@ -837,10 +837,33 @@ type CreateCheckoutSessionParams struct {
 // CheckoutSessionResult is the response of Checkout.CreateSession and
 // Checkout.Anonymous.Create.
 type CheckoutSessionResult struct {
-	SessionID   string   `json:"sessionId"`
-	CheckoutURL string   `json:"checkoutUrl"`
-	ExpiresAt   string   `json:"expiresAt"`
-	Warnings    []Notice `json:"warnings,omitempty"`
+	SessionID   string `json:"sessionId"`
+	CheckoutURL string `json:"checkoutUrl"`
+	ExpiresAt   string `json:"expiresAt"`
+	// CheckoutVersion is which checkout the session opens: "v2" is the one-page
+	// checkout (stored session; can be closed with Checkout.ExpireSession), "v1"
+	// the legacy checkout. Plan-change sessions are always "v1". Empty on
+	// responses of platform versions before the one-page checkout — treat an
+	// empty value as "v1".
+	CheckoutVersion string   `json:"checkoutVersion,omitempty"`
+	Warnings        []Notice `json:"warnings,omitempty"`
+}
+
+// ExpireCheckoutSessionParams is the input to Checkout.ExpireSession.
+type ExpireCheckoutSessionParams struct {
+	// CheckoutSessionID is the checkout session ID ("cs_" + lowercase UUID, not a
+	// Short ID) — the SessionID returned when a one-page checkout session
+	// (checkoutVersion "v2") was created.
+	CheckoutSessionID string `json:"checkoutSessionId"`
+}
+
+// ExpireCheckoutSessionResult is the response of Checkout.ExpireSession.
+type ExpireCheckoutSessionResult struct {
+	// CheckoutSessionID is the session ID, same value as the request.
+	CheckoutSessionID string `json:"checkoutSessionId"`
+	// Status is always "expired", also when the session had already expired.
+	Status   string   `json:"status"`
+	Warnings []Notice `json:"warnings,omitempty"`
 }
 
 // CreatePlanChangeSessionParams is the input to Checkout.CreatePlanChangeSession.
@@ -1074,12 +1097,18 @@ type AuthenticatedPlanChangeParams struct {
 // AuthenticatedCheckoutResult is the response of Checkout.Authenticated.Create
 // — session and token data merged into one struct.
 type AuthenticatedCheckoutResult struct {
-	SessionID      string   `json:"sessionId"`
-	CheckoutURL    string   `json:"checkoutUrl"`
-	ExpiresAt      string   `json:"expiresAt"`
-	Token          string   `json:"token"`
-	TokenExpiresAt string   `json:"tokenExpiresAt"`
-	Warnings       []Notice `json:"warnings,omitempty"`
+	SessionID      string `json:"sessionId"`
+	CheckoutURL    string `json:"checkoutUrl"`
+	ExpiresAt      string `json:"expiresAt"`
+	Token          string `json:"token"`
+	TokenExpiresAt string `json:"tokenExpiresAt"`
+	// CheckoutVersion is which checkout the session opens: "v2" is the one-page
+	// checkout (stored session; can be closed with Checkout.ExpireSession), "v1"
+	// the legacy checkout. Plan-change sessions are always "v1". Empty on
+	// responses of platform versions before the one-page checkout — treat an
+	// empty value as "v1".
+	CheckoutVersion string   `json:"checkoutVersion,omitempty"`
+	Warnings        []Notice `json:"warnings,omitempty"`
 }
 
 // -----------------------------------------------------------------------------
@@ -1171,9 +1200,11 @@ type WebhookAmountBreakdown struct {
 	DiscountAmount *string `json:"discountAmount,omitempty"`
 }
 
-// WebhookEventData is the canonical payload shape of a webhook event. Many
-// fields are conditional on the event type — for example refund.* events
-// populate the refund.* fields while leaving the subscription.* fields nil.
+// WebhookEventData is the canonical payload shape of the order, subscription and
+// refund webhook events. Many fields are conditional on the event type — for
+// example refund.* events populate the refund.* fields while leaving the
+// subscription.* fields nil. The checkout.* events carry a different shape; decode
+// them into CheckoutSessionWebhookEventData.
 type WebhookEventData struct {
 	OrderID                       string  `json:"orderId"`
 	OrderStatus                   *string `json:"orderStatus,omitempty"`
@@ -1282,9 +1313,34 @@ type WebhookEventData struct {
 	RefundCreatedAt *string `json:"refundCreatedAt,omitempty"`
 }
 
+// CheckoutSessionWebhookEventData is the payload of the checkout.completed and
+// checkout.expired webhook events. It identifies a checkout session of the one-page
+// checkout and its order, nothing more: unmarshal WebhookEvent.Data into it, or verify
+// with VerifyWebhookTyped[CheckoutSessionWebhookEventData]. These events are sent in
+// addition to the order and subscription events — a completed one-time session also
+// sends order.completed, a subscription also subscription.activated — and those carry
+// the full order details; look the order up by OrderID.
+//
+// checkout.completed is sent once per session when it completes (the one-time order
+// was paid or the subscription was activated); checkout.expired when the session
+// expired without completing, possibly before any order was created. A session the
+// buyer moved back to the legacy checkout sends neither.
+type CheckoutSessionWebhookEventData struct {
+	// SessionID is the checkout session ID ("cs_" followed by a UUID, not a Short ID) —
+	// the CheckoutSessionResult.SessionID returned when the session was created. The
+	// envelope's ID and EventID carry the same value.
+	SessionID string `json:"sessionId"`
+	// Status is "completed" on checkout.completed and "expired" on checkout.expired.
+	Status string `json:"status"`
+	// OrderID is the order Short ID (ORD_xxx); nil when the session expired before an
+	// order was created.
+	OrderID *string `json:"orderId"`
+}
+
 // WebhookEvent is the verified envelope returned by VerifyWebhook. Data is
-// kept as raw bytes so callers may unmarshal it into either WebhookEventData
-// or a custom struct via VerifyWebhookTyped.
+// kept as raw bytes so callers may unmarshal it into WebhookEventData,
+// CheckoutSessionWebhookEventData (checkout.* events) or a custom struct via
+// VerifyWebhookTyped.
 type WebhookEvent struct {
 	ID        string          `json:"id"`
 	Timestamp string          `json:"timestamp"`

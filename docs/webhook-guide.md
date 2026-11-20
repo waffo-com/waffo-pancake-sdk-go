@@ -82,6 +82,11 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
         if data.RefundedAmount != nil {
             log.Printf("Refund %s %s", *data.RefundedAmount, data.Currency)
         }
+    case string(pancake.WebhookEventTypeCheckoutCompleted), string(pancake.WebhookEventTypeCheckoutExpired):
+        // checkout.* events carry a checkout session, not an order.
+        var data pancake.CheckoutSessionWebhookEventData
+        _ = json.Unmarshal(event.Data, &data)
+        log.Printf("Checkout session %s %s", data.SessionID, data.Status)
     }
 }
 
@@ -470,7 +475,7 @@ The verified envelope returned by `VerifyWebhook`. `Data` is held as `json.RawMe
 | `StoreID`   | `string`              | Store ID the event belongs to                                       |
 | `StoreName` | `string`              | Store name                                                          |
 | `Mode`      | `pancake.Environment` | Environment (`"test"` or `"prod"`)                                  |
-| `Data`      | `json.RawMessage`     | Raw event payload (unmarshal into `WebhookEventData` or your own struct) |
+| `Data`      | `json.RawMessage`     | Raw event payload (unmarshal into `WebhookEventData`, `CheckoutSessionWebhookEventData` for `checkout.*` events, or your own struct) |
 
 ### `pancake.TypedWebhookEvent[T]`
 
@@ -478,7 +483,7 @@ The typed envelope produced by `VerifyWebhookTyped[T]`. Same fields as `WebhookE
 
 ### `pancake.WebhookEventData`
 
-All events include the **Order**, **Amount**, and **Product** sections. Additional sections are conditionally present based on event type.
+The payload of the order, subscription and refund events. All of them include the **Order**, **Amount**, and **Product** sections. Additional sections are conditionally present based on event type. The `checkout.*` events carry a different payload — see [`pancake.CheckoutSessionWebhookEventData`](#pancakecheckoutsessioneventdata).
 
 **Order fields** (always present):
 
@@ -609,6 +614,35 @@ handler that only uses those needs no change.
 | `RefundReason`    | `*string` | Refund reason                             |
 | `RefundCreatedAt` | `*string` | Refund creation timestamp (ISO 8601)      |
 
+### `pancake.CheckoutSessionWebhookEventData`
+
+The payload of `checkout.completed` and `checkout.expired`. Only the one-page checkout sends these events, and it sends them **in addition to** the order and subscription events: a completed one-time session also sends `order.completed`, a subscription also `subscription.activated`.
+
+- `checkout.completed` — sent once per session when it completes: the one-time order was paid, or the subscription was activated.
+- `checkout.expired` — the session expired without completing. It may never have had an order.
+- A session the customer moved back to the legacy checkout sends neither event.
+
+The envelope's `ID` and `EventID` are both the session ID.
+
+| Field       | Type      | Required | Description                                                                                                            |
+| ----------- | --------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `SessionID` | `string`  | Yes      | Checkout session ID (`cs_` followed by a UUID, not a Short ID) — the `SessionID` returned when the session was created |
+| `Status`    | `string`  | Yes      | `"completed"` or `"expired"`, matching the event type                                                                  |
+| `OrderID`   | `*string` | Yes      | Associated order ID (`ORD_xxx`); nil (`null`) when the session expired before an order was created                     |
+
+The payload carries no product, amount, customer or metadata. On completion, the order's own `order.completed` (one-time) or `subscription.activated` (subscription) event carries the full order details; look the order up by `OrderID`.
+
+```go
+event, err := pancake.VerifyWebhookTyped[pancake.CheckoutSessionWebhookEventData](string(body), sig, nil)
+if err != nil {
+    http.Error(w, "Invalid signature", http.StatusUnauthorized)
+    return
+}
+if event.Data.OrderID == nil {
+    log.Printf("session %s %s before an order was created", event.Data.SessionID, event.Data.Status)
+}
+```
+
 ## Event Types
 
 Use `pancake.WebhookEventType` constants. When matching against `event.EventType` (a plain `string`), convert with `string(...)`:
@@ -638,6 +672,8 @@ case string(pancake.WebhookEventTypeRefundSucceeded):
 | `WebhookEventTypeSubscriptionPastDue`               | `subscription.past_due`          | Renewal payment failed (past due)                               |
 | `WebhookEventTypeRefundSucceeded`                   | `refund.succeeded`               | Refund completed successfully                                   |
 | `WebhookEventTypeRefundFailed`                      | `refund.failed`                  | Refund failed                                                   |
+| `WebhookEventTypeCheckoutCompleted`                 | `checkout.completed`             | One-page checkout session completed (order paid or subscription activated); data is `CheckoutSessionWebhookEventData` |
+| `WebhookEventTypeCheckoutExpired`                   | `checkout.expired`               | One-page checkout session expired without completing; data is `CheckoutSessionWebhookEventData` |
 
 ## Key Rotation & Migration
 
