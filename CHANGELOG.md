@@ -12,6 +12,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`CheckoutSessionWebhookEventData`** — the payload of the two events: `SessionID` (`cs_` + UUID, also the envelope `ID` / `EventID`), `Status`, and `OrderID` (`*string`, nil when the session expired before an order was created). Product, amount, customer and metadata are not included; on completion `order.completed` / `subscription.activated` carry the full order details. Decode it with `VerifyWebhookTyped[CheckoutSessionWebhookEventData]` or `json.Unmarshal(event.Data, ...)`.
 - **`Checkout.ExpireSession(ctx, ExpireCheckoutSessionParams{CheckoutSessionID})`** — closes a one-page checkout session the customer has not paid (`POST /v1/actions/checkout/session/expire`): the session moves to `expired`, its pending order is canceled, its discount reservation released, and a `checkout.expired` webhook follows. Returns `*ExpireCheckoutSessionResult` (`CheckoutSessionID`, `Status` = `"expired"`), also for a session that had already expired. A customer who already had the payment form open may still be charged; that payment is refunded automatically. Refusals return `*Error` with the reason in `Errors[0].Message`: `SESSION_NOT_FOUND` (404), `SESSION_COMPLETED` / `SESSION_FALLEN_BACK` / `SYNC_IN_PROGRESS` / `VERSION_CONFLICT` / `PAYMENT_IN_FLIGHT` (409), `PSP_INQUIRY_FAILED` (502).
 - **`CheckoutVersion` on `CheckoutSessionResult` and `AuthenticatedCheckoutResult`** — `"v1"` / `"v2"` returned by `Checkout.CreateSession`, `Anonymous.Create`, `Authenticated.Create` and the plan-change methods: `"v2"` is the one-page checkout (the only kind `ExpireSession` can close), `"v1"` the legacy checkout; plan-change sessions are always `"v1"`. Platform versions before the one-page checkout do not send it — treat an empty value as `"v1"`.
+- **`WebhookEventData.PaymentTimestamp`** (`*string`) — optional time Waffo recorded the associated payment (ISO 8601 UTC with milliseconds), present whenever `PaymentDate` is; `PaymentDate` is its UTC date part. On `refund.*` events it refers to the refunded payment.
+
+### Changed
+
+- **Source compatibility:** adding `PaymentTimestamp` changes the field count of `WebhookEventData`. Callers using unkeyed struct literals must switch to keyed fields before upgrading.
 
 ## [0.19.0] — 2026-11-04
 

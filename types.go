@@ -1296,6 +1296,9 @@ type WebhookEventData struct {
 	PaymentLast4         *string `json:"paymentLast4,omitempty"`
 	PaymentFailureReason *string `json:"paymentFailureReason,omitempty"`
 	PaymentDate          *string `json:"paymentDate,omitempty"`
+	// PaymentTimestamp is when Waffo recorded the payment (ISO 8601 UTC with milliseconds,
+	// e.g. "2026-04-18T08:29:58.412Z"); present whenever PaymentDate is, which is its UTC date part.
+	PaymentTimestamp *string `json:"paymentTimestamp,omitempty"`
 
 	// PeriodNumber is the billing period this event refers to, as reported by the payment channel.
 	PeriodNumber *int `json:"periodNumber,omitempty"`

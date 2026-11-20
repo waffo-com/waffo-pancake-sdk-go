@@ -215,6 +215,47 @@ func TestVerifyWebhookTyped_PaymentMethodBrand(t *testing.T) {
 	}
 }
 
+func TestVerifyWebhookTyped_PaymentTimestamp(t *testing.T) {
+	priv, pubPEM := generateRSAKeyPair(t)
+	for _, ts := range []string{"2026-03-10T23:29:58.123Z", ""} {
+		t.Run(ts, func(t *testing.T) {
+			data := map[string]any{"orderId": "ORD_ts"}
+			if ts != "" {
+				data["paymentId"] = "PAY_ts"
+				data["paymentDate"] = ts[:10]
+				data["paymentTimestamp"] = ts
+			}
+			payload, sig := makeSignedPayload(t, priv, map[string]any{
+				"id": "PAY_ts", "eventType": "order.completed", "data": data,
+			}, time.Now().UnixMilli())
+
+			evt, err := VerifyWebhookTyped[WebhookEventData](payload, sig, &VerifyWebhookOptions{PublicKey: pubPEM})
+			if err != nil {
+				t.Fatalf("typed: %v", err)
+			}
+			if ts == "" {
+				if evt.Data.PaymentTimestamp != nil || evt.Data.PaymentDate != nil {
+					t.Fatal("paymentTimestamp and paymentDate should be nil when omitted")
+				}
+				out, err := json.Marshal(evt.Data)
+				if err != nil {
+					t.Fatalf("marshal: %v", err)
+				}
+				if strings.Contains(string(out), `"paymentTimestamp"`) {
+					t.Fatalf("paymentTimestamp should be omitted: %s", out)
+				}
+				return
+			}
+			if evt.Data.PaymentTimestamp == nil || *evt.Data.PaymentTimestamp != ts {
+				t.Errorf("paymentTimestamp = %v, want %s", evt.Data.PaymentTimestamp, ts)
+			}
+			if evt.Data.PaymentDate == nil || *evt.Data.PaymentDate != ts[:10] {
+				t.Errorf("paymentDate = %v, want %s", evt.Data.PaymentDate, ts[:10])
+			}
+		})
+	}
+}
+
 func TestWebhookAmountBreakdown_DiscountFields(t *testing.T) {
 	priv, pubPEM := generateRSAKeyPair(t)
 	payload, sig := makeSignedPayload(t, priv, map[string]any{
