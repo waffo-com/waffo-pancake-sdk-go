@@ -1366,7 +1366,9 @@ type WebhookCheckoutSessionData struct {
 type WebhookDisputeMessage struct {
 	// MessageID is the message Short ID (DMSG_xxx).
 	MessageID string `json:"messageId"`
-	// AuthorType is who wrote it: "buyer" (the customer) or "channel" (the payment channel).
+	// AuthorType is who wrote it: "buyer" is the customer, in the customer portal;
+	// "channel" arrived through the payment channel: the payer's complaint or message
+	// relayed by the channel (e.g. WeChat Pay), or a notice from the channel itself.
 	AuthorType string `json:"authorType"`
 	// Body is the message text.
 	Body string `json:"body"`

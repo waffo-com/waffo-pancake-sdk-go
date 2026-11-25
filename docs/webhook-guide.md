@@ -24,8 +24,8 @@ The timestamp is stamped once, before the first delivery attempt. Retries reuse
 the original header, so the final retry of a schedule arrives with a timestamp as
 old as the schedule itself — the past-facing window has to cover it. Treat the
 window as a bound on how long a captured request stays replayable, not as your
-primary defense: every event carries a stable `ID`, and your handler should be
-idempotent on it.
+primary defense: every event carries a stable `EventType` + `EventID` pair, and
+your handler should be idempotent on it (see [Best Practices](#best-practices)).
 
 ## Usage
 
@@ -62,7 +62,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
     _, _ = w.Write([]byte("OK"))
 
-    // Use event.ID for idempotent deduplication.
+    // Deduplicate on (event.EventType, event.EventID), not on event.ID.
     switch event.EventType {
     case string(pancake.WebhookEventTypeOrderCompleted):
         var data pancake.WebhookEventData
@@ -463,10 +463,10 @@ The verified envelope returned by `VerifyWebhook`. `Data` is held as `json.RawMe
 
 | Field       | Type                  | Description                                                         |
 | ----------- | --------------------- | ------------------------------------------------------------------- |
-| `ID`        | `string`              | Delivery record unique ID (UUID) — use for idempotent deduplication |
+| `ID`        | `string`              | ID of the entity the event is about (e.g. payment ID; the complaint ID `DSP_…` for `dispute.*`) — shared by several events, not a deduplication key on its own |
 | `Timestamp` | `string`              | Event timestamp (ISO 8601 UTC)                                      |
 | `EventType` | `string`              | Event type (e.g. `"order.completed"`)                               |
-| `EventID`   | `string`              | Business event ID (e.g. payment ID)                                 |
+| `EventID`   | `string`              | Event key — unique per occurrence within an `EventType`; deduplicate on `EventType` + `EventID` |
 | `StoreID`   | `string`              | Store ID the event belongs to                                       |
 | `StoreName` | `string`              | Store name                                                          |
 | `Mode`      | `pancake.Environment` | Environment (`"test"` or `"prod"`)                                  |
@@ -811,12 +811,12 @@ When delivery fails (non-2xx response or timeout), the system automatically retr
 
 You can view each delivery's status, HTTP status code, and response content in the dashboard's Webhook logs.
 
-> **Note**: The same business event (same `EventType` + `EventID`) creates only one delivery record and won't be duplicated. However, the same delivery may arrive multiple times due to retries — always deduplicate using `event.ID`.
+> **Note**: The same business event (same `EventType` + `EventID`) creates only one delivery record and won't be duplicated. However, the same delivery may arrive multiple times due to retries — always deduplicate on `EventType` + `EventID`. Don't deduplicate on `event.ID` alone: it identifies the entity the event is about, not the occurrence — every `dispute.*` event for one complaint carries the same `event.ID` (the complaint ID `DSP_…`), so keying on it would drop that complaint's later status changes and messages.
 
 ## Best Practices
 
 1. **Respond quickly** — Return 200 immediately and process the event asynchronously (e.g., enqueue it onto a channel or goroutine). Waffo retries on timeout.
-2. **Deduplicate** — Use `event.ID` (delivery record UUID) as an idempotency key to handle redeliveries.
+2. **Deduplicate** — Use `EventType` + `EventID` as the idempotency key to handle redeliveries. `event.ID` is the entity ID and repeats across events (all `dispute.*` events of one complaint share it), so it is not a deduplication key on its own.
 3. **Verify all events** — Always call `pancake.VerifyWebhook` before processing. Never trust unverified payloads.
 4. **Use raw body** — The signature is computed over the raw request body. `io.ReadAll(r.Body)` before any JSON decoding; do not let middleware decode-and-re-encode the body.
 5. **Specify environment when known** — If your endpoint only receives test or prod events, pass `Environment: pancake.EnvironmentTest` or `pancake.EnvironmentProd` to skip unnecessary key attempts and get clearer error messages.
