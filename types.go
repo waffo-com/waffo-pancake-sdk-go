@@ -1288,7 +1288,10 @@ type WebhookEventData struct {
 
 // WebhookChargeback is the chargeback case carried in data.chargeback on
 // chargeback.filed and chargeback.updated. The rest of the event data describes
-// the disputed payment and its order, with the same fields as payment events.
+// the disputed payment and its order with the common order and payment fields
+// (OrderID, BuyerEmail, Currency, Amount, PaymentID, ...). The payment-event-only
+// amount fields ChargedAmount and ListPrice are not included; use
+// Chargeback.DisputedAmount for the disputed amount.
 //
 // Money fields are display strings; Status and LifeCycle are passed through from
 // the payment channel as an open set. Each field is nil when the channel did not
@@ -1407,7 +1410,10 @@ type WebhookDispute struct {
 	PaymentID string `json:"paymentId"`
 	// OrderID is the order of that payment (ORD_xxx).
 	OrderID *string `json:"orderId"`
-	// BuyerEmail is the customer email.
+	// BuyerEmail is the customer email. Portal complaints use the contact email
+	// the customer entered, falling back to the order email; WeChat Pay
+	// complaints use the order email (the channel does not share the payer's
+	// email) and can be nil.
 	BuyerEmail *string `json:"buyerEmail"`
 	// Amount is the payment amount as a display string (for example "19.99").
 	Amount *string `json:"amount"`
