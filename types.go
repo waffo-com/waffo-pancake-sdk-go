@@ -1412,8 +1412,8 @@ type WebhookDispute struct {
 	OrderID *string `json:"orderId"`
 	// BuyerEmail is the customer email. Portal complaints use the contact email
 	// the customer entered, falling back to the order email; WeChat Pay
-	// complaints use the order email (the channel does not share the payer's
-	// email) and can be nil.
+	// complaints are nil (the channel does not share the payer's email, and the
+	// order email is not assumed to be the payer's).
 	BuyerEmail *string `json:"buyerEmail"`
 	// Amount is the payment amount as a display string (for example "19.99").
 	Amount *string `json:"amount"`
