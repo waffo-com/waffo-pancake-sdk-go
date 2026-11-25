@@ -609,7 +609,7 @@ handler that only uses those needs no change.
 | `RefundReason`    | `*string` | Refund reason                             |
 | `RefundCreatedAt` | `*string` | Refund creation timestamp (ISO 8601)      |
 
-**Chargeback fields** (`Chargeback *WebhookChargeback`, present for `chargeback.filed`, `chargeback.updated`). The rest of the data describes the disputed payment and its order, with the same fields as payment events. Money fields are display strings; `Status` and `LifeCycle` are passed through from the payment channel as an open set. Each field is nil when the channel did not report it.
+**Chargeback fields** (`Chargeback *WebhookChargeback`, present for `chargeback.filed`, `chargeback.updated`). The rest of the data describes the disputed payment and its order with the common order and payment fields (`OrderID`, `BuyerEmail`, `Currency`, `Amount`, `PaymentID`, ...). The payment-event-only amount fields `ChargedAmount` and `ListPrice` are not included; use `Chargeback.DisputedAmount` for the disputed amount. Money fields are display strings; `Status` and `LifeCycle` are passed through from the payment channel as an open set. Each field is nil when the channel did not report it.
 
 | Field             | Type      | Description                                                         |
 | ----------------- | --------- | ------------------------------------------------------------------- |
