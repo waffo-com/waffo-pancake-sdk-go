@@ -609,6 +609,79 @@ handler that only uses those needs no change.
 | `RefundReason`    | `*string` | Refund reason                             |
 | `RefundCreatedAt` | `*string` | Refund creation timestamp (ISO 8601)      |
 
+**Chargeback fields** (`Chargeback *WebhookChargeback`, present for `chargeback.filed`, `chargeback.updated`). The rest of the data describes the disputed payment and its order, with the same fields as payment events. Money fields are display strings; `Status` and `LifeCycle` are passed through from the payment channel as an open set. Each field is nil when the channel did not report it.
+
+| Field             | Type      | Description                                                         |
+| ----------------- | --------- | ------------------------------------------------------------------- |
+| `ChargebackID`    | `*string` | Chargeback ID (`CHB_xxx`)                                           |
+| `PSPChargebackID` | `*string` | Chargeback ID assigned by the payment channel                       |
+| `LifeCycle`       | `*string` | Chargeback cycle (e.g., `"FIRST_CYCLE"`, `"SECOND_CYCLE"`)          |
+| `Status`          | `*string` | Current status as reported by the payment channel                   |
+| `PreviousStatus`  | `*string` | Status before the change; only sent on `chargeback.updated`         |
+| `DisputedAmount`  | `*string` | Disputed amount (display string)                                    |
+| `Currency`        | `*string` | Currency of `DisputedAmount`                                        |
+| `ChargebackFee`   | `*string` | Chargeback fee (display string), in `FeeCurrency`                   |
+| `FeeCurrency`     | `*string` | Currency of `ChargebackFee`                                         |
+| `Deadline`        | `*string` | Deadline to respond (ISO 8601)                                      |
+
+### Store Events
+
+`store.domain_changed` and `store.domain_unbound` describe the store itself: no order, payment or amount fields.
+
+`store.domain_changed` — `pancake.WebhookStoreDomainChangedData`:
+
+| Field         | Type      | Description                                                              |
+| ------------- | --------- | ------------------------------------------------------------------------ |
+| `StoreID`     | `string`  | Store ID (`STO_xxx`)                                                     |
+| `StoreName`   | `string`  | Store name                                                               |
+| `OldDomain`   | `*string` | Verified domain before the change; nil when the store had no domain bound |
+| `NewDomain`   | `*string` | Domain the store switched to                                             |
+| `EffectiveAt` | `*string` | When the new domain took effect (ISO 8601)                               |
+
+`store.domain_unbound` — `pancake.WebhookStoreDomainUnboundData`:
+
+| Field       | Type      | Description                                          |
+| ----------- | --------- | ---------------------------------------------------- |
+| `StoreID`   | `string`  | Store ID (`STO_xxx`)                                 |
+| `Domain`    | `*string` | Domain that was unbound                              |
+| `UnboundAt` | `*string` | When the domain was unbound (ISO 8601)               |
+| `Method`    | `*string` | `"merchant"` (the store owner) or `"admin"` (Waffo)  |
+
+### Checkout Session Events
+
+`checkout.completed` and `checkout.expired` — `pancake.WebhookCheckoutSessionData`. The envelope's `ID` and `EventID` are the session ID (`cs_...`). Amounts, customer, product and metadata are not repeated: they arrive on the order's own `order.completed` / `subscription.activated` event, matched by `OrderID`.
+
+| Field       | Type      | Description                                                                                  |
+| ----------- | --------- | -------------------------------------------------------------------------------------------- |
+| `SessionID` | `string`  | Checkout session ID, the same value returned when the session was created                    |
+| `Status`    | `string`  | `"completed"` or `"expired"`                                                                 |
+| `OrderID`   | `*string` | Order created by the session (`ORD_xxx`); nil when no order was created before it expired    |
+
+### Dispute Events
+
+`dispute.created`, `dispute.updated` and `dispute.message_received` — `pancake.WebhookDisputeEventData` (`Dispute WebhookDispute`). Complaints come from the customer portal (`Source` `"portal"`) or from a payment channel such as WeChat Pay (`Source` `"wechat"`). The envelope's `ID` is the complaint ID (`DSP_xxx`).
+
+| Field            | Type                     | Description                                                                                                       |
+| ---------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `DisputeID`      | `string`                 | Complaint ID (`DSP_xxx`)                                                                                          |
+| `Source`         | `string`                 | `"portal"` or `"wechat"`                                                                                          |
+| `Status`         | `string`                 | Status when the event occurred: `"open"`, `"in_progress"`, `"waiting_buyer"`, `"pending_refund"`, `"resolved"`, `"closed"` |
+| `PreviousStatus` | `*string`                | Status before the change; only on `dispute.updated`                                                               |
+| `Escalated`      | `bool`                   | Whether the payment channel has escalated the complaint                                                           |
+| `Category`       | `*string`                | Category chosen in the customer portal; nil for payment channel complaints                                        |
+| `Reason`         | `*string`                | Reason reported by the payment channel; nil for portal complaints                                                 |
+| `Description`    | `string`                 | Complaint text written by the customer (at most 2000 characters)                                                  |
+| `RespondBy`      | `*string`                | Deadline for the merchant to respond (ISO 8601)                                                                   |
+| `PaymentID`      | `string`                 | Payment the complaint is about (`PAY_xxx`)                                                                        |
+| `OrderID`        | `*string`                | Order of that payment (`ORD_xxx`)                                                                                 |
+| `BuyerEmail`     | `*string`                | Customer email                                                                                                    |
+| `Amount`         | `*string`                | Payment amount (display string)                                                                                   |
+| `Currency`       | `*string`                | Currency of `Amount`                                                                                              |
+| `PSPDisputeID`   | `*string`                | Complaint ID assigned by the payment channel; nil for portal complaints                                           |
+| `Message`        | `*WebhookDisputeMessage` | Only on `dispute.message_received`: `MessageID` (`DMSG_xxx`), `AuthorType` (`"buyer"` / `"channel"`), `Body`, `AttachmentCount`, `CreatedAt` |
+
+Each `dispute.message_received` delivery carries one message; several new messages arrive as one delivery each.
+
 ## Event Types
 
 Use `pancake.WebhookEventType` constants. When matching against `event.EventType` (a plain `string`), convert with `string(...)`:
@@ -638,6 +711,27 @@ case string(pancake.WebhookEventTypeRefundSucceeded):
 | `WebhookEventTypeSubscriptionPastDue`               | `subscription.past_due`          | Renewal payment failed (past due)                               |
 | `WebhookEventTypeRefundSucceeded`                   | `refund.succeeded`               | Refund completed successfully                                   |
 | `WebhookEventTypeRefundFailed`                      | `refund.failed`                  | Refund failed                                                   |
+| `WebhookEventTypeChargebackFiled`                   | `chargeback.filed`               | New chargeback case filed against a payment (including a second-cycle case) |
+| `WebhookEventTypeChargebackUpdated`                 | `chargeback.updated`             | Chargeback status changed                                       |
+| `WebhookEventTypeStoreDomainChanged`                | `store.domain_changed`           | Store's verified domain replaced after review                   |
+| `WebhookEventTypeCheckoutCompleted`                 | `checkout.completed`             | Checkout session completed (one-time order paid or subscription activated) |
+| `WebhookEventTypeCheckoutExpired`                   | `checkout.expired`               | Checkout session expired without a successful payment           |
+| `WebhookEventTypeStoreDomainUnbound`                | `store.domain_unbound`           | Store's domain unbound                                          |
+| `WebhookEventTypeDisputeCreated`                    | `dispute.created`                | Customer complaint became visible to the merchant               |
+| `WebhookEventTypeDisputeUpdated`                    | `dispute.updated`                | Complaint status changed                                        |
+| `WebhookEventTypeDisputeMessageReceived`            | `dispute.message_received`       | Complaint received a new message from the customer or the payment channel |
+
+Type parameter for `VerifyWebhookTyped[T]` per event:
+
+| Events                                                           | `T`                             |
+| ---------------------------------------------------------------- | ------------------------------- |
+| `order.*`, `subscription.*`, `refund.*`, `chargeback.*`          | `WebhookEventData`              |
+| `store.domain_changed`                                           | `WebhookStoreDomainChangedData` |
+| `store.domain_unbound`                                           | `WebhookStoreDomainUnboundData` |
+| `checkout.completed`, `checkout.expired`                         | `WebhookCheckoutSessionData`    |
+| `dispute.created`, `dispute.updated`, `dispute.message_received` | `WebhookDisputeEventData`       |
+
+When one endpoint receives several families, verify once with `VerifyWebhook`, switch on `EventType`, and `json.Unmarshal(event.Data, &data)` into the matching type.
 
 ## Key Rotation & Migration
 
