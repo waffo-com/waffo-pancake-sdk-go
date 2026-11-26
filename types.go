@@ -1280,6 +1280,164 @@ type WebhookEventData struct {
 	RefundStatus    *string `json:"refundStatus,omitempty"`
 	RefundReason    *string `json:"refundReason,omitempty"`
 	RefundCreatedAt *string `json:"refundCreatedAt,omitempty"`
+
+	// Chargeback is the chargeback case; present only on chargeback.filed and
+	// chargeback.updated.
+	Chargeback *WebhookChargeback `json:"chargeback,omitempty"`
+}
+
+// WebhookChargeback is the chargeback case carried in data.chargeback on
+// chargeback.filed and chargeback.updated. The rest of the event data describes
+// the disputed payment and its order with the common order and payment fields
+// (OrderID, BuyerEmail, Currency, Amount, PaymentID, ...). The payment-event-only
+// amount fields ChargedAmount and ListPrice are not included; use
+// Chargeback.DisputedAmount for the disputed amount.
+//
+// Money fields are display strings; Status and LifeCycle are passed through from
+// the payment channel as an open set. Each field is nil when the channel did not
+// report it.
+type WebhookChargeback struct {
+	// ChargebackID is the chargeback Short ID (CHB_xxx).
+	ChargebackID *string `json:"chargebackId"`
+	// PSPChargebackID is the chargeback ID assigned by the payment channel.
+	PSPChargebackID *string `json:"pspChargebackId"`
+	// LifeCycle is the chargeback cycle, for example "FIRST_CYCLE" or "SECOND_CYCLE".
+	LifeCycle *string `json:"lifeCycle"`
+	// Status is the current status as reported by the payment channel.
+	Status *string `json:"status"`
+	// PreviousStatus is the status before the change; only sent on chargeback.updated.
+	PreviousStatus *string `json:"previousStatus,omitempty"`
+	// DisputedAmount is the disputed amount as a display string.
+	DisputedAmount *string `json:"disputedAmount"`
+	// Currency is the currency of DisputedAmount.
+	Currency *string `json:"currency"`
+	// ChargebackFee is the chargeback fee as a display string, in FeeCurrency.
+	ChargebackFee *string `json:"chargebackFee"`
+	// FeeCurrency is the currency of ChargebackFee.
+	FeeCurrency *string `json:"feeCurrency"`
+	// Deadline is the deadline to respond to the chargeback (ISO 8601).
+	Deadline *string `json:"deadline"`
+}
+
+// WebhookStoreDomainChangedData is the data of store.domain_changed: the store's
+// verified domain was replaced after review. Store-level event — no order,
+// payment or amount fields.
+type WebhookStoreDomainChangedData struct {
+	// StoreID is the store Short ID (STO_xxx).
+	StoreID string `json:"storeId"`
+	// StoreName is the store name.
+	StoreName string `json:"storeName"`
+	// OldDomain is the verified domain before the change; nil when the store had no domain bound.
+	OldDomain *string `json:"oldDomain"`
+	// NewDomain is the domain the store switched to.
+	NewDomain *string `json:"newDomain"`
+	// EffectiveAt is when the new domain took effect (ISO 8601).
+	EffectiveAt *string `json:"effectiveAt"`
+}
+
+// WebhookStoreDomainUnboundData is the data of store.domain_unbound: the store's
+// domain was unbound. Store-level event — no order, payment or amount fields.
+type WebhookStoreDomainUnboundData struct {
+	// StoreID is the store Short ID (STO_xxx).
+	StoreID string `json:"storeId"`
+	// Domain is the domain that was unbound.
+	Domain *string `json:"domain"`
+	// UnboundAt is when the domain was unbound (ISO 8601).
+	UnboundAt *string `json:"unboundAt"`
+	// Method is who unbound it: "merchant" (the store owner) or "admin" (Waffo).
+	Method *string `json:"method"`
+}
+
+// WebhookCheckoutSessionData is the data of checkout.completed and
+// checkout.expired: a checkout session reached a final state. The envelope's ID
+// and EventID are the session ID as well. Amounts, customer, product and metadata
+// are not repeated here — they arrive on the order's own order.completed /
+// subscription.activated event, matched by OrderID.
+type WebhookCheckoutSessionData struct {
+	// SessionID is the checkout session ID (cs_...), the same value returned when
+	// the session was created.
+	SessionID string `json:"sessionId"`
+	// Status is the final state of the session: "completed" or "expired".
+	Status string `json:"status"`
+	// OrderID is the order created by the session (ORD_xxx); nil when no order was
+	// created before the session expired.
+	OrderID *string `json:"orderId"`
+}
+
+// WebhookDisputeMessage is the new message carried in data.dispute.message on
+// dispute.message_received.
+type WebhookDisputeMessage struct {
+	// MessageID is the message Short ID (DMSG_xxx).
+	MessageID string `json:"messageId"`
+	// AuthorType is who wrote it: "buyer" is the customer, in the customer portal;
+	// "channel" arrived through the payment channel: the payer's complaint or message
+	// relayed by the channel (e.g. WeChat Pay), or a notice from the channel itself.
+	AuthorType string `json:"authorType"`
+	// Body is the message text.
+	Body string `json:"body"`
+	// AttachmentCount is the number of attachments on the message.
+	AttachmentCount int `json:"attachmentCount"`
+	// CreatedAt is when the message was created (ISO 8601).
+	CreatedAt string `json:"createdAt"`
+}
+
+// WebhookDispute is the customer complaint carried in data.dispute on the
+// dispute.* events. Complaints come from the customer portal (Source "portal")
+// or from a payment channel such as WeChat Pay (Source "wechat"). IDs are Short
+// IDs (DSP_ / PAY_ / ORD_); the envelope's ID is the complaint ID.
+type WebhookDispute struct {
+	// DisputeID is the complaint Short ID (DSP_xxx).
+	DisputeID string `json:"disputeId"`
+	// Source is where the complaint came from: "portal" or "wechat".
+	Source string `json:"source"`
+	// Status is the complaint status when the event occurred: "open",
+	// "in_progress", "waiting_buyer", "pending_refund", "resolved" or "closed".
+	Status string `json:"status"`
+	// PreviousStatus is the status before the change; only on dispute.updated.
+	PreviousStatus *string `json:"previousStatus,omitempty"`
+	// Escalated reports whether the payment channel has escalated the complaint.
+	Escalated bool `json:"escalated"`
+	// Category is the complaint category chosen in the customer portal; nil for
+	// payment channel complaints.
+	Category *string `json:"category"`
+	// Reason is the reason reported by the payment channel; nil for portal complaints.
+	Reason *string `json:"reason"`
+	// Description is the complaint text written by the customer (at most 2000 characters).
+	Description string `json:"description"`
+	// RespondBy is the deadline for the merchant to respond (ISO 8601).
+	RespondBy *string `json:"respondBy"`
+	// PaymentID is the payment the complaint is about (PAY_xxx).
+	PaymentID string `json:"paymentId"`
+	// OrderID is the order of that payment (ORD_xxx).
+	OrderID *string `json:"orderId"`
+	// BuyerEmail is the customer email. Portal complaints use the contact email
+	// the customer entered, falling back to the order email; WeChat Pay
+	// complaints are nil (the channel does not share the payer's email, and the
+	// order email is not assumed to be the payer's).
+	BuyerEmail *string `json:"buyerEmail"`
+	// Amount is the payment amount as a display string (for example "19.99").
+	Amount *string `json:"amount"`
+	// Currency is the currency of Amount.
+	Currency *string `json:"currency"`
+	// PSPDisputeID is the complaint ID assigned by the payment channel; nil for
+	// portal complaints.
+	PSPDisputeID *string `json:"pspDisputeId"`
+	// Message is the new message; only on dispute.message_received.
+	Message *WebhookDisputeMessage `json:"message,omitempty"`
+}
+
+// WebhookDisputeEventData is the data of dispute.created, dispute.updated and
+// dispute.message_received.
+//
+// Example:
+//
+//	evt, err := pancake.VerifyWebhookTyped[pancake.WebhookDisputeEventData](body, sig, nil)
+//	if err == nil && evt.EventType == string(pancake.WebhookEventTypeDisputeCreated) {
+//	    log.Println(evt.Data.Dispute.DisputeID, evt.Data.Dispute.Description)
+//	}
+type WebhookDisputeEventData struct {
+	// Dispute is the complaint.
+	Dispute WebhookDispute `json:"dispute"`
 }
 
 // WebhookEvent is the verified envelope returned by VerifyWebhook. Data is

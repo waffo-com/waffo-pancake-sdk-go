@@ -207,6 +207,12 @@ const (
 )
 
 // WebhookEventType is the kind of business event delivered by a webhook.
+//
+// Order, subscription, refund and chargeback events carry [WebhookEventData];
+// store.domain_changed carries [WebhookStoreDomainChangedData], store.domain_unbound
+// [WebhookStoreDomainUnboundData], checkout.* [WebhookCheckoutSessionData] and
+// dispute.* [WebhookDisputeEventData]. Pick the type for [VerifyWebhookTyped]
+// accordingly, or switch on EventType and unmarshal [WebhookEvent].Data.
 type WebhookEventType string
 
 const (
@@ -224,6 +230,15 @@ const (
 	WebhookEventTypeSubscriptionPastDue             WebhookEventType = "subscription.past_due"
 	WebhookEventTypeRefundSucceeded                 WebhookEventType = "refund.succeeded"
 	WebhookEventTypeRefundFailed                    WebhookEventType = "refund.failed"
+	WebhookEventTypeChargebackFiled                 WebhookEventType = "chargeback.filed"
+	WebhookEventTypeChargebackUpdated               WebhookEventType = "chargeback.updated"
+	WebhookEventTypeStoreDomainChanged              WebhookEventType = "store.domain_changed"
+	WebhookEventTypeCheckoutCompleted               WebhookEventType = "checkout.completed"
+	WebhookEventTypeCheckoutExpired                 WebhookEventType = "checkout.expired"
+	WebhookEventTypeStoreDomainUnbound              WebhookEventType = "store.domain_unbound"
+	WebhookEventTypeDisputeCreated                  WebhookEventType = "dispute.created"
+	WebhookEventTypeDisputeUpdated                  WebhookEventType = "dispute.updated"
+	WebhookEventTypeDisputeMessageReceived          WebhookEventType = "dispute.message_received"
 )
 
 // WebhookChannel is the delivery channel of a configured webhook endpoint.

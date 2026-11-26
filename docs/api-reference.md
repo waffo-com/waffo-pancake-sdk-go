@@ -1333,6 +1333,13 @@ All exported types:
 | `TypedWebhookEvent[T]`                  | Typed event envelope                                       |
 | `WebhookEventData`                      | Common event data fields                                   |
 | `WebhookAmountBreakdown`                | Amount breakdown of the object an event refers to          |
+| `WebhookChargeback`                     | Chargeback case in `WebhookEventData.Chargeback` (`chargeback.*`) |
+| `WebhookStoreDomainChangedData`         | Data of `store.domain_changed`                             |
+| `WebhookStoreDomainUnboundData`         | Data of `store.domain_unbound`                             |
+| `WebhookCheckoutSessionData`            | Data of `checkout.completed` / `checkout.expired`          |
+| `WebhookDisputeEventData`               | Data of `dispute.*` (`Dispute WebhookDispute`)             |
+| `WebhookDispute`                        | Customer complaint in `data.dispute`                       |
+| `WebhookDisputeMessage`                 | New message on `dispute.message_received`                  |
 | `WebhookPublicKeys`                     | Per-environment webhook public keys                        |
 | `VerifyWebhookOptions`                  | Verification options (environment, tolerance, key)         |
 | **Nullable helpers**                    |                                                            |
@@ -1356,7 +1363,7 @@ All exported types:
 | `RefundStatus`                          | `Succeeded` / `Failed`                                     |
 | `MediaType`                             | `Image` / `Video`                                          |
 | `ErrorLayer`                            | `Gateway` / `User` / `Store` / `Product` / `Order` / `Ticket` / `GraphQL` / `Resource` / `Email` / `SDK` |
-| `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` |
+| `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` / `ChargebackFiled` / `ChargebackUpdated` / `StoreDomainChanged` / `CheckoutCompleted` / `CheckoutExpired` / `StoreDomainUnbound` / `DisputeCreated` / `DisputeUpdated` / `DisputeMessageReceived` |
 | `WebhookChannel`                        | `HTTP` / `Feishu` / `Discord` / `Telegram` / `Slack`       |
 | `CouponStatus`                          | `Active` / `Inactive` / `Failed`                           |
 | `CouponDiscountType`                    | `Percentage` / `FixedAmount`                               |

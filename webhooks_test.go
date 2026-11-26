@@ -10,6 +10,9 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"strconv"
 	"strings"
 	"testing"
@@ -343,5 +346,217 @@ func TestVerifyWebhook_ExplicitTestEnv(t *testing.T) {
 	// verification must fail.
 	if _, err := VerifyWebhook(payload, sig, &VerifyWebhookOptions{Environment: EnvironmentProd}); err == nil {
 		t.Fatal("expected prod env mismatch failure")
+	}
+}
+
+// TestWebhookEventType_MatchesPlatform reads enums.go so that adding or dropping
+// a WebhookEventType constant without updating this list fails the test.
+func TestWebhookEventType_MatchesPlatform(t *testing.T) {
+	want := []string{
+		"order.completed",
+		"subscription.activated",
+		"subscription.payment_succeeded",
+		"subscription.renewed",
+		"subscription.recovered",
+		"subscription.plan_changed",
+		"subscription.plan_change_scheduled",
+		"subscription.plan_change_failed",
+		"subscription.canceling",
+		"subscription.uncanceled",
+		"subscription.canceled",
+		"subscription.past_due",
+		"refund.succeeded",
+		"refund.failed",
+		"chargeback.filed",
+		"chargeback.updated",
+		"store.domain_changed",
+		"checkout.completed",
+		"checkout.expired",
+		"store.domain_unbound",
+		"dispute.created",
+		"dispute.updated",
+		"dispute.message_received",
+	}
+
+	file, err := parser.ParseFile(token.NewFileSet(), "enums.go", nil, 0)
+	if err != nil {
+		t.Fatalf("parse enums.go: %v", err)
+	}
+	var got []string
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			ident, ok := vs.Type.(*ast.Ident)
+			if !ok || ident.Name != "WebhookEventType" {
+				continue
+			}
+			for _, v := range vs.Values {
+				lit, ok := v.(*ast.BasicLit)
+				if !ok {
+					t.Fatalf("non-literal WebhookEventType value: %#v", v)
+				}
+				s, err := strconv.Unquote(lit.Value)
+				if err != nil {
+					t.Fatalf("unquote %s: %v", lit.Value, err)
+				}
+				got = append(got, s)
+			}
+		}
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("WebhookEventType constants = %v\nwant %v", got, want)
+	}
+}
+
+func TestVerifyWebhookTyped_DisputeEvents(t *testing.T) {
+	priv, pubPEM := generateRSAKeyPair(t)
+	base := map[string]any{
+		"disputeId":    "DSP_7n2KqLs",
+		"source":       "wechat",
+		"status":       "in_progress",
+		"escalated":    false,
+		"category":     nil,
+		"reason":       "Item not received",
+		"description":  "I paid but never got access.",
+		"respondBy":    "2026-11-28T08:00:00.000Z",
+		"paymentId":    "PAY_5xK9mRt",
+		"orderId":      "ORD_3hBfDe",
+		"buyerEmail":   "buyer@example.com",
+		"amount":       "19.99",
+		"currency":     "CNY",
+		"pspDisputeId": "200000020251125000001",
+	}
+	withExtra := func(extra map[string]any) map[string]any {
+		out := map[string]any{}
+		for k, v := range base {
+			out[k] = v
+		}
+		for k, v := range extra {
+			out[k] = v
+		}
+		return out
+	}
+
+	cases := []struct {
+		eventType WebhookEventType
+		dispute   map[string]any
+	}{
+		{WebhookEventTypeDisputeCreated, base},
+		{WebhookEventTypeDisputeUpdated, withExtra(map[string]any{"previousStatus": "open", "escalated": true})},
+		{WebhookEventTypeDisputeMessageReceived, withExtra(map[string]any{"message": map[string]any{
+			"messageId": "DMSG_9pQr", "authorType": "buyer", "body": "Any update?", "attachmentCount": 2, "createdAt": "2026-11-25T09:00:00.000Z",
+		}})},
+	}
+	for _, tc := range cases {
+		t.Run(string(tc.eventType), func(t *testing.T) {
+			payload, sig := makeSignedPayload(t, priv, map[string]any{
+				"id": "DSP_7n2KqLs", "timestamp": "2026-11-25T09:00:01.000Z", "eventType": string(tc.eventType),
+				"eventId": "DSP_7n2KqLs-1", "storeId": "STO_x", "storeName": "X", "mode": "test",
+				"data": map[string]any{"dispute": tc.dispute},
+			}, time.Now().UnixMilli())
+
+			evt, err := VerifyWebhookTyped[WebhookDisputeEventData](payload, sig, &VerifyWebhookOptions{PublicKey: pubPEM})
+			if err != nil {
+				t.Fatalf("verify: %v", err)
+			}
+			d := evt.Data.Dispute
+			if evt.EventType != string(tc.eventType) || evt.ID != "DSP_7n2KqLs" || evt.Mode != EnvironmentTest {
+				t.Fatalf("unexpected envelope: %+v", evt)
+			}
+			if d.DisputeID != "DSP_7n2KqLs" || d.Source != "wechat" || d.PaymentID != "PAY_5xK9mRt" || d.Description == "" {
+				t.Fatalf("unexpected dispute: %+v", d)
+			}
+			if d.Category != nil || d.Reason == nil || *d.Reason != "Item not received" || d.Amount == nil || *d.Amount != "19.99" {
+				t.Fatalf("nullable fields not decoded: %+v", d)
+			}
+			if d.PSPDisputeID == nil || *d.PSPDisputeID != "200000020251125000001" {
+				t.Fatalf("pspDisputeId = %v", d.PSPDisputeID)
+			}
+
+			switch tc.eventType {
+			case WebhookEventTypeDisputeUpdated:
+				if d.PreviousStatus == nil || *d.PreviousStatus != "open" || !d.Escalated {
+					t.Fatalf("updated fields: previousStatus=%v escalated=%v", d.PreviousStatus, d.Escalated)
+				}
+			case WebhookEventTypeDisputeMessageReceived:
+				if d.Message == nil || d.Message.MessageID != "DMSG_9pQr" || d.Message.AuthorType != "buyer" || d.Message.AttachmentCount != 2 {
+					t.Fatalf("message = %+v", d.Message)
+				}
+			default:
+				if d.PreviousStatus != nil || d.Message != nil || d.Escalated {
+					t.Fatalf("created should carry no previousStatus / message: %+v", d)
+				}
+			}
+		})
+	}
+
+	// A tampered body must not verify.
+	payload, sig := makeSignedPayload(t, priv, map[string]any{"eventType": "dispute.created", "data": map[string]any{"dispute": base}}, time.Now().UnixMilli())
+	if _, err := VerifyWebhookTyped[WebhookDisputeEventData](strings.Replace(payload, "19.99", "0.01", 1), sig, &VerifyWebhookOptions{PublicKey: pubPEM}); err == nil {
+		t.Fatal("tampered dispute payload verified")
+	}
+}
+
+func TestVerifyWebhookTyped_ChargebackStoreAndCheckoutData(t *testing.T) {
+	priv, pubPEM := generateRSAKeyPair(t)
+	opts := &VerifyWebhookOptions{PublicKey: pubPEM}
+	sign := func(body map[string]any) (string, string) {
+		return makeSignedPayload(t, priv, body, time.Now().UnixMilli())
+	}
+
+	p, s := sign(map[string]any{"eventType": "chargeback.updated", "data": map[string]any{
+		"orderId": "ORD_1",
+		"chargeback": map[string]any{
+			"chargebackId": "CHB_1", "pspChargebackId": "psp-1", "lifeCycle": "FIRST_CYCLE", "status": "WON",
+			"previousStatus": "UNDER_REVIEW", "disputedAmount": "10.00", "currency": "USD",
+			"chargebackFee": nil, "feeCurrency": nil, "deadline": "2026-12-01T00:00:00.000Z",
+		},
+	}})
+	cb, err := VerifyWebhookTyped[WebhookEventData](p, s, opts)
+	if err != nil {
+		t.Fatalf("chargeback: %v", err)
+	}
+	if c := cb.Data.Chargeback; c == nil || c.PreviousStatus == nil || *c.PreviousStatus != "UNDER_REVIEW" || c.ChargebackFee != nil || *c.DisputedAmount != "10.00" {
+		t.Fatalf("chargeback = %+v", cb.Data.Chargeback)
+	}
+
+	p, s = sign(map[string]any{"eventType": "store.domain_changed", "data": map[string]any{
+		"storeId": "STO_1", "storeName": "S", "oldDomain": nil, "newDomain": "shop.example.com", "effectiveAt": "2026-11-25T00:00:00.000Z",
+	}})
+	changed, err := VerifyWebhookTyped[WebhookStoreDomainChangedData](p, s, opts)
+	if err != nil {
+		t.Fatalf("domain_changed: %v", err)
+	}
+	if changed.Data.OldDomain != nil || changed.Data.NewDomain == nil || *changed.Data.NewDomain != "shop.example.com" {
+		t.Fatalf("domain_changed = %+v", changed.Data)
+	}
+
+	p, s = sign(map[string]any{"eventType": "store.domain_unbound", "data": map[string]any{
+		"storeId": "STO_1", "domain": "shop.example.com", "unboundAt": "2026-11-25T00:00:00.000Z", "method": "admin",
+	}})
+	unbound, err := VerifyWebhookTyped[WebhookStoreDomainUnboundData](p, s, opts)
+	if err != nil {
+		t.Fatalf("domain_unbound: %v", err)
+	}
+	if unbound.Data.Method == nil || *unbound.Data.Method != "admin" {
+		t.Fatalf("domain_unbound = %+v", unbound.Data)
+	}
+
+	p, s = sign(map[string]any{"id": "cs_1", "eventType": "checkout.expired", "data": map[string]any{
+		"sessionId": "cs_1", "status": "expired", "orderId": nil,
+	}})
+	expired, err := VerifyWebhookTyped[WebhookCheckoutSessionData](p, s, opts)
+	if err != nil {
+		t.Fatalf("checkout.expired: %v", err)
+	}
+	if expired.Data.SessionID != "cs_1" || expired.Data.Status != "expired" || expired.Data.OrderID != nil {
+		t.Fatalf("checkout.expired = %+v", expired.Data)
 	}
 }

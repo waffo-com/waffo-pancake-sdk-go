@@ -6,13 +6,22 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-11-25
+
+`WebhookEventType` now lists every event the platform delivers: chargeback, store domain, checkout session and customer complaint (dispute) events, each with a typed data shape for `VerifyWebhookTyped`. Webhook payment data exposes the payment timestamp. Signature verification is unchanged. Matches `@waffo/pancake-ts@0.29.0`.
+
 ### Added
 
+- **`WebhookEventType` constants** — `WebhookEventTypeChargebackFiled` (`chargeback.filed`), `WebhookEventTypeChargebackUpdated` (`chargeback.updated`), `WebhookEventTypeStoreDomainChanged` (`store.domain_changed`), `WebhookEventTypeCheckoutCompleted` (`checkout.completed`), `WebhookEventTypeCheckoutExpired` (`checkout.expired`), `WebhookEventTypeStoreDomainUnbound` (`store.domain_unbound`), `WebhookEventTypeDisputeCreated` (`dispute.created`), `WebhookEventTypeDisputeUpdated` (`dispute.updated`), `WebhookEventTypeDisputeMessageReceived` (`dispute.message_received`). The constants now match the 23 event types a webhook can subscribe to, usable in `AddWebhookParams.Events` / `UpdateWebhookParams.Events`.
+- **`WebhookDisputeEventData`** (`Dispute WebhookDispute`) — data of the three `dispute.*` events. `WebhookDispute` carries `DisputeID` (`DSP_xxx`), `Source` (`"portal"` / `"wechat"`), `Status`, `PreviousStatus` (only on `dispute.updated`), `Escalated`, `Category`, `Reason`, `Description`, `RespondBy`, `PaymentID`, `OrderID`, `BuyerEmail`, `Amount` (display string), `Currency`, `PSPDisputeID`, and on `dispute.message_received` a `Message` (`*WebhookDisputeMessage`: `MessageID` (`DMSG_xxx`), `AuthorType` (`"buyer"` / `"channel"`), `Body`, `AttachmentCount`, `CreatedAt`).
+- **`WebhookEventData.Chargeback`** (`*WebhookChargeback`) — the chargeback case on `chargeback.*` events: `ChargebackID`, `PSPChargebackID`, `LifeCycle`, `Status`, `PreviousStatus` (only on `chargeback.updated`), `DisputedAmount`, `Currency`, `ChargebackFee`, `FeeCurrency`, `Deadline`.
+- **`WebhookStoreDomainChangedData`** / **`WebhookStoreDomainUnboundData`** — data of `store.domain_changed` (`StoreID`, `StoreName`, `OldDomain`, `NewDomain`, `EffectiveAt`) and `store.domain_unbound` (`StoreID`, `Domain`, `UnboundAt`, `Method`).
+- **`WebhookCheckoutSessionData`** — data of `checkout.completed` / `checkout.expired`: `SessionID`, `Status` (`"completed"` / `"expired"`), `OrderID` (nil when no order was created).
 - **`WebhookEventData.PaymentTimestamp`** (`*string`) — optional time Waffo recorded the associated payment (ISO 8601 UTC with milliseconds), present whenever `PaymentDate` is; `PaymentDate` is its UTC date part. On `refund.*` events it refers to the refunded payment.
 
 ### Changed
 
-- **Source compatibility:** adding `PaymentTimestamp` changes the field count of `WebhookEventData`. Callers using unkeyed struct literals must switch to keyed fields before upgrading.
+- **Source compatibility:** adding `PaymentTimestamp` and `Chargeback` changes the field count of `WebhookEventData`. Callers using unkeyed struct literals must switch to keyed fields before upgrading.
 
 ## [0.19.0] — 2026-11-04
 

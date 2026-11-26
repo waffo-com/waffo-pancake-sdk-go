@@ -6,7 +6,7 @@ Go SDK for the Waffo Pancake Merchant of Record (MoR) payment platform.
 - Automatic RSA-SHA256 request signing; opt-in idempotency keys per call
 - Full type definitions (20 enums, 40+ structs)
 - Webhook verification with embedded public keys (test/prod)
-- Feature parity with [`@waffo/pancake-ts@0.28.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
+- Feature parity with [`@waffo/pancake-ts@0.29.x`](https://www.npmjs.com/package/@waffo/pancake-ts)
 
 ## Installation
 
@@ -293,6 +293,16 @@ event, err := pancake.VerifyWebhookTyped[pancake.WebhookEventData](
 // event.Data is pancake.WebhookEventData (struct, not raw bytes)
 // refund.* events carry both event.Data.OrderMerchantExternalID and
 // event.Data.RefundTicketMerchantExternalID — see Business-Side Identifiers below.
+```
+
+Order, subscription, refund and chargeback events use `WebhookEventData`. Store, checkout session and dispute events have their own data types — `WebhookStoreDomainChangedData`, `WebhookStoreDomainUnboundData`, `WebhookCheckoutSessionData` and `WebhookDisputeEventData`:
+
+```go
+event, err := pancake.VerifyWebhookTyped[pancake.WebhookDisputeEventData](string(body), sig, nil)
+if err == nil && pancake.WebhookEventType(event.EventType) == pancake.WebhookEventTypeDisputeCreated {
+    d := event.Data.Dispute // customer complaint from the portal or WeChat Pay
+    fmt.Println("Complaint", d.DisputeID, "from", d.Source)
+}
 ```
 
 ### Client-instance method
