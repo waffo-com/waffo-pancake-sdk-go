@@ -784,6 +784,10 @@ type CreateCheckoutSessionParams struct {
 	PriceSnapshot *PriceSnapshot `json:"priceSnapshot,omitempty"`
 	WithTrial     *bool          `json:"withTrial,omitempty"`
 	BuyerEmail    *string        `json:"buyerEmail,omitempty"`
+	// LockBuyerEmail controls whether the customer can change the pre-filled BuyerEmail on the checkout page.
+	// It defaults to true when BuyerEmail is set; pass Ptr(false) to keep the email editable. A pointer so that
+	// false is sent rather than dropped by omitempty.
+	LockBuyerEmail *bool `json:"lockBuyerEmail,omitempty"`
 	// BillingDetail couples the cashier to the order's billing country: it then offers only that
 	// country's payment market and the customer cannot switch. The country that applies is the one on
 	// the finished order, not the one sent here; a country outside the payment markets Waffo covers
