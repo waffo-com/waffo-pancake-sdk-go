@@ -252,6 +252,34 @@ belongs to that customer, the target plan is in the **same product group**, and 
 group's `SelfServicePlanChange` is on. The merchant-only pricing fields are not part
 of `CustomerPlanChangeParams` — the platform drops them on this path without saying so.
 
+### Closing a checkout session
+
+Close a one-page checkout session the customer has not paid — for example when
+the item sold out or the customer cancelled on your site. Only sessions whose
+`CheckoutVersion` is `"v2"` can be closed: every create method returns
+`CheckoutVersion` next to `SessionID` (`"v2"` one-page checkout, `"v1"` legacy;
+an empty value means `"v1"`). Pass the `SessionID` returned when the session was
+created.
+
+```go
+if session.CheckoutVersion == "v2" {
+    res, err := client.Checkout.ExpireSession(ctx, pancake.ExpireCheckoutSessionParams{
+        CheckoutSessionID: session.SessionID,
+    })
+    // res.Status == "expired" (also when the session had already expired)
+}
+```
+
+Closing moves the session to `expired`, cancels its pending order, releases its
+discount reservation, and sends you a `checkout.expired` webhook. A customer who
+already had the payment form open may still be charged; that payment is refunded
+automatically. The platform refuses with `*pancake.Error`, `Errors[0].Message`
+holding the reason: `SESSION_NOT_FOUND` (404 — not yours, other environment, or a
+legacy session), `SESSION_COMPLETED` / `SESSION_FALLEN_BACK` (409 — paid, or moved
+to the legacy checkout), `SYNC_IN_PROGRESS` / `VERSION_CONFLICT` (409 — retry),
+`PAYMENT_IN_FLIGHT` (409 — wait for `checkout.completed` or retry later),
+`PSP_INQUIRY_FAILED` (502 — nothing changed, retry).
+
 ## Webhook Verification
 
 > Use the **raw** request body. Parsing and re-serializing breaks the
@@ -278,6 +306,11 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
         var data pancake.WebhookEventData
         _ = json.Unmarshal(event.Data, &data)
         fmt.Println("Order completed for", data.BuyerEmail)
+    case pancake.WebhookEventTypeCheckoutCompleted, pancake.WebhookEventTypeCheckoutExpired:
+        // checkout.* events carry a checkout session, not an order.
+        var data pancake.CheckoutSessionWebhookEventData
+        _ = json.Unmarshal(event.Data, &data)
+        fmt.Println("Checkout session", data.SessionID, data.Status)
     }
 }
 ```
@@ -630,7 +663,7 @@ distinguished from server-returned errors.
 | `client.Coupons`                     | `Create`, `Update`, `Deactivate`                                                                                                         |
 | `client.PromotionCodes`              | `Create`, `Generate`, `Deactivate`                                                                                                       |
 | `client.Orders`                      | `CancelSubscription`                                                                                                                     |
-| `client.Checkout`                    | `CreateSession`, `CreatePlanChangeSession`, `Anonymous.Create`, `Authenticated.Create`, `Authenticated.CreatePlanChange`                  |
+| `client.Checkout`                    | `CreateSession`, `CreatePlanChangeSession`, `ExpireSession`, `Anonymous.Create`, `Authenticated.Create`, `Authenticated.CreatePlanChange` |
 | `client.GraphQL`                     | `Query` (also `pancake.GraphQLQuery[T]`)                                                                                                 |
 | `client.Webhooks`                    | `Add`, `Update`, `Remove`, `Verify` (also `pancake.VerifyWebhook` / `pancake.VerifyWebhookTyped[T]`)                                     |
 | `client.ContentSafety`               | `ScanPrompt` (AIGC prompt content-safety scan)                                                                                           |

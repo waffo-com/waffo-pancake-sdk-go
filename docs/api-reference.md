@@ -820,7 +820,7 @@ Three platform checks apply to this path and not to merchant-issued links, each 
 | Target plan is in the same product group | `Target plan is not in the same product group as the current plan` |
 | That group's `selfServicePlanChange` is on | `Self-service plan change is not enabled for this product group` |
 
-**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Warnings }`
+**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, CheckoutVersion, Warnings }`
 
 ### `customer.GraphQL.Query(ctx, params)`
 
@@ -930,6 +930,7 @@ subRes, err := client.Checkout.Authenticated.Create(ctx, pancake.AuthenticatedCh
 | `SessionID`      | `string`           | Session ID                              |
 | `CheckoutURL`    | `string`           | Checkout URL with `#token=...` appended |
 | `ExpiresAt`      | `string`           | Session expiration time                 |
+| `CheckoutVersion` | `string` | `"v2"` one-page checkout (can be closed with `ExpireSession`), `"v1"` legacy; empty = `"v1"` |
 | `Token`          | `string`           | Issued JWT token                        |
 | `TokenExpiresAt` | `string`           | Token expiration time                   |
 | `Warnings`       | `[]pancake.Notice` | Migration notices                       |
@@ -986,6 +987,7 @@ snapshotRes, err := client.Checkout.Anonymous.Create(ctx, pancake.AnonymousCheck
 | `SessionID`   | `string`           | Session ID               |
 | `CheckoutURL` | `string`           | Hosted checkout page URL |
 | `ExpiresAt`   | `string`           | Session expiration time  |
+| `CheckoutVersion` | `string` | `"v2"` one-page checkout (can be closed with `ExpireSession`), `"v1"` legacy; empty = `"v1"` |
 | `Warnings`    | `[]pancake.Notice` | Migration notices        |
 
 ### `client.Checkout.CreatePlanChangeSession(ctx, params)`
@@ -1033,7 +1035,7 @@ There is no `BuyerEmail` or `BillingDetail`: in plan change mode the customer em
 
 Two amount fields, two ways to price the same change: `ChangeAmount` says what to charge for this period, `ChangeCreditAmount` says how much to credit against it. Same unit and tax basis, opposite meaning — sending both is rejected with a 400, and the SDK forwards what you pass rather than picking one.
 
-**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Warnings }`
+**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, CheckoutVersion, Warnings }`
 
 ### `client.Checkout.Authenticated.CreatePlanChange(ctx, params)`
 
@@ -1053,7 +1055,7 @@ res, err := client.Checkout.Authenticated.CreatePlanChange(ctx, pancake.Authenti
 
 **Parameters `AuthenticatedPlanChangeParams`**: embeds `CreatePlanChangeSessionParams`, plus `BuyerIdentity` (`string`, required) — routed to `issue-session-token` only, never into the session body.
 
-**Returns `*AuthenticatedCheckoutResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Token, TokenExpiresAt, Warnings }`
+**Returns `*AuthenticatedCheckoutResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Token, TokenExpiresAt, CheckoutVersion, Warnings }`
 
 > **There is no anonymous plan change.** A Store Slug session is an anonymous credential with no subscription to attribute the change to, and the platform answers 403 — so `client.Checkout.Anonymous` carries no plan change method.
 
@@ -1108,7 +1110,41 @@ _, err = client.Checkout.CreateSession(ctx, pancake.CreateCheckoutSessionParams{
 | `BusinessName` | `*string` | Conditional | Business name (required when `IsBusiness` is `true`)                                                    |
 | `TaxID`        | `*string` | Conditional | Tax ID / VAT number (required for EU countries when `IsBusiness` is `true`; triggers reverse charge 0%) |
 
-**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, Warnings }`
+**Returns `*CheckoutSessionResult`**: `{ SessionID, CheckoutURL, ExpiresAt, CheckoutVersion, Warnings }`
+
+### `client.Checkout.ExpireSession(ctx, params)`
+
+Close a one-page checkout session (`checkoutVersion` `v2`) the customer has not paid. Calls `POST /v1/actions/checkout/session/expire` with your API Key.
+
+Closing moves the session to `expired`, cancels its pending order, releases its discount reservation, and sends you a `checkout.expired` webhook. A customer who already had the payment form open may still be charged; that payment is refunded automatically. A session that has already expired returns the same result.
+
+```go
+res, err := client.Checkout.ExpireSession(ctx, pancake.ExpireCheckoutSessionParams{
+    CheckoutSessionID: "cs_3f2b9c1e-7a4d-4e8b-9c21-5d6f0a1b2c3d",
+})
+// res.Status == "expired"
+```
+
+**Parameters `ExpireCheckoutSessionParams`**:
+
+| Field               | Type     | Required | Description                                                                                      |
+| ------------------- | -------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `CheckoutSessionID` | `string` | Yes      | `cs_` + lowercase UUID — the `SessionID` returned when the one-page checkout session was created |
+
+**Returns `*ExpireCheckoutSessionResult`**: `{ CheckoutSessionID, Status, Warnings }` — `Status` is always `"expired"`, also when the session had already expired.
+
+An empty `CheckoutSessionID` returns `*pancake.Error` (400, `ErrorLayerSDK`) before any request is sent. Platform refusals return `*pancake.Error` with the reason code in `Errors[0].Message` and an explanation in `Errors[0].AIHint`:
+
+| Status | `Errors[0].Message`   | Meaning                                                                                              |
+| ------ | --------------------- | ---------------------------------------------------------------------------------------------------- |
+| 400    | `INVALID_REQUEST`     | `CheckoutSessionID` is not a checkout session ID                                                     |
+| 404    | `SESSION_NOT_FOUND`   | Not in your stores in this environment, or a legacy checkout session                                 |
+| 409    | `SESSION_COMPLETED`   | The customer already paid; do not open a new checkout for the same purchase                          |
+| 409    | `SESSION_FALLEN_BACK` | The customer moved to the legacy checkout; that link expires by itself                               |
+| 409    | `SYNC_IN_PROGRESS`    | The checkout page is updating the session; retry with backoff                                        |
+| 409    | `VERSION_CONFLICT`    | The session kept changing; nothing was changed, retry                                                |
+| 409    | `PAYMENT_IN_FLIGHT`   | A submitted payment has not finished; wait for `checkout.completed` or retry later                   |
+| 502    | `PSP_INQUIRY_FAILED`  | Could not confirm with the payment system; nothing was changed, retry and do not treat it as expired |
 
 ---
 
@@ -1321,6 +1357,8 @@ All exported types:
 | `AuthenticatedPlanChangeParams`         | Plan change request with customer identity                 |
 | `ChangeTiming`                          | When a plan change takes effect (`immediate` / `next_period`) |
 | `CheckoutSessionResult`                 | Checkout session response (URL + expiry)                   |
+| `ExpireCheckoutSessionParams`           | Close checkout session request                             |
+| `ExpireCheckoutSessionResult`           | Close checkout session response (`{CheckoutSessionID, Status}`) |
 | **GraphQL**                             |                                                            |
 | `GraphQLParams`                         | GraphQL query parameters                                   |
 | `GraphQLResponse`                       | Raw GraphQL response envelope (`Data` is `json.RawMessage`) |
@@ -1333,6 +1371,7 @@ All exported types:
 | `TypedWebhookEvent[T]`                  | Typed event envelope                                       |
 | `WebhookEventData`                      | Common event data fields                                   |
 | `WebhookAmountBreakdown`                | Amount breakdown of the object an event refers to          |
+| `CheckoutSessionWebhookEventData`              | Event data of `checkout.completed` / `checkout.expired`    |
 | `WebhookPublicKeys`                     | Per-environment webhook public keys                        |
 | `VerifyWebhookOptions`                  | Verification options (environment, tolerance, key)         |
 | **Nullable helpers**                    |                                                            |
@@ -1356,7 +1395,7 @@ All exported types:
 | `RefundStatus`                          | `Succeeded` / `Failed`                                     |
 | `MediaType`                             | `Image` / `Video`                                          |
 | `ErrorLayer`                            | `Gateway` / `User` / `Store` / `Product` / `Order` / `Ticket` / `GraphQL` / `Resource` / `Email` / `SDK` |
-| `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` |
+| `WebhookEventType`                      | `OrderCompleted` / `SubscriptionActivated` / `SubscriptionPaymentSucceeded` / `SubscriptionRenewed` / `SubscriptionRecovered` / `SubscriptionPlanChanged` / `SubscriptionPlanChangeScheduled` / `SubscriptionPlanChangeFailed` / `SubscriptionCanceling` / `SubscriptionUncanceled` / `SubscriptionCanceled` / `SubscriptionPastDue` / `RefundSucceeded` / `RefundFailed` / `CheckoutCompleted` / `CheckoutExpired` |
 | `WebhookChannel`                        | `HTTP` / `Feishu` / `Discord` / `Telegram` / `Slack`       |
 | `CouponStatus`                          | `Active` / `Inactive` / `Failed`                           |
 | `CouponDiscountType`                    | `Percentage` / `FixedAmount`                               |

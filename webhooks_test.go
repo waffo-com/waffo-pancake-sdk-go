@@ -313,6 +313,62 @@ func TestWebhookAmountBreakdown_DiscountFieldsAbsent(t *testing.T) {
 	}
 }
 
+func TestVerifyWebhookTyped_CheckoutCompleted(t *testing.T) {
+	priv, pubPEM := generateRSAKeyPair(t)
+	const sessionID = "cs_3f2b9c1e-7a4d-4e8b-9c21-5d6f0a1b2c3d"
+	payload, sig := makeSignedPayload(t, priv, map[string]any{
+		"id":        sessionID,
+		"timestamp": "2026-11-15T08:00:00.000Z",
+		"eventType": "checkout.completed",
+		"eventId":   sessionID,
+		"storeId":   "STO_AbCdEfGhIjKlMnOpQrStUv",
+		"storeName": "My Store",
+		"mode":      "prod",
+		"data": map[string]any{
+			"sessionId": sessionID,
+			"status":    "completed",
+			"orderId":   "ORD_AbCdEfGhIjKlMnOpQrStUv",
+		},
+	}, time.Now().UnixMilli())
+
+	evt, err := VerifyWebhookTyped[CheckoutSessionWebhookEventData](payload, sig, &VerifyWebhookOptions{PublicKey: pubPEM})
+	if err != nil {
+		t.Fatalf("typed: %v", err)
+	}
+	if WebhookEventType(evt.EventType) != WebhookEventTypeCheckoutCompleted || evt.ID != sessionID || evt.EventID != sessionID {
+		t.Errorf("envelope = %+v", evt)
+	}
+	d := evt.Data
+	if d.SessionID != sessionID || d.Status != "completed" {
+		t.Errorf("data not populated: %+v", d)
+	}
+	if d.OrderID == nil || *d.OrderID != "ORD_AbCdEfGhIjKlMnOpQrStUv" {
+		t.Errorf("OrderID = %v, want ORD_AbCdEfGhIjKlMnOpQrStUv", d.OrderID)
+	}
+}
+
+func TestCheckoutSessionWebhookEventData_ExpiredWithoutOrder(t *testing.T) {
+	raw := `{"sessionId":"cs_3f2b9c1e-7a4d-4e8b-9c21-5d6f0a1b2c3d","status":"expired","orderId":null}`
+	var d CheckoutSessionWebhookEventData
+	if err := json.Unmarshal([]byte(raw), &d); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if d.SessionID != "cs_3f2b9c1e-7a4d-4e8b-9c21-5d6f0a1b2c3d" || d.Status != "expired" {
+		t.Errorf("data not populated: %+v", d)
+	}
+	if d.OrderID != nil {
+		t.Errorf("null orderId should decode to nil: OrderID=%v", d.OrderID)
+	}
+
+	out, err := json.Marshal(d)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if got := string(out); got != raw {
+		t.Errorf("marshal = %s\nwant      %s", got, raw)
+	}
+}
+
 func TestParseSignatureHeader(t *testing.T) {
 	t1, v1, err := parseSignatureHeader("t=1700000,v1=abc")
 	if err != nil || t1 != "1700000" || v1 != "abc" {

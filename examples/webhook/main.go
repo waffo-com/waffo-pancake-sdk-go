@@ -49,5 +49,17 @@ func handleEvent(event *pancake.WebhookEvent) {
 		log.Printf("order %s completed: %s %s", data.OrderID, total, data.Currency)
 	case pancake.WebhookEventTypeRefundSucceeded:
 		log.Printf("refund succeeded for store %s", event.StoreID)
+	case pancake.WebhookEventTypeCheckoutCompleted, pancake.WebhookEventTypeCheckoutExpired:
+		// Checkout session events carry their own payload shape.
+		var data pancake.CheckoutSessionWebhookEventData
+		if err := json.Unmarshal(event.Data, &data); err != nil {
+			log.Printf("decode event data: %v", err)
+			return
+		}
+		if data.OrderID == nil {
+			log.Printf("checkout session %s %s without an order", data.SessionID, data.Status)
+			return
+		}
+		log.Printf("checkout session %s %s, order %s", data.SessionID, data.Status, *data.OrderID)
 	}
 }
